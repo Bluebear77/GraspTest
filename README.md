@@ -2,6 +2,10 @@
 
 ## News
 
+- July 31st 2025:
+  - GRASP has been accepted to [ISWC 2025](https://iswc2025.semanticweb.org/)
+  - Preview of camera-ready version available [here](https://ad-publications.cs.uni-freiburg.de/ISWC_grasp_WB_2025.pdf)
+
 - July 14th 2025:
   - arXiv preprint available at [arxiv.org/abs/2507.08107](https://arxiv.org/abs/2507.08107)
 
