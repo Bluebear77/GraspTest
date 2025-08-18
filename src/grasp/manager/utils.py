@@ -6,50 +6,8 @@ from search_index import IndexData, PrefixIndex, SearchIndex, SimilarityIndex
 from universal_ml_utils.io import load_json
 from universal_ml_utils.logging import get_logger
 
-from grasp.sparql.manager.base import KgManager
-from grasp.sparql.mapping import Mapping
-from grasp.sparql.sparql import find_longest_prefix, get_index_dir
-
-WIKIDATA_PROPERTY_VARIANTS = {
-    "wdt": "<http://www.wikidata.org/prop/direct/",
-    "wdtn": "<http://www.wikidata.org/prop/direct-normalized/",
-    "p": "<http://www.wikidata.org/prop/",
-    "pq": "<http://www.wikidata.org/prop/qualifier/",
-    "pqn": "<http://www.wikidata.org/prop/qualifier/value-normalized/",
-    "pqv": "<http://www.wikidata.org/prop/qualifier/value/",
-    "pr": "<http://www.wikidata.org/prop/reference/",
-    "prn": "<http://www.wikidata.org/prop/reference/value-normalized/",
-    "prv": "<http://www.wikidata.org/prop/reference/value/",
-    "ps": "<http://www.wikidata.org/prop/statement/",
-    "psn": "<http://www.wikidata.org/prop/statement/value-normalized/",
-    "psv": "<http://www.wikidata.org/prop/statement/value/",
-}
-
-
-class WikidataPropertyMapping(Mapping):
-    NORM_PREFIX = "<http://www.wikidata.org/entity/"
-
-    def normalize(self, iri: str) -> tuple[str, str | None] | None:
-        longest = find_longest_prefix(iri, WIKIDATA_PROPERTY_VARIANTS)
-        if longest is None:
-            return None
-
-        short, long = longest
-        iri = self.NORM_PREFIX + iri[len(long) :]
-        return iri, short
-
-    def denormalize(self, iri: str, variant: str | None) -> str | None:
-        if variant is None:
-            return iri
-        elif variant not in WIKIDATA_PROPERTY_VARIANTS:
-            return None
-        elif not iri.startswith(self.NORM_PREFIX):
-            return None
-        pfx = WIKIDATA_PROPERTY_VARIANTS[variant]
-        return pfx + iri[len(self.NORM_PREFIX) :]
-
-    def default_variants(self) -> set[str] | None:
-        return set(WIKIDATA_PROPERTY_VARIANTS.keys())
+from grasp.manager.mapping import Mapping
+from grasp.utils import get_index_dir
 
 
 def load_data_and_mapping(
@@ -120,7 +78,6 @@ def load_entity_index_and_mapping(
 ) -> tuple[SearchIndex, Mapping]:
     if index_dir is None:
         default_dir = get_index_dir()
-        assert default_dir is not None, "KG_INDEX_DIR environment variable not set"
         index_dir = os.path.join(default_dir, name, "entities")
 
     return load_index_and_mapping(
@@ -139,7 +96,6 @@ def load_property_index_and_mapping(
 ) -> tuple[SearchIndex, Mapping]:
     if index_dir is None:
         default_dir = get_index_dir()
-        assert default_dir is not None, "KG_INDEX_DIR environment variable not set"
         index_dir = os.path.join(default_dir, kg, "properties")
 
     mapping_cls = WikidataPropertyMapping if kg == "wikidata" else None
@@ -162,12 +118,9 @@ def load_example_index(dir: str, **kwargs: Any) -> SimilarityIndex:
     return SimilarityIndex.load(data, os.path.join(dir, "index"), **kwargs)
 
 
-def load_kg_prefixes(kg: str, prefix_file: str | None = None) -> dict[str, str]:
-    if prefix_file is None:
-        index_dir = get_index_dir()
-        assert index_dir is not None, "KG_INDEX_DIR environment variable not set"
-        prefix_file = os.path.join(index_dir, kg, "prefixes.json")
-
+def load_kg_prefixes(kg: str) -> dict[str, str]:
+    index_dir = get_index_dir()
+    prefix_file = os.path.join(index_dir, kg, "prefixes.json")
     if not os.path.exists(prefix_file):
         return {}
 
@@ -177,7 +130,6 @@ def load_kg_prefixes(kg: str, prefix_file: str | None = None) -> dict[str, str]:
 def load_kg_notes(kg: str, notes_file: str | None = None) -> list[str]:
     if notes_file is None:
         index_dir = get_index_dir()
-        assert index_dir is not None, "KG_INDEX_DIR environment variable not set"
         notes_file = os.path.join(index_dir, kg, "notes.json")
 
     if not os.path.exists(notes_file):
@@ -189,7 +141,6 @@ def load_kg_notes(kg: str, notes_file: str | None = None) -> list[str]:
 def load_general_notes(notes_file: str | None = None) -> list[str]:
     if notes_file is None:
         index_dir = get_index_dir()
-        assert index_dir is not None, "KG_INDEX_DIR environment variable not set"
         notes_file = os.path.join(index_dir, "notes.json")
 
     if not os.path.exists(notes_file):
@@ -240,27 +191,51 @@ def load_kg_indices(
     return ent_index, prop_index, ent_mapping, prop_mapping
 
 
-def load_kg_manager(
-    kg: str,
-    entities_dir: str | None = None,
-    entities_type: str | None = None,
-    entities_kwargs: dict[str, Any] | None = None,
-    properties_dir: str | None = None,
-    properties_type: str | None = None,
-    properties_kwargs: dict[str, Any] | None = None,
-    prefix_file: str | None = None,
-    notes_file: str | None = None,
-    endpoint: str | None = None,
-) -> KgManager:
-    indices = load_kg_indices(
-        kg,
-        entities_dir,
-        entities_type,
-        entities_kwargs,
-        properties_dir,
-        properties_type,
-        properties_kwargs,
-    )
-    prefixes = load_kg_prefixes(kg, prefix_file)
-    notes = load_kg_notes(kg, notes_file)
-    return KgManager(kg, *indices, prefixes, notes, endpoint)
+def get_common_sparql_prefixes() -> dict[str, str]:
+    return {
+        "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "<http://www.w3.org/2000/01/rdf-schema#",
+        "owl": "<http://www.w3.org/2002/07/owl#",
+        "xsd": "<http://www.w3.org/2001/XMLSchema#",
+        "foaf": "<http://xmlns.com/foaf/0.1/",
+        "skos": "<http://www.w3.org/2004/02/skos/core#",
+        "dct": "<http://purl.org/dc/terms/",
+        "dc": "<http://purl.org/dc/elements/1.1/",
+        "prov": "<http://www.w3.org/ns/prov#",
+        "schema": "<http://schema.org/",
+        "geo": "<http://www.opengis.net/ont/geosparql#",
+        "geosparql": "<http://www.opengis.net/ont/geosparql#",
+        "gn": "<http://www.geonames.org/ontology#",
+        "bd": "<http://www.bigdata.com/rdf#",
+        "hint": "<http://www.bigdata.com/queryHints#",
+        "wikibase": "<http://wikiba.se/ontology#",
+        "qb": "<http://purl.org/linked-data/cube#",
+        "void": "<http://rdfs.org/ns/void#",
+    }
+
+
+def get_index_desc(index: SearchIndex) -> str:
+    if not is_sim_index(index):
+        index_type = "Prefix-keyword index"
+        dist_info = "number of exact and prefix keyword matches"
+
+    else:
+        index_type = "Similarity index"
+        dist_info = "vector embedding distance"
+
+    return f"{index_type} ranking by {dist_info}"
+
+
+def is_sim_index(index: SearchIndex) -> bool:
+    return index.get_type() == "similarity"
+
+
+def clip(s: str, max_len: int = 64) -> str:
+    if len(s) <= max_len + 3:  # 3 for "..."
+        return s
+
+    # clip string to max_len  + 3 by stripping out middle part
+    half = max_len // 2
+    first = s[:half]
+    last = s[-half:]
+    return first + "..." + last

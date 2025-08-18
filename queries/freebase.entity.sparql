@@ -1,0 +1,38 @@
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX fb: <http://rdf.freebase.com/ns/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT
+  ?label
+  ?score
+  (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=";;;") AS ?synonyms)
+  ?id
+  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
+WHERE {
+  {
+    SELECT ?id (COUNT(?p) AS ?score)
+    WHERE { ?id ?p ?o }
+    GROUP BY ?id
+  }
+  ?id fb:type.object.name ?label .
+  FILTER(LANG(?label) = "en") .
+  OPTIONAL { ?id fb:common.topic.alias ?alias FILTER(LANG(?alias) = "en") }
+  OPTIONAL {
+    { ?id fb:common.topic.description ?info FILTER(LANG(?info) = "en") }
+    UNION
+    {
+      ?id fb:common.topic.notable_types/fb:type.object.name ?type_label .
+      FILTER(LANG(?type_label) = "en") .
+      BIND(CONCAT("has type ", ?type_label) AS ?info)
+    }
+    UNION
+    {
+      ?id fb:freebase.type_hints.mediator ?mediator .
+      FILTER(?mediator = "true") .
+      BIND("is compound value type / mediator type" AS ?info)
+    }
+  }
+}
+GROUP BY ?label ?score ?id
+ORDER BY DESC(?score)

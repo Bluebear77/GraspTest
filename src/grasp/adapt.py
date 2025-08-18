@@ -1,7 +1,7 @@
-from copy import deepcopy
 import json
 import os
 import random
+from copy import deepcopy
 from logging import Logger
 
 import litellm
@@ -14,6 +14,8 @@ from universal_ml_utils.ops import partition_by
 from grasp.configs import Adapt, Config
 from grasp.core import call_model, format_kg, generate, setup
 from grasp.functions import execute_sparql, get_functions
+from grasp.manager import KgManager
+from grasp.manager.utils import load_general_notes
 from grasp.notes import (
     MAX_NOTE_LENGTH,
     MAX_NOTES,
@@ -21,8 +23,7 @@ from grasp.notes import (
     format_general_notes,
     get_note_functions,
 )
-from grasp.sparql.data import get_sparql_items, selections_from_items
-from grasp.sparql.manager import KgManager, load_general_notes
+from grasp.sparql.item import get_sparql_items, selections_from_items
 from grasp.utils import Sample, format_enumerate, format_function_call, format_message
 
 MAX_MESSAGES = 50
@@ -295,8 +296,12 @@ def adapt(
     task: str,
     config: Adapt,
     out_dir: str,
+    overwrite: bool = False,
     log_level: str | int | None = None,
 ) -> None:
+    if os.path.exists(out_dir) and not overwrite:
+        raise FileExistsError(f"Output directory {out_dir} already exists")
+
     assert config.method == "iterative_note_taking", (
         "Only iterative_note_taking method is supported for adaptation"
     )

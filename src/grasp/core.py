@@ -19,17 +19,15 @@ from grasp.functions import (
     find_examples,
     find_similar_examples,
 )
+from grasp.manager import KgManager, find_embedding_model, load_kg_manager
+from grasp.manager.utils import (
+    load_example_index,
+    load_general_notes,
+)
 from grasp.model import call_model
 from grasp.notes import format_general_notes
 from grasp.rules import general_rules, task_rules
-from grasp.sparql.manager import (
-    KgManager,
-    load_example_index,
-    load_general_notes,
-    load_kg_manager,
-)
 from grasp.utils import (
-    find_embedding_model,
     format_enumerate,
     format_function_call,
     format_message,

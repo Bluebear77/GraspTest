@@ -1,27 +1,26 @@
 import json
+import os
 import re
-from itertools import dropwhile
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
-from search_index.similarity import EmbeddingModel
 from termcolor import colored
 
-from grasp.sparql.manager import KgManager
+
+def get_index_dir(kg: str | None = None) -> str:
+    index_dir = os.getenv("GRASP_INDEX_DIR", None)
+    if index_dir is None:
+        home_dir = os.path.expanduser("~")
+        index_dir = os.path.join(home_dir, ".grasp", "index")
+
+    if kg is not None:
+        index_dir = os.path.join(index_dir, kg)
+
+    return index_dir
 
 
 class FunctionCallException(Exception):
     pass
-
-
-def find_embedding_model(managers: list[KgManager]) -> EmbeddingModel | None:
-    return next(
-        dropwhile(
-            lambda m: m is None,
-            (manager.get_embedding_model() for manager in managers),
-        ),
-        None,
-    )
 
 
 def format_enumerate(items: list[str]) -> str:
@@ -321,3 +320,23 @@ def get_answer_or_cancel(
         }
 
     return last_answer, last_cancel
+
+
+def clip(s: str, max_len: int = 64) -> str:
+    if len(s) <= max_len + 3:  # 3 for "..."
+        return s
+
+    # clip string to max_len  + 3 by stripping out middle part
+    half = max_len // 2
+    first = s[:half]
+    last = s[-half:]
+    return first + "..." + last
+
+
+def parse_headers(headers: list[str]) -> dict[str, str]:
+    # each header is formatted as key:value
+    header_dict = {}
+    for header in headers:
+        key, value = header.split(":", 1)
+        header_dict[key.strip()] = value.strip()
+    return header_dict

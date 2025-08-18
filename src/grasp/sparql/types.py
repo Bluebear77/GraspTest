@@ -1,9 +1,183 @@
 import re
+from dataclasses import dataclass
+from enum import Enum
 from itertools import groupby
-from typing import Any
+from typing import Any, Iterator
 
-from grasp.sparql.constants import ObjType
-from grasp.sparql.sparql import clip
+
+class ObjType(str, Enum):
+    ENTITY = "entity"
+    PROPERTY = "property"
+    OTHER = "other"
+    LITERAL = "literal"
+
+    def __repr__(self) -> str:
+        return self.value
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def obj_types_before(obj_type: ObjType) -> list[ObjType]:
+    values = list(ObjType)
+    return values[: values.index(obj_type)]
+
+
+class Position(str, Enum):
+    SUBJECT = "subject"
+    PROPERTY = "property"
+    OBJECT = "object"
+
+    def __repr__(self) -> str:
+        return self.value
+
+    def __str__(self) -> str:
+        return self.value
+
+
+@dataclass
+class AskResult:
+    boolean: bool
+
+    def __len__(self) -> int:
+        return 1
+
+    @property
+    def is_empty(self) -> bool:
+        return False
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, AskResult):
+            return False
+
+        return self.boolean == other.boolean
+
+
+@dataclass
+class Binding:
+    typ: str
+    value: str
+    datatype: str | None = None
+    lang: str | None = None
+
+    def __hash__(self) -> int:
+        return hash((self.typ, self.value, self.datatype, self.lang))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Binding):
+            return False
+
+        return (
+            self.typ == other.typ
+            and self.value == other.value
+            and self.datatype == other.datatype
+            and self.lang == other.lang
+        )
+
+    @staticmethod
+    def from_dict(data: dict) -> "Binding":
+        return Binding(
+            typ=data["type"],
+            value=data["value"],
+            datatype=data.get("datatype"),
+            lang=data.get("xml:lang"),
+        )
+
+    def identifier(self) -> str:
+        assert self.typ in ["uri", "literal", "bnode"]
+        match self.typ:
+            case "uri":
+                return f"<{self.value}>"
+            case "literal":
+                if self.datatype is not None:
+                    return f'"{self.value}"^^<{self.datatype}>'
+                elif self.lang is not None:
+                    return f'"{self.value}"@{self.lang}'
+                else:
+                    return f'"{self.value}"'
+            case "bnode":
+                return f"_:{self.value}"
+            case _:
+                raise ValueError(f"Unknown binding type: {self.typ}")
+
+
+SelectRow = dict[str, Binding]
+
+
+@dataclass
+class SelectResult:
+    variables: list[str]
+    data: list[dict | None]
+
+    @staticmethod
+    def from_json(data: dict) -> "SelectResult":
+        return SelectResult(
+            variables=data["head"]["vars"],
+            data=data["results"]["bindings"],
+        )
+
+    def __len__(self) -> int:
+        return len(self.data)
+
+    def bindings(
+        self,
+        start: int = 0,
+        end: int | None = None,
+    ) -> Iterator[tuple[Binding, ...]]:
+        for row in self.rows(start, end):
+            bindings = tuple(row[var] for var in self.variables if var in row)
+            yield bindings
+
+    def rows(self, start: int = 0, end: int | None = None) -> Iterator[SelectRow]:
+        start = max(start, 0)
+
+        if end is None:
+            end = len(self.data)
+        else:
+            end = min(end, len(self.data))
+
+        for i in range(start, end):
+            data = self.data[i]
+            if data is None:
+                yield {}
+            else:
+                yield {
+                    var: Binding.from_dict(data[var])
+                    for var in self.variables
+                    if var in data
+                }
+
+    @property
+    def num_rows(self) -> int:
+        return len(self.data)
+
+    @property
+    def num_columns(self) -> int:
+        return len(self.variables)
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.data
+
+    def to_ask_result(self) -> AskResult:
+        return AskResult(not self.is_empty)
+
+
+@dataclass
+class Example:
+    question: str
+    sparql: str
+
+
+def clip(s: str, max_len: int = 64) -> str:
+    if len(s) <= max_len + 3:  # 3 for "..."
+        return s
+
+    # clip string to max_len  + 3 by stripping out middle part
+    half = max_len // 2
+    first = s[:half]
+    last = s[-half:]
+    return first + "..." + last
 
 
 class Alternative:
@@ -109,7 +283,7 @@ class Selection:
         self.alternative = alternative
         self.obj_type = obj_type
         if variant:
-            assert alternative.has_variants() and variant in alternative.variants, (
+            assert alternative.has_variants() and variant in alternative.variants, (  # type: ignore
                 f"Variant {variant} not in {alternative.variants}"
             )
         self.variant = variant
@@ -139,7 +313,7 @@ class Selection:
         if not self.alternative.has_label():
             return identifier
 
-        label: str = self.alternative.get_label()
+        label: str = self.alternative.get_label()  # type: ignore
 
         if full_identifier:
             label += f" ({identifier})"

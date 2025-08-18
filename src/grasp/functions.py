@@ -9,23 +9,23 @@ import validators
 from search_index.similarity import SimilarityIndex
 from universal_ml_utils.ops import partition_by
 
-from grasp.sparql.constants import (
+from grasp.manager import KgManager
+from grasp.manager.mapping import Mapping
+from grasp.manager.utils import get_common_sparql_prefixes
+from grasp.sparql.item import (
+    get_sparql_items,
+    parse_binding,
+    selections_from_items,
+)
+from grasp.sparql.types import (
+    Alternative,
     Binding,
     ObjType,
     Position,
     SelectResult,
     SelectRow,
 )
-from grasp.sparql.data import (
-    get_sparql_items,
-    parse_binding,
-    selections_from_items,
-)
-from grasp.sparql.manager import KgManager
-from grasp.sparql.manager.utils import get_common_sparql_prefixes
-from grasp.sparql.mapping import Mapping
-from grasp.sparql.selection import Alternative
-from grasp.sparql.sparql import find_all, parse_string
+from grasp.sparql.utils import find_all, parse_string
 from grasp.utils import FunctionCallException
 
 # set up some global variables

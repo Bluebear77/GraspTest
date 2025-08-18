@@ -1,0 +1,30 @@
+PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
+PREFIX osm2rdfkey: <https://osm2rdf.cs.uni-freiburg.de/rdf/key#>
+
+SELECT
+  ?label
+  ?score
+  (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=";;;") AS ?synonyms)
+  ?id
+  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
+WHERE {
+  ?id osmkey:name ?label .
+  OPTIONAL {
+    { ?id osmkey:short_name ?alias }
+    UNION { ?id osmkey:name:en ?alias }
+    UNION { ?id osmkey:name:de ?alias }
+  }
+  OPTIONAL {
+    ?id osm2rdfkey:wikidata ?wid 
+    SERVICE <https://qlever.cs.uni-freiburg.de/api/wikidata> {
+      ?wid ^schema:about/wikibase:sitelinks ?score .
+    }
+  }
+  OPTIONAL {
+    { ?id osmkey:admin_title ?info }
+    UNION { ?id osmkey:description ?info }
+    UNION { ?id osmkey:amenity ?info }
+  }
+}
+GROUP BY ?label ?score ?id
+ORDER BY DESC(?score)

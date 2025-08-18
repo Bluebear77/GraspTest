@@ -36,7 +36,6 @@ for benchmark in "${benchmarks[@]}"; do
     --question-file $file \
     --output-file $dir/outputs/$name.jsonl \
     $args \
-    --shuffle \
-    --seed 22
+    --shuffle
 
 done

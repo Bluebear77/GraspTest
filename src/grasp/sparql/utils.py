@@ -6,31 +6,43 @@ from copy import deepcopy
 from functools import partial
 from importlib import resources
 from typing import Iterator
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import quote_plus
 
 import requests
-import validators
 from grammar_utils.parse import LR1Parser
 
-from grasp.sparql.constants import (
-    READ_TIMEOUT,
-    REQUEST_TIMEOUT,
-    AskResult,
-    Position,
-    SelectResult,
-)
+from grasp.sparql.types import AskResult, Position, SelectResult
+
+# default request timeout
+# 6 seconds for establishing a connection, 30 seconds for processing query
+# and beginning to receive the response
+REQUEST_TIMEOUT = (6, 30)
+
+# default read timeout
+# 60 seconds for everything (including receiving the response)
+READ_TIMEOUT = 60
+
+QLEVER_API = "https://qlever.cs.uni-freiburg.de/api"
+
+
+def get_endpoint(kg: str) -> str:
+    return f"{QLEVER_API}/{kg}"
 
 
 class SPARQLException(Exception):
     pass
 
 
-def get_index_dir() -> str | None:
-    return os.getenv("KG_INDEX_DIR", None)
+def get_index_dir(kg: str | None = None) -> str:
+    index_dir = os.getenv("GRASP_INDEX_DIR", None)
+    if index_dir is None:
+        home_dir = os.path.expanduser("~")
+        index_dir = os.path.join(home_dir, ".grasp", "index")
 
+    if kg is not None:
+        index_dir = os.path.join(index_dir, kg)
 
-def get_benchmark_dir() -> str | None:
-    return os.getenv("KG_BENCHMARK_DIR", None)
+    return index_dir
 
 
 def load_sparql_grammar() -> tuple[str, str]:
@@ -713,11 +725,11 @@ def execute(
                 response = requests.post(
                     endpoint,
                     headers={
-                        "Content-type": "application/x-www-form-urlencoded",
+                        "Content-type": "application/sparql-query",
                         "Accept": "application/sparql-results+json",
                         "User-Agent": "sparql-kgqa-bot",
                     },
-                    data={"query": sparql},
+                    data=sparql,
                     timeout=request_timeout,
                 )
             response.raise_for_status()
@@ -803,12 +815,9 @@ def format_iri(
         return iri
 
 
-def clip(s: str, max_len: int = 64) -> str:
-    if len(s) <= max_len + 3:  # 3 for "..."
-        return s
+def load_entity_query() -> str:
+    return resources.read_text("grasp.sparql.queries", "entity.sparql").strip()
 
-    # clip string to max_len  + 3 by stripping out middle part
-    half = max_len // 2
-    first = s[:half]
-    last = s[-half:]
-    return first + "..." + last
+
+def load_property_query() -> str:
+    return resources.read_text("grasp.sparql.queries", "property.sparql").strip()

@@ -88,10 +88,10 @@ wget -P data/benchmark/wikidata/qald10 https://ad-publications.cs.uni-freiburg.d
 tar -xzf data/benchmark/wikidata/qald10/train.example-index.tar.gz -C data/benchmark/wikidata/qald10
 ```
 
-6. Set `KG_INDEX_DIR` env variable: `export KG_INDEX_DIR=$(pwd)/data/kg-index`
+6. Set `GRASP_INDEX_DIR` env variable. Defaults to `$HOME/.grasp/index` if not set.
 
 > We recommend to set it with conda, such that it is set automatically when you activate
-> the conda environment: `conda env config vars set KG_INDEX_DIR=$(pwd)/data/kg-index`
+> the conda environment: `conda env config vars set GRASP_INDEX_DIR=/path/to/dir`
 
 7. Run GRASP:
 

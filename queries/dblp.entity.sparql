@@ -1,0 +1,25 @@
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX dblp: <https://dblp.org/rdf/schema#>
+
+SELECT
+  ?label
+  ?score
+  (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=";;;") AS ?synonyms)
+  ?id
+  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
+WHERE {
+  {
+    SELECT ?id (COUNT(?id) AS ?score)
+    WHERE {
+      ?id rdfs:label [] .
+      ?id ?p ?o
+    }
+    GROUP BY ?id
+  }
+  ?id rdfs:label ?label .
+  OPTIONAL { ?id dblp:primaryCreatorName ?alias }
+  OPTIONAL { ?id rdfs:comment ?info }
+}
+GROUP BY ?label ?score ?id
+ORDER BY DESC(?score)

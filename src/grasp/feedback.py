@@ -6,10 +6,10 @@ from universal_ml_utils.logging import get_logger
 from universal_ml_utils.ops import partition_by
 
 from grasp.configs import Config
-from grasp.model import call_model
 from grasp.functions import execute_sparql
-from grasp.sparql.data import get_sparql_items, selections_from_items
-from grasp.sparql.manager import KgManager
+from grasp.manager import KgManager
+from grasp.model import call_model
+from grasp.sparql.item import get_sparql_items, selections_from_items
 from grasp.utils import format_function_call, format_message
 
 

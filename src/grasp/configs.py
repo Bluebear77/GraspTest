@@ -4,11 +4,8 @@ from pydantic import BaseModel
 class KgConfig(BaseModel):
     kg: str
     endpoint: str | None = None
-    entities_dir: str | None = None
-    properties_dir: str | None = None
     entities_type: str | None = None
     properties_type: str | None = None
-    prefix_file: str | None = None
     notes_file: str | None = None
     example_index: str | None = None
 

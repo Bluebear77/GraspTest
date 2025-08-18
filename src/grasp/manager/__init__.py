@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import time
+from itertools import dropwhile
 from typing import Any, Iterable, Type
 
 from search_index import (
@@ -14,30 +15,38 @@ from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 from universal_ml_utils.table import generate_table
 
-from grasp.sparql.constants import (
-    READ_TIMEOUT,
-    REQUEST_TIMEOUT,
+from grasp.manager.mapping import Mapping
+from grasp.manager.utils import (
+    clip,
+    get_common_sparql_prefixes,
+    is_sim_index,
+    load_kg_indices,
+    load_kg_notes,
+    load_kg_prefixes,
+)
+from grasp.sparql.types import (
+    Alternative,
     AskResult,
     Binding,
     ObjType,
     Position,
+    Selection,
     SelectResult,
     SelectRow,
-    get_endpoint,
+    group_selections,
 )
-from grasp.sparql.manager.utils import get_common_sparql_prefixes, is_sim_index
-from grasp.sparql.mapping import Mapping
-from grasp.sparql.selection import Alternative, Selection, group_selections
-from grasp.sparql.sparql import (
+from grasp.sparql.utils import (
+    READ_TIMEOUT,
+    REQUEST_TIMEOUT,
     SPARQLException,
     ask_to_select,
     autocomplete_prefix,
     autocomplete_sparql,
-    clip,
     execute,
     find_longest_prefix,
     fix_prefixes,
     format_iri,
+    get_endpoint,
     has_iri,
     load_iri_and_literal_parser,
     load_sparql_parser,
@@ -518,7 +527,7 @@ class KgManager:
 
             # build index data
             IndexData.build(data_file, offset_file)
-            data = IndexData.load(data_file, offset_file)
+            data: IndexData = IndexData.load(data_file, offset_file)  # type: ignore
 
             # use a prefix index here because it is faster to build
             # and query
@@ -532,7 +541,7 @@ class KgManager:
                 no_refinement=search_kwargs.get("no_refinement", False),
             )
             for id, _ in matches[:k]:
-                formatted, _, _, raw, info = data.get_row(id)
+                formatted, _, _, raw, info = data.get_row(id)  # type: ignore
                 alternatives.append(
                     Alternative(
                         identifier=raw,
@@ -731,3 +740,39 @@ class KgManager:
             for obj_type, name in rename_obj_type
             if obj_type in grouped
         )
+
+
+def load_kg_manager(
+    kg: str,
+    entities_dir: str | None = None,
+    entities_type: str | None = None,
+    entities_kwargs: dict[str, Any] | None = None,
+    properties_dir: str | None = None,
+    properties_type: str | None = None,
+    properties_kwargs: dict[str, Any] | None = None,
+    prefix_file: str | None = None,
+    notes_file: str | None = None,
+    endpoint: str | None = None,
+) -> KgManager:
+    indices = load_kg_indices(
+        kg,
+        entities_dir,
+        entities_type,
+        entities_kwargs,
+        properties_dir,
+        properties_type,
+        properties_kwargs,
+    )
+    prefixes = load_kg_prefixes(kg, prefix_file)
+    notes = load_kg_notes(kg, notes_file)
+    return KgManager(kg, *indices, prefixes, notes, endpoint)
+
+
+def find_embedding_model(managers: list[KgManager]) -> EmbeddingModel | None:
+    return next(
+        dropwhile(
+            lambda m: m is None,
+            (manager.get_embedding_model() for manager in managers),
+        ),
+        None,
+    )

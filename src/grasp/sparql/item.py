@@ -6,11 +6,10 @@ from typing import Optional
 
 from search_index import SearchIndex
 
-from grasp.sparql.constants import Binding, ObjType, Position
-from grasp.sparql.manager.base import KgManager
-from grasp.sparql.mapping import Mapping
-from grasp.sparql.selection import Alternative, Selection
-from grasp.sparql.sparql import (
+from grasp.manager import KgManager
+from grasp.manager.mapping import Mapping
+from grasp.sparql.types import Alternative, Binding, ObjType, Position, Selection
+from grasp.sparql.utils import (
     autocomplete_prefix,
     find_all,
     find_longest_prefix,

@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from universal_ml_utils.ops import partition_by
 
-from grasp.sparql.manager import KgManager
+from grasp.manager import KgManager
 from grasp.utils import FunctionCallException, format_enumerate
 
 MAX_NOTES = 16

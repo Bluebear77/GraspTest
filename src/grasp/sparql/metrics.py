@@ -5,8 +5,8 @@ from typing import Any, Iterable
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
-from grasp.sparql.constants import AskResult, SelectResult
-from grasp.sparql.sparql import execute
+from grasp.sparql.types import AskResult, SelectResult
+from grasp.sparql.utils import execute
 
 
 def exact_f1_score(pred: Iterable[tuple], target: Iterable[tuple]) -> float:

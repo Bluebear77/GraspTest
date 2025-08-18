@@ -7,15 +7,16 @@ import time
 from fastapi import WebSocketDisconnect
 from pydantic import BaseModel, conlist
 from universal_ml_utils.configuration import load_config
-from universal_ml_utils.io import dump_jsonl, load_jsonl
+from universal_ml_utils.io import dump_jsonl, load_jsonl, load_text
 from universal_ml_utils.logging import get_logger, setup_logging
 from universal_ml_utils.ops import extract_field, partition_by
 
 from grasp.adapt import adapt
+from grasp.add import build_indices, get_data
 from grasp.configs import Adapt, Config
 from grasp.core import generate, get_system_message, setup
 from grasp.functions import get_functions
-from grasp.utils import is_invalid_model_output
+from grasp.utils import is_invalid_model_output, parse_headers
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,39 +42,34 @@ def parse_args() -> argparse.Namespace:
         " if --serve is used)",
     )
     input_group = parser.add_mutually_exclusive_group(required=True)
+
+    # run GRASP server
     input_group.add_argument(
         "--serve",
         type=int,
         default=8000,
         help="Start a WebSocket server on this port",
     )
+
+    # run GRASP on a single question
     input_group.add_argument(
-        "-q",
         "--question",
         type=str,
         help="Question to answer",
     )
+
+    # run GRASP adaptation
     input_group.add_argument(
-        "-a",
         "--adapt",
         type=str,
         help="Adapt the GRASP system and save results in this directory",
     )
+
+    # run GRASP on file
     input_group.add_argument(
-        "-i",
         "--question-file",
         type=str,
         help="Input file with questions to run GRASP on",
-    )
-    parser.add_argument(
-        "--output-file",
-        type=str,
-        help="File to write the output to (only used with --question-file)",
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite output (used with --question-file and --adapt)",
     )
     parser.add_argument(
         "--shuffle",
@@ -93,9 +89,50 @@ def parse_args() -> argparse.Namespace:
         help="Field to extract as question from the input (only used with --question-file)",
     )
     parser.add_argument(
+        "--output-file",
+        type=str,
+        help="File to write the output to (only used with --question-file)",
+    )
+    parser.add_argument(
         "--retry-failed",
         action="store_true",
         help="Retry failed questions (only used with --question-file and --output-file)",
+    )
+
+    # get data for GRASP indices
+    input_group.add_argument(
+        "--data",
+        type=str,
+        help="Get data for the specified knowledge graph",
+    )
+    parser.add_argument(
+        "--entity-query",
+        type=str,
+        help="Path to file with custom entity SPARQL query (only used with --data)",
+    )
+    parser.add_argument(
+        "--property-query",
+        type=str,
+        help="Path to file with custom property SPARQL query (only used with --data)",
+    )
+    parser.add_argument(
+        "--headers",
+        type=str,
+        nargs="*",
+        help="Extra headers sent to the knowledge graph endpoint (only used with --data)",
+    )
+
+    # build GRASP indices
+    input_group.add_argument(
+        "--index",
+        type=str,
+        help="Build indices for the specified knowledge graph",
+    )
+
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite in the context of the chosen command",
     )
     parser.add_argument(
         "--seed",
@@ -136,11 +173,14 @@ def run_grasp(args: argparse.Namespace) -> None:
 
     outputs = []
     if args.question_file is not None:
-        random.seed(args.seed)
         assert args.output_file is not None, "Output file is required with --run"
 
         inputs = load_jsonl(args.question_file)
         if args.shuffle:
+            assert config.seed is not None, (
+                "Seed must be set for deterministic shuffling"
+            )
+            random.seed(config.seed)
             random.shuffle(inputs)
 
         take = args.take or len(inputs)
@@ -224,6 +264,8 @@ class Request(BaseModel):
 
 
 def serve_grasp(args: argparse.Namespace) -> None:
+    config = Config(**load_config(args.config))
+
     # create a fast api websocket server to serve the generate_sparql function
     import uvicorn
     from fastapi import FastAPI, WebSocket
@@ -242,7 +284,6 @@ def serve_grasp(args: argparse.Namespace) -> None:
         allow_headers=["*"],
     )
 
-    config = Config(**load_config(args.config))
     managers, example_indices, notes = setup(config)
     kgs = [manager.kg for manager in managers]
 
@@ -375,12 +416,41 @@ def serve_grasp(args: argparse.Namespace) -> None:
 
 
 def adapt_grasp(args: argparse.Namespace) -> None:
-    if os.path.exists(args.adapt) and not args.overwrite:
-        raise FileExistsError(
-            f"Output directory {args.adapt} already exists. Use --overwrite to overwrite."
-        )
     config = Adapt(**load_config(args.config))
-    adapt(args.task, config, args.adapt, args.log_level)
+    adapt(args.task, config, args.adapt, args.overwrite, args.log_level)
+
+
+def get_grasp_data(args: argparse.Namespace) -> None:
+    config = Config(**load_config(args.config))
+
+    cfg = next((c for c in config.knowledge_graphs if c.kg == args.data), None)
+    assert cfg is not None, f"Knowledge graph {args.data} not found in config"
+
+    headers = parse_headers(args.headers or [])
+
+    if args.entity_query is not None:
+        args.entity_query = load_text(args.entity_query)
+
+    if args.property_query is not None:
+        args.property_query = load_text(args.property_query)
+
+    get_data(
+        cfg,
+        args.entity_query,
+        args.property_query,
+        headers,
+        args.overwrite,
+        args.log_level,
+    )
+
+
+def build_grasp_index(args: argparse.Namespace) -> None:
+    config = Config(**load_config(args.config))
+
+    cfg = next((c for c in config.knowledge_graphs if c.kg == args.index), None)
+    assert cfg is not None, f"Knowledge graph {args.index} not found in config"
+
+    build_indices(cfg, args.overwrite, args.log_level)
 
 
 def main():
@@ -388,7 +458,11 @@ def main():
     if args.all_loggers:
         setup_logging(args.log_level)
 
-    if args.adapt is not None:
+    if args.data is not None:
+        get_grasp_data(args)
+    elif args.index:
+        build_grasp_index(args)
+    elif args.adapt is not None:
         adapt_grasp(args)
     elif args.question_file is not None or args.question is not None:
         run_grasp(args)
