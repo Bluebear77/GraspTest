@@ -12,9 +12,38 @@ WHERE {
   # Get ids and their frequencies for score
   {
     SELECT ?id (SUM(?freq) AS ?total_freq) WHERE {
-      { SELECT ?id ("SUB" AS ?pos) (COUNT(?id) AS ?freq) WHERE { ?id ?p ?o } GROUP BY ?id } 
-      UNION
-      { SELECT ?id ("OBJ" AS ?pos) (COUNT(?id) AS ?freq) WHERE { ?s ?p ?id . FILTER(ISIRI(?id)) } GROUP BY ?id }
+      {
+        SELECT ?id ("SUB" AS ?pos) (COUNT(?id) AS ?freq) WHERE {
+          ?id rdf:type ?type 
+          FILTER(?type IN (
+            owl:Class, 
+            owl:DatatypeProperty, 
+            up:Taxon, 
+            up:Database, 
+            up:Concept, 
+            up:Enzyme, 
+            up:Proteome, 
+            up:Chromosome
+          ))
+          ?id ?p ?o 
+        } GROUP BY ?id 
+      } UNION {
+        SELECT ?id ("OBJ" AS ?pos) (COUNT(?id) AS ?freq) WHERE {
+          ?id rdf:type ?type 
+          FILTER(?type IN (
+            owl:Class, 
+            owl:DatatypeProperty, 
+            up:Taxon, 
+            up:Database, 
+            up:Concept, 
+            up:Enzyme, 
+            up:Proteome, 
+            up:Chromosome
+          ))
+          ?s ?p ?id .
+          FILTER(ISIRI(?id)) 
+        } GROUP BY ?id
+      }
     } GROUP BY ?id
   }
 

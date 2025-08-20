@@ -587,7 +587,7 @@ class KgManager:
                 no_refinement=search_kwargs.get("no_refinement", False),
             )
             for id, _ in matches[:k]:
-                identifier, label = data.get_row(id)  # type: ignore
+                identifier, label = index_data.get_row(id)  # type: ignore
                 alternatives.append(
                     Alternative(
                         identifier=identifier,

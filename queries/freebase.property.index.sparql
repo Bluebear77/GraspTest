@@ -6,7 +6,12 @@ SELECT
   (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=";;;") AS ?aliases)
 WHERE {
   # Get ids and their frequencies for score
-  { SELECT ?id (COUNT(?id) AS ?freq) WHERE { ?s ?id ?o } GROUP BY ?id } 
+  { 
+    SELECT ?id (COUNT(?id) AS ?freq) WHERE { 
+      ?id fb:type.object.type fb:type.property .
+      ?s ?id ?o 
+    } GROUP BY ?id 
+  } 
 
   # Filter for properties
   ?id fb:type.object.type fb:type.property .
