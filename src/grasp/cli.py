@@ -16,7 +16,7 @@ from grasp.add import build_indices, get_data
 from grasp.configs import Adapt, Config
 from grasp.core import generate, get_system_message, setup
 from grasp.functions import get_functions
-from grasp.utils import is_invalid_model_output, parse_headers
+from grasp.utils import is_invalid_model_output, parse_parameters
 
 
 def parse_args() -> argparse.Namespace:
@@ -106,20 +106,20 @@ def parse_args() -> argparse.Namespace:
         help="Get data for the specified knowledge graph",
     )
     parser.add_argument(
-        "--entity-query",
+        "--entity-sparql",
         type=str,
         help="Path to file with custom entity SPARQL query (only used with --data)",
     )
     parser.add_argument(
-        "--property-query",
+        "--property-sparql",
         type=str,
         help="Path to file with custom property SPARQL query (only used with --data)",
     )
     parser.add_argument(
-        "--headers",
+        "--parameters",
         type=str,
         nargs="*",
-        help="Extra headers sent to the knowledge graph endpoint (only used with --data)",
+        help="Extra query parameters sent to the knowledge graph endpoint (only used with --data)",
     )
 
     # build GRASP indices
@@ -128,17 +128,28 @@ def parse_args() -> argparse.Namespace:
         type=str,
         help="Build indices for the specified knowledge graph",
     )
+    parser.add_argument(
+        "--sim-precision",
+        type=str,
+        choices=["float32", "ubinary"],
+        help="Precision for building similarity index (only used with --index)",
+    )
+    parser.add_argument(
+        "--sim-embedding-dim",
+        type=int,
+        help="Embedding dimensionality for building similarity index (only used with --index)",
+    )
+    parser.add_argument(
+        "--sim-batch-size",
+        type=int,
+        default=256,
+        help="Batch size for building similarity index (only used with --index)",
+    )
 
     parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite in the context of the chosen command",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=22,
-        help="Seed for the random number generator",
     )
     parser.add_argument(
         "--log-level",
@@ -426,19 +437,19 @@ def get_grasp_data(args: argparse.Namespace) -> None:
     cfg = next((c for c in config.knowledge_graphs if c.kg == args.data), None)
     assert cfg is not None, f"Knowledge graph {args.data} not found in config"
 
-    headers = parse_headers(args.headers or [])
+    params = parse_parameters(args.parameters or [])
 
-    if args.entity_query is not None:
-        args.entity_query = load_text(args.entity_query)
+    if args.entity_sparql is not None:
+        args.entity_sparql = load_text(args.entity_sparql).strip()
 
-    if args.property_query is not None:
-        args.property_query = load_text(args.property_query)
+    if args.property_sparql is not None:
+        args.property_sparql = load_text(args.property_sparql).strip()
 
     get_data(
         cfg,
-        args.entity_query,
-        args.property_query,
-        headers,
+        args.entity_sparql,
+        args.property_sparql,
+        params,
         args.overwrite,
         args.log_level,
     )
@@ -450,7 +461,14 @@ def build_grasp_index(args: argparse.Namespace) -> None:
     cfg = next((c for c in config.knowledge_graphs if c.kg == args.index), None)
     assert cfg is not None, f"Knowledge graph {args.index} not found in config"
 
-    build_indices(cfg, args.overwrite, args.log_level)
+    build_indices(
+        cfg,
+        args.overwrite,
+        args.log_level,
+        sim_batch_size=args.sim_batch_size,
+        sim_precision=args.sim_precision,
+        sim_embedding_dim=args.sim_embedding_dim,
+    )
 
 
 def main():

@@ -1,12 +1,14 @@
 import os
 import time
+from pathlib import Path
 from typing import Any, Type
 
 from search_index import IndexData, PrefixIndex, SearchIndex, SimilarityIndex
-from universal_ml_utils.io import load_json
+from universal_ml_utils.io import dump_json, load_json
 from universal_ml_utils.logging import get_logger
 
-from grasp.manager.mapping import Mapping
+from grasp.manager.mapping import Mapping, WikidataPropertyMapping
+from grasp.sparql.utils import get_endpoint, load_qlever_prefixes
 from grasp.utils import get_index_dir
 
 
@@ -71,14 +73,11 @@ def load_index_and_mapping(
 
 
 def load_entity_index_and_mapping(
-    name: str,
-    index_dir: str | None = None,
+    kg: str,
     index_type: str | None = None,
     **kwargs: Any,
 ) -> tuple[SearchIndex, Mapping]:
-    if index_dir is None:
-        default_dir = get_index_dir()
-        index_dir = os.path.join(default_dir, name, "entities")
+    index_dir = os.path.join(get_index_dir(), kg, "entities")
 
     return load_index_and_mapping(
         index_dir,
@@ -90,13 +89,10 @@ def load_entity_index_and_mapping(
 
 def load_property_index_and_mapping(
     kg: str,
-    index_dir: str | None = None,
     index_type: str | None = None,
     **kwargs: Any,
 ) -> tuple[SearchIndex, Mapping]:
-    if index_dir is None:
-        default_dir = get_index_dir()
-        index_dir = os.path.join(default_dir, kg, "properties")
+    index_dir = os.path.join(get_index_dir(), kg, "properties")
 
     mapping_cls = WikidataPropertyMapping if kg == "wikidata" else None
 
@@ -118,43 +114,80 @@ def load_example_index(dir: str, **kwargs: Any) -> SimilarityIndex:
     return SimilarityIndex.load(data, os.path.join(dir, "index"), **kwargs)
 
 
-def load_kg_prefixes(kg: str) -> dict[str, str]:
+def load_kg_prefixes(kg: str, endpoint: str | None = None) -> dict[str, str]:
     index_dir = get_index_dir()
-    prefix_file = os.path.join(index_dir, kg, "prefixes.json")
-    if not os.path.exists(prefix_file):
-        return {}
+    prefix_file = Path(index_dir, kg, "prefixes.json")
+    if prefix_file.exists():
+        prefixes = load_json(prefix_file.as_posix())
+    else:
+        try:
+            prefixes = load_qlever_prefixes(endpoint or get_endpoint(kg))
+            # save for future use
+            dump_json(prefixes, prefix_file.as_posix(), indent=2)
+        except Exception:
+            prefixes = {}
 
-    return load_json(prefix_file)
+    common_prefixes = get_common_sparql_prefixes()
+    values = set(prefixes.values())
+
+    # add common prefixes that might not be covered by the
+    # specified prefixes
+    for short, long in common_prefixes.items():
+        if short in prefixes or long in values:
+            continue
+
+        prefixes[short] = long
+
+    return prefixes
 
 
 def load_kg_notes(kg: str, notes_file: str | None = None) -> list[str]:
     if notes_file is None:
         index_dir = get_index_dir()
-        notes_file = os.path.join(index_dir, kg, "notes.json")
+        notes_path = Path(index_dir, kg, "notes.json")
+    else:
+        notes_path = Path(notes_file)
 
-    if not os.path.exists(notes_file):
+    if not notes_path.exists():
         return []
 
-    return load_json(notes_file)  # type: ignore
+    return load_json(notes_path.as_posix())  # type: ignore
+
+
+def load_kg_info_sparqls(kg: str) -> tuple[str | None, str | None]:
+    index_dir = get_index_dir()
+    ent_info_file = Path(index_dir, kg, "entities", "info.sparql")
+    prop_info_file = Path(index_dir, kg, "properties", "info.sparql")
+
+    if ent_info_file.exists():
+        ent_info = ent_info_file.read_text()
+    else:
+        ent_info = None
+
+    if prop_info_file.exists():
+        prop_info = prop_info_file.read_text()
+    else:
+        prop_info = None
+
+    return ent_info, prop_info
 
 
 def load_general_notes(notes_file: str | None = None) -> list[str]:
     if notes_file is None:
-        index_dir = get_index_dir()
-        notes_file = os.path.join(index_dir, "notes.json")
+        notes_path = Path(get_index_dir(), "notes.json")
+    else:
+        notes_path = Path(notes_file)
 
-    if not os.path.exists(notes_file):
+    if not notes_path.exists():
         return []
 
-    return load_json(notes_file)  # type: ignore
+    return load_json(notes_path.as_posix())  # type: ignore
 
 
 def load_kg_indices(
     kg: str,
-    entities_dir: str | None = None,
     entities_type: str | None = None,
     entities_kwargs: dict[str, Any] | None = None,
-    properties_dir: str | None = None,
     properties_type: str | None = None,
     properties_kwargs: dict[str, Any] | None = None,
 ) -> tuple[SearchIndex, SearchIndex, Mapping, Mapping]:
@@ -164,7 +197,6 @@ def load_kg_indices(
 
     ent_index, ent_mapping = load_entity_index_and_mapping(
         kg,
-        entities_dir,
         entities_type,
         **(entities_kwargs or {}),
     )
@@ -183,7 +215,6 @@ def load_kg_indices(
 
     prop_index, prop_mapping = load_property_index_and_mapping(
         kg,
-        properties_dir,
         properties_type,
         **(properties_kwargs or {}),
     )

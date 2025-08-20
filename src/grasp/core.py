@@ -145,8 +145,7 @@ def setup(
             emb_model = find_embedding_model(managers)
 
         manager = load_kg_manager(
-            **kg.model_dump(exclude={"example_index"}),
-            # pass model as kwargs for the correct index types
+            kg,
             entities_kwargs={"model": emb_model},
             properties_kwargs={"model": emb_model},
         )

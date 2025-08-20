@@ -15,12 +15,13 @@ from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 from universal_ml_utils.table import generate_table
 
+from grasp.configs import KgConfig
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import (
     clip,
-    get_common_sparql_prefixes,
     is_sim_index,
     load_kg_indices,
+    load_kg_info_sparqls,
     load_kg_notes,
     load_kg_prefixes,
 )
@@ -48,7 +49,9 @@ from grasp.sparql.utils import (
     format_iri,
     get_endpoint,
     has_iri,
+    load_entity_info_sparql,
     load_iri_and_literal_parser,
+    load_property_info_sparql,
     load_sparql_parser,
     parse_string,
     prettify,
@@ -74,6 +77,8 @@ class KgManager:
         prefixes: dict[str, str] | None = None,
         notes: list[str] | None = None,
         endpoint: str | None = None,
+        entity_info_sparql: str | None = None,
+        property_info_sparql: str | None = None,
     ):
         self.kg = kg
 
@@ -86,18 +91,10 @@ class KgManager:
         self.iri_literal_parser = load_iri_and_literal_parser()
 
         self.prefixes = prefixes or {}
-        values = set(self.prefixes.values())
-
-        # add common prefixes that might not be covered by the
-        # specified prefixes
-        common_prefixes = get_common_sparql_prefixes()
-        for short, long in common_prefixes.items():
-            if short in self.prefixes or long in values:
-                continue
-
-            self.prefixes[short] = long
-
         self.notes = notes or []
+
+        self.entity_info_sparql = entity_info_sparql or load_entity_info_sparql()
+        self.property_info_sparql = property_info_sparql or load_property_info_sparql()
 
         self.endpoint = endpoint or get_endpoint(self.kg)
 
@@ -337,22 +334,19 @@ class KgManager:
 
     def build_alternative(
         self,
-        data: list[str],
+        identifier: str,
+        label: str,
+        synonyms: list[str],
+        infos: list[str],
         variants: set[str] | None = None,
     ) -> Alternative:
-        label, _, syns, id, infos = data
-
         return Alternative(
-            identifier=id,
-            short_identifier=self.format_iri(id),
+            identifier=identifier,
+            short_identifier=self.format_iri(identifier),
             label=label,
             variants=variants,
-            aliases=[s for s in syns.split(";;;") if s],
-            infos=sorted(
-                (i for i in infos.split(";;;") if i),
-                key=lambda i: len(i),
-                reverse=True,
-            ),
+            aliases=synonyms,
+            infos=sorted(infos, key=len, reverse=True),
         )
 
     def parse_bindings(self, result: Iterable[Binding | None]) -> dict[ObjType, Any]:
@@ -369,16 +363,15 @@ class KgManager:
                 continue
 
             identifier = binding.identifier()
+            infos = []
 
             if binding.typ == "literal":
                 if binding.datatype is not None:
-                    info = self.format_iri("<" + binding.datatype + ">")
+                    infos.append(self.format_iri("<" + binding.datatype + ">"))
                 elif binding.lang is not None:
-                    info = binding.lang
-                else:
-                    info = None
+                    infos.append(binding.lang)
 
-                literals.append((identifier, binding.value, info))
+                literals.append((identifier, binding.value, infos))
                 continue
 
             # typ is uri
@@ -405,7 +398,7 @@ class KgManager:
                 unmatched = False
 
             if unmatched:
-                others.append((identifier, self.format_iri(identifier), None))
+                others.append((identifier, self.format_iri(identifier), infos))
 
         # sort others by whether they are from one of our known
         # prefixes or not
@@ -419,43 +412,78 @@ class KgManager:
 
     def get_entity_alternatives(
         self,
-        id_map: dict[int, set[str]] | None = None,
         query: str | None = None,
         k: int = 10,
+        id_map: dict[int, set[str]] | None = None,
         **search_kwargs: Any,
     ) -> list[Alternative]:
         return self.get_index_alternatives(
             self.entity_index,
-            id_map,
-            self.entity_mapping.default_variants(),
             query,
             k,
+            id_map,
+            self.entity_mapping.default_variants(),
+            self.entity_info_sparql,
             **search_kwargs,
         )
 
     def get_property_alternatives(
         self,
-        id_map: dict[int, set[str]] | None = None,
         query: str | None = None,
         k: int = 10,
+        id_map: dict[int, set[str]] | None = None,
         **search_kwargs: Any,
     ) -> list[Alternative]:
         return self.get_index_alternatives(
             self.property_index,
-            id_map,
-            self.property_mapping.default_variants(),
             query,
             k,
+            id_map,
+            self.property_mapping.default_variants(),
+            self.property_info_sparql,
             **search_kwargs,
         )
+
+    def get_infos_for_items(
+        self,
+        identifiers: list[str],
+        info_sparql: str,
+    ) -> dict[str, list[str]]:
+        infos = {}
+
+        try:
+            assert "{IDS}" in info_sparql, (
+                "SPARQL must contain {IDS} placeholder for identifiers"
+            )
+            info_sparql = info_sparql.replace("{IDS}", " ".join(identifiers))
+            result = self.execute_sparql(info_sparql)
+            assert isinstance(result, SelectResult) and result.num_columns == 2, (
+                "Expected a SELECT query with a two columns for info SPARQL"
+            )
+            id_var = result.variables[0]
+            info_var = result.variables[1]
+            for row in result.rows():
+                assert id_var in row, "Identifier column not found in result row"
+                if info_var not in row:
+                    continue
+
+                identifier = row[id_var].identifier()
+                infos[identifier] = [
+                    info for info in row[info_var].value.split(";;;") if info
+                ]
+        except Exception as e:
+            self.logger.warning(f"Failed to get infos for identifiers: {e}")
+
+        return infos
 
     def get_index_alternatives(
         self,
         index: SearchIndex,
-        id_map: dict[int, set[str]] | None = None,
-        default_variants: set[str] | None = None,
         query: str | None = None,
         k: int = 10,
+        id_map: dict[int, set[str]] | None = None,
+        default_variants: set[str] | None = None,
+        info_sparql: str | None = None,
         **search_kwargs: Any,
     ) -> list[Alternative]:
         if id_map is not None:
@@ -479,6 +507,12 @@ class KgManager:
 
             ids = [id for id, _ in index.find_matches(query, **kwargs)[:k]]
 
+        if info_sparql is None:
+            infos = {}
+        else:
+            identifiers = [index.get_identifier(id) for id in ids]
+            infos = self.get_infos_for_items(identifiers, info_sparql)
+
         alternatives = []
         for id in ids:
             if id_map is not None:
@@ -486,14 +520,22 @@ class KgManager:
             else:
                 variants = default_variants
 
-            alternative = self.build_alternative(index.get_row(id), variants)
+            identifier, label, *synonyms = index.get_row(id)
+
+            alternative = self.build_alternative(
+                identifier,
+                label,
+                synonyms,
+                infos.get(identifier, []),
+                variants,
+            )
             alternatives.append(alternative)
 
         return alternatives
 
     def get_temporary_index_alternatives(
         self,
-        data: list[tuple[str, str, str | None]],
+        data: list[tuple[str, str, list[str]]],
         query: str | None = None,
         k: int = 10,
         **search_kwargs: Any,
@@ -501,11 +543,12 @@ class KgManager:
         if query is None:
             return [
                 Alternative(
-                    identifier=raw,
-                    short_identifier=formatted,
-                    infos=[info] if info else None,
+                    identifier=identifier,
+                    short_identifier=self.format_iri(identifier),
+                    label=label,
+                    infos=infos,
                 )
-                for raw, formatted, info in data[:k]
+                for identifier, label, infos in data[:k]
             ]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -519,20 +562,23 @@ class KgManager:
                 f"with data at {data_file} and index in {index_dir}"
             )
 
-            # write raw data to temp file in temp dir
+            infos_by_identifier = {}
+
+            # write data to temp file in temp dir
             with open(data_file, "w") as f:
-                f.write("label\tscore\tsynonyms\tid\tinfos\n")
-                for raw, formatted, info in data:
-                    f.write(f"{formatted}\t0\t\t{raw}\t{info or ''}\n")
+                f.write("id\tlabels\n")
+                for identifier, label, infos in data:
+                    f.write(f"{identifier}\t{label}\n")
+                    infos_by_identifier[identifier] = infos
 
             # build index data
             IndexData.build(data_file, offset_file)
-            data: IndexData = IndexData.load(data_file, offset_file)  # type: ignore
+            index_data = IndexData.load(data_file, offset_file)  # type: ignore
 
             # use a prefix index here because it is faster to build
             # and query
-            PrefixIndex.build(data, index_dir)
-            index = PrefixIndex.load(data, index_dir)
+            PrefixIndex.build(index_data, index_dir)
+            index = PrefixIndex.load(index_data, index_dir)
 
             alternatives = []
             matches = index.find_matches(
@@ -541,12 +587,13 @@ class KgManager:
                 no_refinement=search_kwargs.get("no_refinement", False),
             )
             for id, _ in matches[:k]:
-                formatted, _, _, raw, info = data.get_row(id)  # type: ignore
+                identifier, label = data.get_row(id)  # type: ignore
                 alternatives.append(
                     Alternative(
-                        identifier=raw,
-                        short_identifier=formatted,
-                        infos=[info] if info else None,
+                        identifier=identifier,
+                        short_identifier=self.format_iri(identifier),
+                        label=label,
+                        infos=infos_by_identifier[identifier],
                     )
                 )
 
@@ -682,17 +729,17 @@ class KgManager:
 
         if ObjType.ENTITY in search_items:
             alternatives[ObjType.ENTITY] = self.get_entity_alternatives(
-                search_items[ObjType.ENTITY],
                 search_query,
                 k,
+                search_items[ObjType.ENTITY],
                 **search_kwargs,
             )
 
         if ObjType.PROPERTY in search_items:
             alternatives[ObjType.PROPERTY] = self.get_property_alternatives(
-                search_items[ObjType.PROPERTY],
                 search_query,
                 k,
+                search_items[ObjType.PROPERTY],
                 **search_kwargs,
             )
 
@@ -743,29 +790,29 @@ class KgManager:
 
 
 def load_kg_manager(
-    kg: str,
-    entities_dir: str | None = None,
-    entities_type: str | None = None,
+    cfg: KgConfig,
     entities_kwargs: dict[str, Any] | None = None,
-    properties_dir: str | None = None,
-    properties_type: str | None = None,
     properties_kwargs: dict[str, Any] | None = None,
-    prefix_file: str | None = None,
-    notes_file: str | None = None,
-    endpoint: str | None = None,
 ) -> KgManager:
     indices = load_kg_indices(
-        kg,
-        entities_dir,
-        entities_type,
+        cfg.kg,
+        cfg.entities_type,
         entities_kwargs,
-        properties_dir,
-        properties_type,
+        cfg.properties_type,
         properties_kwargs,
     )
-    prefixes = load_kg_prefixes(kg, prefix_file)
-    notes = load_kg_notes(kg, notes_file)
-    return KgManager(kg, *indices, prefixes, notes, endpoint)
+    prefixes = load_kg_prefixes(cfg.kg, cfg.endpoint)
+    notes = load_kg_notes(cfg.kg, cfg.notes_file)
+    ent_info_sparql, prop_info_sparql = load_kg_info_sparqls(cfg.kg)
+    return KgManager(
+        cfg.kg,
+        *indices,
+        prefixes,
+        notes,
+        cfg.endpoint,
+        ent_info_sparql,
+        prop_info_sparql,
+    )
 
 
 def find_embedding_model(managers: list[KgManager]) -> EmbeddingModel | None:

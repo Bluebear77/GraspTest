@@ -14,7 +14,7 @@ from grasp.manager.mapping import Mapping
 from grasp.manager.utils import get_common_sparql_prefixes
 from grasp.sparql.item import (
     get_sparql_items,
-    parse_binding,
+    parse_into_binding,
     selections_from_items,
 )
 from grasp.sparql.types import (
@@ -849,7 +849,11 @@ def check_known(manager: KgManager, sparql: str, known: set[str]):
     in_query = set()
 
     for iri in find_all(parse, {"IRIREF", "PNAME_NS", "PNAME_LN"}, skip={"Prologue"}):
-        binding = parse_binding(iri["value"], manager)
+        binding = parse_into_binding(
+            iri["value"],
+            manager.iri_literal_parser,
+            manager.prefixes,
+        )
         assert binding is not None, f"Failed to parse binding from {iri['value']}"
         assert binding.typ == "uri", f"Expected IRI, got {binding.typ}"
 
@@ -1089,42 +1093,41 @@ SELECT ?s ?p ?o WHERE {{
     assert isinstance(result, SelectResult)
 
     # functions to get scores for properties and entities
-    def prop_score(prop: Binding) -> int:
+    def prop_rank(prop: Binding) -> int:
         norm = manager.property_mapping.normalize(prop.identifier())
         if norm is None or norm[0] not in manager.property_mapping:
-            return 0
+            return len(manager.property_mapping)
 
         id = manager.property_mapping[norm[0]]
-        # score is at column index 1 in property index
-        return int(manager.property_index.get_val(id, 1))
+        # lower id means more popular property
+        return id
 
-    def ent_score(ent: Binding) -> int:
+    def ent_rank(ent: Binding) -> int:
         norm = manager.entity_mapping.normalize(ent.identifier())
         if norm is None or norm[0] not in manager.entity_mapping:
-            return 0
+            return len(manager.entity_mapping)
 
         id = manager.entity_mapping[norm[0]]
-        # score is at column index 1 in entity index
-        return int(manager.entity_index.get_val(id, 1))
+        # lower id means more popular entity
+        return id
 
     # make sure that rows presented are diverse and that
     # we show the ones with popular properties or subjects / objects
     # first
     def sort_key(row: SelectRow) -> tuple[int, int]:
         # property score
-        ps = prop_score(row["p"])
+        ps = prop_rank(row["p"])
 
         # entity score
-        es = max(ent_score(row["s"]), ent_score(row["o"]))
+        es = min(ent_rank(row["s"]), ent_rank(row["o"]))
 
         # sort first by properties, then by subjects or objects
         return ps, es
 
-    # rows are now sorted by popularity
+    # rows are now sorted by popularity, lowest rank first
     sorted_rows = sorted(
         enumerate(result.rows()),
         key=lambda item: sort_key(item[1]),
-        reverse=True,
     )
 
     def normalize_prop(prob: Binding) -> str:

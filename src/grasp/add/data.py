@@ -1,25 +1,23 @@
 import csv
 import os
-from copy import deepcopy
 from logging import Logger
 from pathlib import Path
-from typing import Any, Iterable, Iterator
+from typing import Iterator
 from urllib.parse import unquote_plus
 
 import requests
 from search_index import IndexData, Mapping
-from universal_ml_utils.io import dump_lines
+from universal_ml_utils.io import dump_lines, dump_text
 from universal_ml_utils.logging import get_logger
 
-from grasp.add.utils import get_qlever_prefixes
 from grasp.configs import KgConfig
 from grasp.manager.utils import get_common_sparql_prefixes, load_kg_prefixes
 from grasp.sparql.utils import (
     find_longest_prefix,
     get_endpoint,
     is_iri,
-    load_entity_query,
-    load_property_query,
+    load_entity_index_sparql,
+    load_property_index_sparql,
 )
 from grasp.utils import get_index_dir
 
@@ -27,11 +25,11 @@ from grasp.utils import get_index_dir
 def download_data(
     data_file: str,
     endpoint: str,
-    query: str,
+    sparql: str,
     logger: Logger,
     prefixes: dict[str, str],
-    headers: dict[str, str] | None = None,
-    add_id_as_synonyms: bool = False,
+    params: dict[str, str] | None = None,
+    add_id_as_label: bool = False,
     overwrite: bool = False,
 ) -> None:
     if os.path.exists(data_file) and not overwrite:
@@ -40,10 +38,11 @@ def download_data(
 
     logger.info(
         f"Downloading data to {data_file} from {endpoint} "
-        f"with headers {headers or {}} and query:\n{query}"
+        f"with parameters {params or {}} and SPARQL:\n{sparql}"
     )
-    stream = stream_lines(endpoint, query, headers)
-    dump_lines(prepare_lines(stream, prefixes, logger, add_id_as_synonyms), data_file)
+
+    stream = stream_csv(endpoint, sparql, params)
+    dump_lines(prepare_csv(stream, prefixes, logger, add_id_as_label), data_file)
 
 
 def build_data_and_mapping(
@@ -66,7 +65,7 @@ def build_data_and_mapping(
     if not mapping_file.exists() or overwrite:
         # build mapping
         logger.info(f"Building mapping file at {mapping_file}")
-        Mapping.build(data, mapping_file.as_posix(), 3)  # type: ignore
+        Mapping.build(data, mapping_file.as_posix())  # type: ignore
     else:
         logger.info(f"Mapping file already exists at {mapping_file}, skipping build")
 
@@ -75,7 +74,7 @@ def get_data(
     knowledge_graph: KgConfig,
     entity_query: str | None = None,
     property_query: str | None = None,
-    headers: dict[str, str] | None = None,
+    params: dict[str, str] | None = None,
     overwrite: bool = False,
     log_level: str | int | None = None,
 ) -> None:
@@ -90,20 +89,8 @@ def get_data(
     else:
         endpoint = knowledge_graph.endpoint
 
-    if not headers:
-        headers = {}
-    else:
-        headers = deepcopy(headers)
-
-    headers.update({"Accept": "text/csv", "Content-Type": "application/sparql-query"})
-
-    prefixes = load_kg_prefixes(knowledge_graph.kg)
-    if not prefixes:
-        try:
-            prefixes = get_qlever_prefixes(endpoint)
-        except Exception as e:
-            logger.warning(f"Failed to get QLever prefixes from {endpoint}: {e}")
-            prefixes = get_common_sparql_prefixes()
+    prefixes = get_common_sparql_prefixes()
+    prefixes.update(load_kg_prefixes(knowledge_graph.kg))
 
     kg_dir = get_index_dir(knowledge_graph.kg)
 
@@ -111,45 +98,68 @@ def get_data(
     ent_dir = os.path.join(kg_dir, "entities")
     os.makedirs(ent_dir, exist_ok=True)
     out_file = os.path.join(ent_dir, "data.tsv")
+    ent_sparql = entity_query or load_entity_index_sparql()
     download_data(
         out_file,
         endpoint,
-        entity_query or load_entity_query(),
+        ent_sparql,
         logger,
         prefixes,
-        headers,
+        params,
         overwrite=overwrite,
     )
+    dump_text(ent_sparql, os.path.join(ent_dir, "index.sparql"))
     build_data_and_mapping(out_file, logger, overwrite)
 
     # properties
     prop_dir = os.path.join(kg_dir, "properties")
     os.makedirs(prop_dir, exist_ok=True)
     out_file = os.path.join(prop_dir, "data.tsv")
+    prop_sparql = property_query or load_property_index_sparql()
     download_data(
         out_file,
         endpoint,
-        property_query or load_property_query(),
+        prop_sparql,
         logger,
         prefixes,
-        headers,
-        add_id_as_synonyms=True,  # for properties we also want to search via id
+        params,
+        add_id_as_label=True,  # for properties we also want to search via id
         overwrite=overwrite,
     )
+    dump_text(prop_sparql, os.path.join(prop_dir, "index.sparql"))
     build_data_and_mapping(out_file, logger, overwrite)
 
 
-def stream_lines(
-    url: str,
-    data: Any,
-    headers: dict[str, str] | None = None,
-) -> Iterator[str]:
+def stream_csv(
+    endpoint: str,
+    sparql: str,
+    params: dict[str, str] | None = None,
+) -> Iterator[list[str]]:
     try:
-        response = requests.post(url, data=data, headers=headers, stream=True)
+        headers = {
+            "Accept": "text/csv",
+            "Content-Type": "application/sparql-query",
+            "User-Agent": "grasp-data-bot",
+        }
+
+        response = requests.post(
+            endpoint,
+            data=sparql,
+            params=params,
+            headers=headers,
+            stream=True,
+        )
         response.raise_for_status()
-        yield from response.iter_lines(decode_unicode=True)
+
+        lines = (line.decode("utf-8") for line in response.iter_lines())
+        for row in csv.reader(lines):
+            # pad to 3 columns
+            while len(row) < 3:
+                row.append("")
+            yield row
+
     except Exception as e:
-        raise ValueError(f"Failed to stream rows: {e}") from e
+        raise ValueError(f"Failed to stream csv: {e}") from e
 
 
 def split_iri(iri: str) -> tuple[str, str]:
@@ -218,64 +228,61 @@ def split_at_punctuation(s: str) -> Iterator[str]:
         yield s[start:]
 
 
-def clean(s: str) -> str:
-    return " ".join(s.split())
+def ordered_unique(lst: list[str]) -> list[str]:
+    seen = set()
+    unique = []
+    for item in lst:
+        if item in seen:
+            continue
+        seen.add(item)
+        unique.append(item)
+    return unique
 
 
-def prepare_lines(
-    data: Iterable[str],
+def prepare_csv(
+    lines: Iterator[list[str]],
     prefixes: dict[str, str],
     logger: Logger,
-    add_id_as_synonym: bool = False,
+    add_id_as_label: bool = False,
 ) -> Iterator[str]:
-    reader = csv.reader(data)
     num = 0
 
+    # parser = load_iri_and_literal_parser()
+
     # skip original header
-    next(reader)
+    next(lines)
 
     # yield own header
-    yield "\t".join(["label", "score", "synonyms", "id", "infos"])
+    yield "\t".join(["id", "labels"])
 
-    for row in reader:
-        # remove \n and \t from each column
-        row = [clean(col) for col in row]
+    for line in lines:
+        assert len(line) == 3, f"Expected 3 columns, got {len(line)}: {line}"
 
-        try:
-            label, score, syns, id, infos = row
-        except Exception:
-            logger.warning(f"Got malformed row: {row}")
-            continue
+        id, label, synonyms = line
 
-        # add brackets to id
+        # wrap id with brackets
         id = f"<{id}>"
 
-        if not label:
-            # label is empty, try to get it from synonyms or the object id
-            if syns:
-                # use the first synonym as label
-                # keep rest of synonyms
-                label, *rest = syns.split(";;;")
-                syns = ";;;".join(rest)
-            else:
-                label = get_label_from_id(id, prefixes)
+        # filter out empty label and synonyms
+        labels = []
+        if label:
+            labels.append(label)
+        for syn in synonyms.split(";;;"):
+            if syn:
+                labels.append(syn)
 
-        elif add_id_as_synonym:
-            # add id of item to synonyms
+        if not labels:
+            # label is empty, try to get it from the object id
+            labels.append(get_label_from_id(id, prefixes))
+
+        if add_id_as_label:
+            # add id of item to labels
             object_name = get_object_name_from_id(id, prefixes)
-            if object_name != label and syns:
-                syns = f"{syns};;;{object_name}"
-            elif object_name != label:
-                syns = object_name
+            labels.append(object_name)
 
-        # if args.osm_planet_entities:
-        # for osm planet entities, score is a wikidata id
-        # wid = f"<{score}>"
-        # score = get_osm_planet_score_from_wikidata_id(wid)
-
-        score = "0" if not score else score
-
-        yield "\t".join([label, score, syns, id, infos])
+        # make sure no duplicates are in the labels
+        labels = ordered_unique(labels)
+        yield "\t".join([id] + labels)
 
         num += 1
         if num % 1_000_000 == 0:

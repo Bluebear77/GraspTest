@@ -8,12 +8,13 @@ from search_index import SearchIndex
 
 from grasp.manager import KgManager
 from grasp.manager.mapping import Mapping
-from grasp.sparql.types import Alternative, Binding, ObjType, Position, Selection
+from grasp.sparql.types import Alternative, ObjType, Position, Selection
 from grasp.sparql.utils import (
     autocomplete_prefix,
     find_all,
     find_longest_prefix,
     normalize,
+    parse_into_binding,
     parse_string,
 )
 
@@ -96,122 +97,6 @@ def _index(manager: KgManager, obj_type: ObjType) -> SearchIndex:
         raise ValueError(f"Invalid object type: {obj_type}")
 
 
-def format_literal(s: str) -> str:
-    if s.startswith('"') and s.endswith('"'):
-        return s.strip('"')
-    elif s.startswith("'") and s.endswith("'"):
-        return s.strip("'")
-    else:
-        return s
-
-
-def parse_binding(input: str, manager: KgManager) -> Binding | None:
-    try:
-        parse, _ = parse_string(
-            input,
-            manager.iri_literal_parser,
-            skip_empty=True,
-            collapse_single=True,
-        )
-    except Exception:
-        return None
-
-    match parse["name"]:
-        case "IRIREF":
-            # already an IRI
-            return Binding(
-                typ="uri",
-                value=input[1:-1],
-            )
-
-        case "PNAME_LN" | "PNAME_NS":
-            pfx, name = input.split(":", 1)
-            if pfx not in manager.prefixes:
-                return None
-
-            uri = manager.prefixes[pfx][1:] + name
-
-            # prefixed IRI
-            return Binding(
-                typ="uri",
-                value=uri,
-            )
-
-        # not used as of now, but keep for later
-        case lit if lit.startswith("STRING_LITERAL"):
-            # string literal -> strip quotes
-            return Binding(
-                typ="literal",
-                value=format_literal(parse["value"]),
-            )
-
-        case lit if lit.startswith("INTEGER"):
-            # integer literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#int",
-            )
-
-        case lit if lit.startswith("DECIMAL"):
-            # decimal literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#decimal",
-            )
-
-        case lit if lit.startswith("DOUBLE"):
-            # double literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#double",
-            )
-
-        case lit if lit in ["true", "false"]:
-            # boolean literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#boolean",
-            )
-
-        case "RDFLiteral":
-            if len(parse["children"]) == 2:
-                # langtag
-                lit, langtag = parse["children"]
-
-                return Binding(
-                    typ="literal",
-                    value=format_literal(lit["value"]),
-                    lang=langtag["value"][1:],
-                )
-
-            elif len(parse["children"]) == 3:
-                # datatype
-                lit, _, datatype = parse["children"]
-                if datatype["name"] == "IRIREF":
-                    datatype = datatype["value"][1:-1]
-                else:
-                    pfx, name = datatype["value"].split(":", 1)
-                    if pfx not in manager.prefixes:
-                        return None
-
-                    datatype = manager.prefixes[pfx][1:] + name
-
-                return Binding(
-                    typ="literal",
-                    value=format_literal(lit["value"]),
-                    datatype=datatype,
-                )
-
-        case other:
-            raise ValueError(
-                f"Unexpected type {other} for IRI or literal: {input}",
-            )
-
-
 def _get_item(
     parse: dict,
     manager: KgManager,
@@ -235,7 +120,7 @@ def _get_item(
         "suffix": suffix,
     }
 
-    binding = parse_binding(item, manager)
+    binding = parse_into_binding(item, manager.iri_literal_parser, manager.prefixes)
     if binding is None:
         return None
 
@@ -288,8 +173,14 @@ def _get_item(
 
         id = map[norm_iri]
 
+        identifier, *labels = _index(manager, obj_type).get_row(id)
+        label, *synonyms = labels
+
         alternative = manager.build_alternative(
-            _index(manager, obj_type).get_row(id),
+            identifier,
+            label,
+            synonyms,
+            [],  # leave empty for now
             {variant} if variant else None,
         )
 

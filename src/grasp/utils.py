@@ -333,7 +333,7 @@ def clip(s: str, max_len: int = 64) -> str:
     return first + "..." + last
 
 
-def parse_headers(headers: list[str]) -> dict[str, str]:
+def parse_parameters(headers: list[str]) -> dict[str, str]:
     # each header is formatted as key:value
     header_dict = {}
     for header in headers:

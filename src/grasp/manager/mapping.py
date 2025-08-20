@@ -35,6 +35,10 @@ class Mapping:
         assert item is not None, f"{iri} not in mapping"
         return item
 
+    def __len__(self) -> int:
+        assert self.map is not None, "mapping not loaded"
+        return len(self.map)  # type: ignore
+
     def normalize(self, iri: str) -> tuple[str, str | None] | None:
         return iri, None
 
