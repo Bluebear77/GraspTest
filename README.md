@@ -131,19 +131,18 @@ tar -xzf train.example-index.tar.gz
 # By default, GRASP outputs the answer to stdout as JSON with some extra metadata.
 # To avoid this we redirect it to /dev/null here, and set --log-level to DEBUG which
 # shows all steps in a nicely formatted way.
-grasp --log-level DEBUG run configs/run.yaml "Where was Angela Merkel born?" \
-> /dev/null
+grasp --log-level DEBUG run configs/run.yaml "Where was Angela Merkel born?" > /dev/null
 
 # Run GRASP on a benchmark and save the output to a file, in this case QALD-10:
 grasp --log-level DEBUG file configs/run.yaml \
   data/benchmark/wikidata/qald10/test.jsonl \
   --output-file data/benchmark/wikidata/qald10/outputs/test.jsonl
 
-# Start a GRASP server, by default at port 8000:
+# Start a GRASP server, by default on port 8000:
 grasp --log-level DEBUG serve configs/run.yaml
 
 # For convenience, we also provide a config to run the server with all
-# available knowledge graphs:
+# available knowledge graphs (make sure to download all indices first):
 grasp --log-level DEBUG serve configs/serve.yaml
 ```
 
@@ -181,7 +180,7 @@ GRASP supports both commercial and open-source models.
 1. Install vLLM with `pip install vllm`
 2. Run vLLM server with a model of your choice, see below
 3. Set model to `hosted_vllm/<model_name>` in the config file or with
-`MODEL` env variable, we used:
+`MODEL` env variable, we tested:
 
 - `hosted_vllm/Qwen/Qwen2.5-72B-Instruct` (and other sizes)
 - `hosted_vllm/Qwen/Qwen3-32B` (and other sizes)
