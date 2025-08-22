@@ -510,8 +510,13 @@ def adapt_grasp(args: argparse.Namespace) -> None:
 def get_grasp_data(args: argparse.Namespace) -> None:
     config = Config(**load_config(args.config))
 
-    cfg = next((c for c in config.knowledge_graphs if c.kg == args.data), None)
-    assert cfg is not None, f"Knowledge graph {args.data} not found in config"
+    cfg = next(
+        (c for c in config.knowledge_graphs if c.kg == args.knowledge_graph),
+        None,
+    )
+    assert cfg is not None, (
+        f"Knowledge graph {args.knowledge_graph} not found in config"
+    )
 
     params = parse_parameters(args.parameters or [])
 
@@ -534,8 +539,13 @@ def get_grasp_data(args: argparse.Namespace) -> None:
 def build_grasp_index(args: argparse.Namespace) -> None:
     config = Config(**load_config(args.config))
 
-    cfg = next((c for c in config.knowledge_graphs if c.kg == args.index), None)
-    assert cfg is not None, f"Knowledge graph {args.index} not found in config"
+    cfg = next(
+        (c for c in config.knowledge_graphs if c.kg == args.knowledge_graph),
+        None,
+    )
+    assert cfg is not None, (
+        f"Knowledge graph {args.knowledge_graph} not found in config"
+    )
 
     build_indices(
         cfg,
