@@ -9,6 +9,7 @@ import validators
 from search_index.similarity import SimilarityIndex
 from universal_ml_utils.ops import partition_by
 
+from grasp.examples import ExampleIndex
 from grasp.manager import KgManager
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import get_common_sparql_prefixes
@@ -26,7 +27,7 @@ from grasp.sparql.types import (
     SelectRow,
 )
 from grasp.sparql.utils import find_all, parse_string
-from grasp.utils import FunctionCallException
+from grasp.utils import FunctionCallException, Sample
 
 # set up some global variables
 MAX_RESULTS = 65536
@@ -162,7 +163,7 @@ can be omitted if there is none",
 def get_kg_functions(
     managers: list[KgManager],
     fn_set: str,
-    example_indices: dict[str, SimilarityIndex] | None = None,
+    example_indices: dict[str, ExampleIndex] | None = None,
     num_examples: int = 3,
     random_examples: bool = False,
 ) -> list[dict]:
@@ -562,7 +563,7 @@ def get_functions(
     managers: list[KgManager],
     task: str,
     fn_set: str,
-    example_indices: dict[str, SimilarityIndex] | None = None,
+    example_indices: dict[str, ExampleIndex] | None = None,
     num_examples: int = 3,
     random_examples: bool = False,
 ) -> list[dict]:
@@ -586,7 +587,7 @@ def call_function(
     fn_args: dict,
     fn_set: str,
     known: set[str],
-    example_indices: dict[str, SimilarityIndex],
+    example_indices: dict[str, ExampleIndex],
     **kwargs: Any,
 ) -> str:
     # answer and cancel functions are special, they are not
@@ -715,23 +716,18 @@ def call_function(
 
 def build_examples(
     manager: KgManager,
-    example_index: SimilarityIndex,
-    example_ids: list[int],
+    examples: list[Sample],
     known: set[str],
 ) -> str:
-    examples = []
-    for id in example_ids:
-        q = example_index.get_name(id)
-        data = json.loads(example_index.get_val(id, 3))
-
+    exs = []
+    for example in examples:
         try:
-            s = data["sparql"]
-            s = manager.fix_prefixes(s, remove_known=True)
-            s = manager.prettify(s)
-            _, items = get_sparql_items(s, manager)
+            sparql = manager.fix_prefixes(example.sparql, remove_known=True)
+            sparql = manager.prettify(sparql)
+            _, items = get_sparql_items(sparql, manager)
             selections = selections_from_items(items)
             if selections:
-                s += "\n\n" + manager.format_selections(selections)
+                sparql += "\n\n" + manager.format_selections(selections)
         except Exception:
             continue
 
@@ -747,17 +743,17 @@ def build_examples(
 
         update_known_from_alternatives(known, alternatives, manager)
 
-        examples.append(f"Question:\n{q}\n\nSPARQL:\n{s}")
+        exs.append(f"Question:\n{example.question}\n\nSPARQL:\n{sparql}")
 
-    if not examples:
+    if not exs:
         return "No examples found"
 
-    return "\n\n".join(f"Example {i + 1}:\n{ex}" for i, ex in enumerate(examples))
+    return "\n\n".join(f"Example {i + 1}:\n{ex}" for i, ex in enumerate(exs))
 
 
 def find_examples(
     manager: KgManager,
-    example_indices: dict[str, SimilarityIndex],
+    example_indices: dict[str, ExampleIndex],
     num_examples: int,
     known: set[str],
 ) -> str:
@@ -766,16 +762,17 @@ def find_examples(
 
     example_index = example_indices[manager.kg]
 
-    # ids are indices from [0, len(example_index))
-    indices = list(range(len(example_index)))
-    random.shuffle(indices)
+    examples = random.sample(
+        example_index.samples,
+        min(num_examples, len(example_index)),
+    )
 
-    return build_examples(manager, example_index, indices[:num_examples], known)
+    return build_examples(manager, examples, known)
 
 
 def find_similar_examples(
     manager: KgManager,
-    example_indices: dict[str, SimilarityIndex],
+    example_indices: dict[str, ExampleIndex],
     question: str,
     num_examples: int,
     known: set[str],
@@ -786,17 +783,9 @@ def find_similar_examples(
         return f"No example index for knowledge graph {manager.kg}"
 
     example_index = example_indices[manager.kg]
+    examples = example_index.find_matches(question, num_examples, **search_kwargs)
 
-    example_ids = [
-        id
-        for id, _ in example_index.find_matches(
-            question,
-            k=num_examples,
-            **search_kwargs,
-        )
-    ]
-
-    return build_examples(manager, example_index, example_ids, known)
+    return build_examples(manager, examples, known)
 
 
 def search_entity(

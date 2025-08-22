@@ -7,7 +7,7 @@ import time
 from fastapi import WebSocketDisconnect
 from pydantic import BaseModel, conlist
 from universal_ml_utils.configuration import load_config
-from universal_ml_utils.io import dump_jsonl, load_jsonl, load_text
+from universal_ml_utils.io import dump_json, dump_jsonl, load_jsonl, load_text
 from universal_ml_utils.logging import get_logger, setup_logging
 from universal_ml_utils.ops import extract_field, partition_by
 
@@ -15,8 +15,36 @@ from grasp.adapt import adapt
 from grasp.add import build_indices, get_data
 from grasp.configs import Adapt, Config
 from grasp.core import generate, get_system_message, setup
+from grasp.examples import ExampleIndex
 from grasp.functions import get_functions
 from grasp.utils import is_invalid_model_output, parse_parameters
+
+
+def add_config_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "config",
+        type=str,
+        help="Path to the GRASP configuration file",
+    )
+
+
+def add_task_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "-t",
+        "--task",
+        type=str,
+        choices=["sparql-qa", "general-qa"],
+        default="sparql-qa",
+        help="Task to run",
+    )
+
+
+def add_overwrite_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing output",
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,138 +52,184 @@ def parse_args() -> argparse.Namespace:
         prog="grasp",
         description="GRASP: Generic Reasoning and SPARQL generation across Knowledge Graphs",
     )
-    parser.add_argument(
-        "-c",
-        "--config",
-        type=str,
+
+    subparsers = parser.add_subparsers(
+        title="commands",
+        description="Available commands",
+        dest="command",
         required=True,
-        help="Path to the configuration file",
     )
-    parser.add_argument(
-        "-t",
-        "--task",
-        type=str,
-        choices=["sparql-qa", "general-qa"],
-        default="sparql-qa",
-        help="Task to perform, either 'sparql-qa' for SPARQL question answering or "
-        "'general-qa' for general knowledge graph assisted question answering (ignored"
-        " if --serve is used)",
-    )
-    input_group = parser.add_mutually_exclusive_group(required=True)
 
     # run GRASP server
-    input_group.add_argument(
-        "--serve",
+    server_parser = subparsers.add_parser(
+        "serve",
+        help="Start a WebSocket server to serve GRASP",
+    )
+    add_config_arg(server_parser)
+    server_parser.add_argument(
+        "--port",
         type=int,
         default=8000,
-        help="Start a WebSocket server on this port",
+        help="Port to run the GRASP server on",
     )
 
     # run GRASP on a single question
-    input_group.add_argument(
-        "--question",
+    question_parser = subparsers.add_parser(
+        "run",
+        help="Run GRASP on a single question",
+    )
+    add_config_arg(question_parser)
+    question_parser.add_argument(
+        "question",
         type=str,
         help="Question to answer",
     )
-
-    # run GRASP adaptation
-    input_group.add_argument(
-        "--adapt",
-        type=str,
-        help="Adapt the GRASP system and save results in this directory",
-    )
+    add_task_arg(question_parser)
 
     # run GRASP on file
-    input_group.add_argument(
-        "--question-file",
-        type=str,
-        help="Input file with questions to run GRASP on",
+    file_parser = subparsers.add_parser(
+        "file",
+        help="Run GRASP on a file with questions",
     )
-    parser.add_argument(
+    add_config_arg(file_parser)
+    file_parser.add_argument(
+        "question-file",
+        type=str,
+        help="Path to file in JSONL format to run GRASP on",
+    )
+    file_parser.add_argument(
         "--shuffle",
         action="store_true",
-        help="Shuffle the input (only used with --question-file)",
+        help="Shuffle the questions",
     )
-    parser.add_argument(
+    file_parser.add_argument(
         "--take",
         type=int,
         default=None,
-        help="Number of samples to take from input (only used with --question-file)",
+        help="Limit number of questions",
     )
-    parser.add_argument(
+    file_parser.add_argument(
         "--question-field",
         type=str,
         default="question",
-        help="Field to extract as question from the input (only used with --question-file)",
+        help="Field to extract as question",
     )
-    parser.add_argument(
+    file_parser.add_argument(
         "--output-file",
         type=str,
-        help="File to write the output to (only used with --question-file)",
+        help="File to write the output to",
     )
-    parser.add_argument(
+    file_parser.add_argument(
         "--retry-failed",
         action="store_true",
-        help="Retry failed questions (only used with --question-file and --output-file)",
+        help="Retry failed questions (only used with --output-file)",
     )
+    add_task_arg(file_parser)
+    add_overwrite_arg(file_parser)
+
+    # run GRASP adaptation
+    adapt_parser = subparsers.add_parser(
+        "adapt",
+        help="Adapt GRASP to one or more knowledge graphs",
+    )
+    add_config_arg(adapt_parser)
+    adapt_parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=str,
+        required=True,
+        help="Save results in this directory",
+    )
+    add_task_arg(adapt_parser)
+    add_overwrite_arg(adapt_parser)
 
     # get data for GRASP indices
-    input_group.add_argument(
-        "--data",
-        type=str,
-        help="Get data for the specified knowledge graph",
+    data_parser = subparsers.add_parser(
+        "data",
+        help="Get entity and property data for a knowledge graph",
     )
-    parser.add_argument(
+    add_config_arg(data_parser)
+    data_parser.add_argument(
+        "knowledge_graph",
+        type=str,
+        help="Knowledge graph to get data for (must be defined in the config)",
+    )
+    data_parser.add_argument(
         "--entity-sparql",
         type=str,
-        help="Path to file with custom entity SPARQL query (only used with --data)",
+        help="Path to file with custom entity SPARQL query",
     )
-    parser.add_argument(
+    data_parser.add_argument(
         "--property-sparql",
         type=str,
-        help="Path to file with custom property SPARQL query (only used with --data)",
+        help="Path to file with custom property SPARQL query",
     )
-    parser.add_argument(
+    data_parser.add_argument(
         "--parameters",
         type=str,
         nargs="*",
-        help="Extra query parameters sent to the knowledge graph endpoint (only used with --data)",
+        help="Extra query parameters sent to the knowledge graph endpoint",
     )
+    add_overwrite_arg(data_parser)
 
     # build GRASP indices
-    input_group.add_argument(
-        "--index",
-        type=str,
-        help="Build indices for the specified knowledge graph",
+    index_parser = subparsers.add_parser(
+        "index",
+        help="Build entity and property indices for a knowledge graph",
     )
-    parser.add_argument(
+    add_config_arg(index_parser)
+    index_parser.add_argument(
+        "knowledge_graph",
+        type=str,
+        help="Knowledge graph to build indices for (must be defined in the config)",
+    )
+    index_parser.add_argument(
         "--sim-precision",
         type=str,
         choices=["float32", "ubinary"],
-        help="Precision for building similarity index (only used with --index)",
+        help="Precision when building similarity index",
     )
-    parser.add_argument(
+    index_parser.add_argument(
         "--sim-embedding-dim",
         type=int,
-        help="Embedding dimensionality for building similarity index (only used with --index)",
+        help="Embedding dimensionality when building similarity index",
     )
-    parser.add_argument(
+    index_parser.add_argument(
         "--sim-batch-size",
         type=int,
         default=256,
-        help="Batch size for building similarity index (only used with --index)",
+        help="Batch size when building similarity index",
     )
+    add_overwrite_arg(index_parser)
 
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite in the context of the chosen command",
+    # build example index
+    example_parser = subparsers.add_parser(
+        "examples",
+        help="Build an example index used for few-shot learning",
     )
+    example_parser.add_argument(
+        "examples_file",
+        type=str,
+        help="Path to file with examples in JSONL format",
+    )
+    example_parser.add_argument(
+        "output_dir",
+        type=str,
+        help="Directory to save the example index",
+    )
+    example_parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=256,
+        help="Batch size for building the example index",
+    )
+    add_overwrite_arg(example_parser)
+
     parser.add_argument(
         "--log-level",
         type=str,
         default="INFO",
-        help="Log level for the logger",
+        help="GRASP log level",
     )
     parser.add_argument(
         "--all-loggers",
@@ -182,11 +256,11 @@ def run_grasp(args: argparse.Namespace) -> None:
 
     system_message = get_system_message(args.task, managers, notes)
 
+    run_on_file = args.command == "file"
     outputs = []
-    if args.question_file is not None:
-        assert args.output_file is not None, "Output file is required with --run"
-
+    if run_on_file:
         inputs = load_jsonl(args.question_file)
+        question_field = args.question_field
         if args.shuffle:
             assert config.seed is not None, (
                 "Seed must be set for deterministic shuffling"
@@ -197,38 +271,36 @@ def run_grasp(args: argparse.Namespace) -> None:
         take = args.take or len(inputs)
         inputs = inputs[:take]
 
-        exists = os.path.exists(args.output_file)
-        if exists and not args.overwrite:
-            outputs = load_jsonl(args.output_file)
+        if args.output_file:
+            if os.path.exists(args.output_file) and not args.overwrite:
+                outputs = load_jsonl(args.output_file)
 
-        # save this in a config file
-        output_stem, _ = os.path.splitext(args.output_file)
-        config_file = output_stem + ".config.json"
-        with open(config_file, "w") as f:
-            json.dump(
+            # save info in config file next to output file
+            output_stem, _ = os.path.splitext(args.output_file)
+            config_file = output_stem + ".config.json"
+            dump_json(
                 {
                     "config": config.model_dump(),
                     "functions": functions,
                     "system_message": system_message,
                 },
-                f,
+                config_file,
                 indent=2,
             )
 
     else:
-        assert args.question is not None
         inputs = [{"id": 0, "question": args.question}]
-        args.question_field = "question"
+        question_field = "question"
 
     for i, ipt in enumerate(inputs):
         id = extract_field(ipt, "id")
-        question = extract_field(ipt, args.question_field)
+        question = extract_field(ipt, question_field)
         assert id is not None and question is not None, "id and question are required"
 
-        if i < len(outputs):
-            output = outputs[i]
-            if not args.retry_failed or not is_invalid_model_output(output):
-                continue
+        if i < len(outputs) and (
+            not args.retry_failed or not is_invalid_model_output(outputs[i])
+        ):
+            continue
 
         *_, output = generate(
             args.task,
@@ -242,9 +314,13 @@ def run_grasp(args: argparse.Namespace) -> None:
         )
 
         output["id"] = id
-        if args.question:
+        if not run_on_file:
             print(json.dumps(output))
-            return
+            break
+
+        elif args.output_file is None:
+            print(json.dumps(output))
+            continue
 
         if i < len(outputs):
             outputs[i] = output
@@ -423,7 +499,7 @@ def serve_grasp(args: argparse.Namespace) -> None:
         finally:
             active_connections -= 1
 
-    uvicorn.run(app, host="0.0.0.0", port=args.serve)
+    uvicorn.run(app, host="0.0.0.0", port=args.port)
 
 
 def adapt_grasp(args: argparse.Namespace) -> None:
@@ -476,16 +552,24 @@ def main():
     if args.all_loggers:
         setup_logging(args.log_level)
 
-    if args.data is not None:
+    if args.command == "data":
         get_grasp_data(args)
-    elif args.index:
+    elif args.command == "index":
         build_grasp_index(args)
-    elif args.adapt is not None:
+    elif args.command == "adapt":
         adapt_grasp(args)
-    elif args.question_file is not None or args.question is not None:
+    elif args.command == "run" or args.command == "file":
         run_grasp(args)
-    else:
+    elif args.command == "serve":
         serve_grasp(args)
+    elif args.command == "examples":
+        ExampleIndex.build(
+            args.examples_file,
+            args.output_dir,
+            args.batch_size,
+            args.overwrite,
+            args.log_level,
+        )
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ class KgConfig(BaseModel):
 
 
 class Config(BaseModel):
-    model: str = "openai/gpt-4.1"
+    model: str = "openai/gpt-5-mini"
     model_endpoint: str | None = None
 
     seed: int | None = None

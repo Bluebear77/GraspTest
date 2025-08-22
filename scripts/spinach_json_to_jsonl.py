@@ -2,7 +2,8 @@ import argparse
 import json
 import random
 
-from grasp.sparql.manager import load_kg_manager
+from grasp.configs import KgConfig
+from grasp.manager import load_kg_manager
 
 
 def load_input_mapping(filepath: str) -> dict[str, str]:
@@ -29,7 +30,8 @@ def parse_args():
 def main(args: argparse.Namespace):
     input_mapping = load_input_mapping(args.input)
 
-    manager = load_kg_manager("wikidata")
+    cfg = KgConfig(kg="wikidata")
+    manager = load_kg_manager(cfg)
 
     with open(args.input) as f:
         input = [json.loads(line) for line in f]
@@ -43,7 +45,7 @@ def main(args: argparse.Namespace):
     with open(args.spinach) as f:
         spinach = json.load(f)
 
-    outputs = [None] * len(input)
+    outputs: list[dict | None] = [None] * len(input)
     for item in spinach:
         record_id = input_mapping[item["question"]]
         sparql = item["predicted_sparql"]

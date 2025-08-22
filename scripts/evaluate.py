@@ -5,13 +5,14 @@ import os
 from tqdm import tqdm
 from universal_ml_utils.io import load_jsonl
 
-from grasp.sparql.constants import get_endpoint
-from grasp.sparql.manager import load_kg_manager
+from grasp.configs import KgConfig
+from grasp.manager import load_kg_manager
 from grasp.sparql.metrics import (
     f1_score,
     get_result_or_error,
     get_result_size,
 )
+from grasp.sparql.utils import get_endpoint
 from grasp.utils import (
     Sample,
     get_answer_or_cancel,
@@ -74,7 +75,8 @@ def evaluate(args: argparse.Namespace):
     predictions = load_jsonl(args.prediction)
 
     if args.reparse_answer:
-        manager = load_kg_manager(args.knowledge_graph)
+        cfg = KgConfig(kg=args.knowledge_graph)
+        manager = load_kg_manager(cfg)
     else:
         manager = None
 
@@ -119,7 +121,7 @@ def evaluate(args: argparse.Namespace):
 
         sparql = pred["sparql"]
         if args.reparse_answer and "messages" in pred:
-            answer, cancel = get_answer_or_cancel(pred["messages"])
+            answer, cancel = get_answer_or_cancel("sparql-qa", pred["messages"])
             if answer is not None:
                 sparql = answer["sparql"]
             elif cancel is not None:
@@ -128,6 +130,7 @@ def evaluate(args: argparse.Namespace):
                     sparql = best_attempt.get("sparql")
 
         if args.reparse_answer and sparql is not None:
+            assert manager is not None, "Manager must be set for reparse"
             try:
                 sparql = manager.fix_prefixes(sparql)
                 sparql = manager.prettify(sparql)

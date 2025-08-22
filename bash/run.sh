@@ -29,12 +29,12 @@ for benchmark in "${benchmarks[@]}"; do
     export KG_EXAMPLES=$dir/train.example-index
   fi
 
-  mkdir -p $dir/outputs
+  mkdir -p "$dir/outputs"
 
   grasp \
     --config configs/run.yaml \
-    --question-file $file \
-    --output-file $dir/outputs/$name.jsonl \
+    --question-file "$file" \
+    --output-file "$dir/outputs/$name.jsonl" \
     $args \
     --shuffle
 

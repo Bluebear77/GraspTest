@@ -105,15 +105,6 @@ def load_property_index_and_mapping(
     )
 
 
-def load_example_index(dir: str, **kwargs: Any) -> SimilarityIndex:
-    data = IndexData.load(
-        os.path.join(dir, "data.tsv"),
-        os.path.join(dir, "offsets.bin"),
-    )
-
-    return SimilarityIndex.load(data, os.path.join(dir, "index"), **kwargs)
-
-
 def load_kg_prefixes(kg: str, endpoint: str | None = None) -> dict[str, str]:
     index_dir = get_index_dir()
     prefix_file = Path(index_dir, kg, "prefixes.json")

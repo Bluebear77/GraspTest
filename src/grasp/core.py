@@ -6,11 +6,12 @@ from typing import Iterator
 from uuid import uuid4
 
 import litellm
-from search_index.similarity import EmbeddingModel, SimilarityIndex
+from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 from universal_ml_utils.ops import partition_by
 
 from grasp.configs import Config
+from grasp.examples import ExampleIndex
 from grasp.feedback import format_feedback, generate_sparql_qa_feedback
 from grasp.functions import (
     MIN_EXAMPLE_SCORE,
@@ -20,10 +21,7 @@ from grasp.functions import (
     find_similar_examples,
 )
 from grasp.manager import KgManager, find_embedding_model, load_kg_manager
-from grasp.manager.utils import (
-    load_example_index,
-    load_general_notes,
-)
+from grasp.manager.utils import load_general_notes
 from grasp.model import call_model
 from grasp.notes import format_general_notes
 from grasp.rules import general_rules, task_rules
@@ -121,9 +119,7 @@ Additional rules:
     return {"role": "system", "content": content}
 
 
-def setup(
-    config: Config,
-) -> tuple[list[KgManager], dict[str, SimilarityIndex], list[str]]:
+def setup(config: Config) -> tuple[list[KgManager], dict[str, ExampleIndex], list[str]]:
     if config.force_examples:
         assert len(config.knowledge_graphs) == 1, (
             "Forcing examples only works with a single knowledge graph"
@@ -134,7 +130,7 @@ def setup(
         if kg_config.example_index is None:
             continue
 
-        example_index = load_example_index(kg_config.example_index)
+        example_index = ExampleIndex.load(kg_config.example_index)
         example_indices[kg_config.kg] = example_index
 
     emb_model: EmbeddingModel | None = None
@@ -167,7 +163,7 @@ def generate(
     managers: list[KgManager],
     notes: list[str],
     functions: list[dict],
-    example_indices: dict[str, SimilarityIndex] | None = None,
+    example_indices: dict[str, ExampleIndex] | None = None,
     past_questions: list[str] | None = None,
     past_messages: list[dict] | None = None,
     past_known: set[str] | None = None,
