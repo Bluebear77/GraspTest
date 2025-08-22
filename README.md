@@ -56,7 +56,7 @@ data/
     freebase/
     ...
 configs/
-  single_kg.yaml                  # Config to run GRASP with a single KG
+  run.yaml                        # Config to run GRASP with a single KG
   serve.yaml                      # Config to run GRASP with all available KGs
 ```
 
