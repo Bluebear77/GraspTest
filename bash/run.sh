@@ -31,9 +31,9 @@ for benchmark in "${benchmarks[@]}"; do
 
   mkdir -p "$dir/outputs"
 
-  grasp \
-    --config configs/run.yaml \
-    --question-file "$file" \
+  grasp file \
+    configs/run.yaml \
+    "$file" \
     --output-file "$dir/outputs/$name.jsonl" \
     $args \
     --shuffle

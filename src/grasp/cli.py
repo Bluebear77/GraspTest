@@ -12,9 +12,10 @@ from universal_ml_utils.logging import get_logger, setup_logging
 from universal_ml_utils.ops import extract_field, partition_by
 
 from grasp.adapt import adapt
-from grasp.add import build_indices, get_data
+from grasp.build import build_indices, get_data
 from grasp.configs import Adapt, Config
 from grasp.core import generate, get_system_message, setup
+from grasp.evaluate import evaluate
 from grasp.examples import ExampleIndex
 from grasp.functions import get_functions
 from grasp.utils import is_invalid_model_output, parse_parameters
@@ -126,6 +127,46 @@ def parse_args() -> argparse.Namespace:
     )
     add_task_arg(file_parser)
     add_overwrite_arg(file_parser)
+
+    # evaluate GRASP output
+    eval_parser = subparsers.add_parser(
+        "evaluate",
+        help="Evaluate GRASP output against a reference file",
+    )
+    eval_parser.add_argument(
+        "input_file",
+        type=str,
+        help="Path to file with input questions in JSONL format",
+    )
+    eval_parser.add_argument(
+        "prediction_file",
+        type=str,
+        help="Path to file with GRASP predictions as produced by the 'file' command",
+    )
+    eval_parser.add_argument(
+        "endpoint",
+        type=str,
+        help="SPARQL endpoint to use for evaluation",
+    )
+    eval_parser.add_argument(
+        "--timeout",
+        type=float,
+        default=300.0,
+        help="Maximum duration for a single query in seconds",
+    )
+    eval_parser.add_argument(
+        "--exact-after",
+        type=int,
+        default=1024,
+        help="Result size after which exact F1 score instead of assignment F1 score "
+        "is used (due to performance reasons)",
+    )
+    eval_parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Rerun failed evaluations due to timeouts or errors",
+    )
+    add_overwrite_arg(eval_parser)
 
     # run GRASP adaptation
     adapt_parser = subparsers.add_parser(
@@ -557,6 +598,19 @@ def build_grasp_index(args: argparse.Namespace) -> None:
     )
 
 
+def evaluate_grasp(args: argparse.Namespace) -> None:
+    evaluate(
+        args.input_file,
+        args.prediction_file,
+        args.endpoint,
+        args.overwrite,
+        args.log_level,
+        args.timeout,
+        args.retry_failed,
+        args.exact_after,
+    )
+
+
 def main():
     args = parse_args()
     if args.all_loggers:
@@ -572,6 +626,8 @@ def main():
         run_grasp(args)
     elif args.command == "serve":
         serve_grasp(args)
+    elif args.command == "evaluate":
+        evaluate_grasp(args)
     elif args.command == "examples":
         ExampleIndex.build(
             args.examples_file,

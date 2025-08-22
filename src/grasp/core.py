@@ -10,6 +10,7 @@ from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 from universal_ml_utils.ops import partition_by
 
+from grasp.adapt.notes import format_general_notes
 from grasp.configs import Config
 from grasp.examples import ExampleIndex
 from grasp.feedback import format_feedback, generate_sparql_qa_feedback
@@ -23,7 +24,6 @@ from grasp.functions import (
 from grasp.manager import KgManager, find_embedding_model, load_kg_manager
 from grasp.manager.utils import load_general_notes
 from grasp.model import call_model
-from grasp.notes import format_general_notes
 from grasp.rules import general_rules, task_rules
 from grasp.utils import (
     format_enumerate,

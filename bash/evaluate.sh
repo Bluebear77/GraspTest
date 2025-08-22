@@ -20,11 +20,11 @@ for file in $glob; do
   dir=$(dirname $(dirname $file))
   echo "$(basename $dir): $(basename $file)"
 
-  python scripts/evaluate.py \
-    $dir/test.jsonl \
-    $file \
-    $args \
-    -kg $kg
+  grasp evaluate \
+    "$kg" \
+    "$dir/test.jsonl" \
+    "$file" \
+    $args
 
   echo
 done
