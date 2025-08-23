@@ -1,7 +1,6 @@
 import json
 import math
 import random
-import re
 from copy import deepcopy
 from itertools import chain
 from typing import Any, Iterable
@@ -10,27 +9,25 @@ import validators
 from search_index.similarity import SimilarityIndex
 from universal_ml_utils.ops import partition_by
 
-from grasp.sparql.constants import (
+from grasp.examples import ExampleIndex
+from grasp.manager import KgManager
+from grasp.manager.mapping import Mapping
+from grasp.manager.utils import get_common_sparql_prefixes
+from grasp.sparql.item import (
+    get_sparql_items,
+    parse_into_binding,
+    selections_from_items,
+)
+from grasp.sparql.types import (
+    Alternative,
     Binding,
     ObjType,
     Position,
     SelectResult,
     SelectRow,
 )
-from grasp.sparql.data import (
-    get_sparql_items,
-    parse_binding,
-    selections_from_items,
-)
-from grasp.sparql.manager import KgManager
-from grasp.sparql.manager.utils import get_common_sparql_prefixes
-from grasp.sparql.mapping import Mapping
-from grasp.sparql.selection import Alternative
-from grasp.sparql.sparql import (
-    SPARQLException,
-    find_all,
-    parse_string,
-)
+from grasp.sparql.utils import find_all, parse_string
+from grasp.utils import FunctionCallException, Sample
 
 # set up some global variables
 MAX_RESULTS = 65536
@@ -41,47 +38,132 @@ MIN_SCORE = 0.5
 MIN_EXAMPLE_SCORE = 0.5
 
 
-def get_feedback_functions() -> list[dict]:
-    return [
-        {
-            "name": "give_feedback",
-            "description": """\
-Provide feedback to the output of the question answering system in the \
-context of the user's question.
+def get_task_functions(managers: list[KgManager], task: str) -> list[dict]:
+    kgs = [manager.kg for manager in managers]
 
-The feedback status can be one of:
-1. done: The output is correct and complete in its current form
-2. refine: The output is sensible, but needs some refinement
-3. retry: The output is incorrect and needs to be reworked
-
-The feedback message should describe the reasoning behind the chosen status \
-and provide suggestions for improving the output if applicable.""",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "string",
-                        "enum": ["done", "refine", "retry"],
-                        "description": "The feedback type",
+    if task == "sparql-qa":
+        return [
+            {
+                "name": "answer",
+                "description": """\
+Provide your final SPARQL query and answer to the user question based on the \
+query results. This function will stop the generation process.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "kg": {
+                            "type": "string",
+                            "enum": kgs,
+                            "description": "The knowledge graph on which the final SPARQL query \
+needs to be executed",
+                        },
+                        "sparql": {
+                            "type": "string",
+                            "description": "The final SPARQL query",
+                        },
+                        "answer": {
+                            "type": "string",
+                            "description": "The answer to the question based \
+on the SPARQL query results",
+                        },
                     },
-                    "feedback": {
-                        "type": "string",
-                        "description": "The feedback message",
-                    },
+                    "required": ["kg", "sparql", "answer"],
+                    "additionalProperties": False,
                 },
-                "required": ["status", "feedback"],
-                "additionalProperties": False,
                 "strict": True,
             },
-        }
-    ]
+            {
+                "name": "cancel",
+                "description": """\
+If you are unable to find a SPARQL query that answers the question well, \
+you can call this function instead of the answer function. This function will \
+stop the generation process.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "explanation": {
+                            "type": "string",
+                            "description": "A detailed explanation of why you \
+could not find a satisfactory SPARQL query",
+                        },
+                        "best_attempt": {
+                            "type": "object",
+                            "description": "Your best attempt at a SPARQL query so far, \
+can be omitted if there is none",
+                            "properties": {
+                                "sparql": {
+                                    "type": "string",
+                                    "description": "The best SPARQL query so far",
+                                },
+                                "kg": {
+                                    "type": "string",
+                                    "enum": kgs,
+                                    "description": "The knowledge graph on which \
+the SPARQL query needs to be executed",
+                                },
+                            },
+                            "required": ["sparql", "kg"],
+                            "additionalProperties": False,
+                        },
+                    },
+                    "required": ["explanation"],
+                    "additionalProperties": False,
+                },
+            },
+        ]
+    elif task == "general-qa":
+        return [
+            {
+                "name": "answer",
+                "description": """\
+Provide your final answer to the user question. This function will stop \
+the generation process.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "answer": {
+                            "type": "string",
+                            "description": "The answer to the question",
+                        },
+                    },
+                    "required": ["answer"],
+                    "additionalProperties": False,
+                },
+                "strict": True,
+            },
+            {
+                "name": "cancel",
+                "description": """\
+If you are unable to find an answer to the question, \
+you can call this function instead of the answer function. \
+This function will stop the generation process.""",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "explanation": {
+                            "type": "string",
+                            "description": "A detailed explanation of why you \
+could not find a satisfactory answer",
+                        },
+                        "best_attempt": {
+                            "type": "string",
+                            "description": "Your best attempt at an answer so far, \
+can be omitted if there is none",
+                        },
+                    },
+                    "required": ["explanation"],
+                    "additionalProperties": False,
+                },
+            },
+        ]
+    else:
+        raise ValueError(f"Unknown task {task}")
 
 
-def get_functions(
-    task: str,
-    fn_set: str,
+def get_kg_functions(
     managers: list[KgManager],
-    example_indices: dict[str, SimilarityIndex],
+    fn_set: str,
+    example_indices: dict[str, ExampleIndex] | None = None,
     num_examples: int = 3,
     random_examples: bool = False,
 ) -> list[dict]:
@@ -94,132 +176,7 @@ def get_functions(
     ], f"Unknown function set {fn_set}"
     kgs = [manager.kg for manager in managers]
 
-    fns = []
-    if task == "sparql-qa":
-        fns.extend(
-            [
-                {
-                    "name": "answer",
-                    "description": """\
-Provide your final SPARQL query and answer to the user question based on the \
-query results. This function will stop the generation process.""",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "kg": {
-                                "type": "string",
-                                "enum": kgs,
-                                "description": "The knowledge graph on which the final SPARQL query \
-needs to be executed",
-                            },
-                            "sparql": {
-                                "type": "string",
-                                "description": "The final SPARQL query",
-                            },
-                            "answer": {
-                                "type": "string",
-                                "description": "The answer to the question based \
-on the SPARQL query results",
-                            },
-                        },
-                        "required": ["kg", "sparql", "answer"],
-                        "additionalProperties": False,
-                    },
-                    "strict": True,
-                },
-                {
-                    "name": "cancel",
-                    "description": """\
-If you are unable to find a SPARQL query that answers the question well, \
-you can call this function instead of the answer function. This function will \
-stop the generation process.""",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "explanation": {
-                                "type": "string",
-                                "description": "A detailed explanation of why you \
-could not find a satisfactory SPARQL query",
-                            },
-                            "best_attempt": {
-                                "type": "object",
-                                "description": "Your best attempt at a SPARQL query so far, \
-can be omitted if there is none",
-                                "properties": {
-                                    "sparql": {
-                                        "type": "string",
-                                        "description": "The best SPARQL query so far",
-                                    },
-                                    "kg": {
-                                        "type": "string",
-                                        "enum": kgs,
-                                        "description": "The knowledge graph on which \
-the SPARQL query needs to be executed",
-                                    },
-                                },
-                                "required": ["sparql", "kg"],
-                                "additionalProperties": False,
-                            },
-                        },
-                        "required": ["explanation"],
-                        "additionalProperties": False,
-                    },
-                },
-            ]
-        )
-
-    elif task == "general-qa":
-        fns.extend(
-            [
-                {
-                    "name": "answer",
-                    "description": """\
-Provide your final answer to the user question. This function will stop \
-the generation process.""",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "answer": {
-                                "type": "string",
-                                "description": "The answer to the question",
-                            },
-                        },
-                        "required": ["answer"],
-                        "additionalProperties": False,
-                    },
-                    "strict": True,
-                },
-                {
-                    "name": "cancel",
-                    "description": """\
-If you are unable to find an answer to the question, \
-you can call this function instead of the answer function. \
-This function will stop the generation process.""",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "explanation": {
-                                "type": "string",
-                                "description": "A detailed explanation of why you \
-could not find a satisfactory answer",
-                            },
-                            "best_attempt": {
-                                "type": "string",
-                                "description": "Your best attempt at an answer so far, \
-can be omitted if there is none",
-                            },
-                        },
-                        "required": ["explanation"],
-                        "additionalProperties": False,
-                    },
-                },
-            ]
-        )
-
-    else:
-        raise ValueError(f"Unknown task {task}")
-
-    fns.append(
+    fns = [
         {
             "name": "execute",
             "description": """\
@@ -247,7 +204,7 @@ execute(kg="wikidata", sparql="SELECT ?job WHERE { wd:Q937 wdt:P106 ?job }")""",
             },
             "strict": True,
         }
-    )
+    ]
 
     if fn_set == "base":
         return fns
@@ -602,13 +559,35 @@ Currently, examples are available for the following knowledge graphs:
     return fns
 
 
+def get_functions(
+    managers: list[KgManager],
+    task: str,
+    fn_set: str,
+    example_indices: dict[str, ExampleIndex] | None = None,
+    num_examples: int = 3,
+    random_examples: bool = False,
+) -> list[dict]:
+    functions = get_task_functions(
+        managers,
+        task,
+    )
+    functions += get_kg_functions(
+        managers,
+        fn_set,
+        example_indices,
+        num_examples,
+        random_examples,
+    )
+    return functions
+
+
 def call_function(
     managers: list[KgManager],
-    example_indices: dict[str, SimilarityIndex],
     fn_name: str,
     fn_args: dict,
     fn_set: str,
     known: set[str],
+    example_indices: dict[str, ExampleIndex],
     **kwargs: Any,
 ) -> str:
     # answer and cancel functions are special, they are not
@@ -737,23 +716,18 @@ def call_function(
 
 def build_examples(
     manager: KgManager,
-    example_index: SimilarityIndex,
-    example_ids: list[int],
+    examples: list[Sample],
     known: set[str],
 ) -> str:
-    examples = []
-    for id in example_ids:
-        q = example_index.get_name(id)
-        data = json.loads(example_index.get_val(id, 3))
-
+    exs = []
+    for example in examples:
         try:
-            s = data["sparql"]
-            s = manager.fix_prefixes(s, remove_known=True)
-            s = manager.prettify(s)
-            _, items = get_sparql_items(s, manager)
+            sparql = manager.fix_prefixes(example.sparql, remove_known=True)
+            sparql = manager.prettify(sparql)
+            _, items = get_sparql_items(sparql, manager)
             selections = selections_from_items(items)
             if selections:
-                s += "\n\n" + manager.format_selections(selections)
+                sparql += "\n\n" + manager.format_selections(selections)
         except Exception:
             continue
 
@@ -769,36 +743,36 @@ def build_examples(
 
         update_known_from_alternatives(known, alternatives, manager)
 
-        examples.append(f"Question:\n{q}\n\nSPARQL:\n{s}")
+        exs.append(f"Question:\n{example.question}\n\nSPARQL:\n{sparql}")
 
-    if not examples:
+    if not exs:
         return "No examples found"
 
-    return "\n\n".join(f"Example {i + 1}:\n{ex}" for i, ex in enumerate(examples))
+    return "\n\n".join(f"Example {i + 1}:\n{ex}" for i, ex in enumerate(exs))
 
 
 def find_examples(
     manager: KgManager,
-    example_indices: dict[str, SimilarityIndex],
+    example_indices: dict[str, ExampleIndex],
     num_examples: int,
     known: set[str],
 ) -> str:
     if manager.kg not in example_indices:
-        # should not happen, but handle anyway
         return f"No example index for knowledge graph {manager.kg}"
 
     example_index = example_indices[manager.kg]
 
-    # ids are indices from [0, len(example_index))
-    indices = list(range(len(example_index)))
-    random.shuffle(indices)
+    examples = random.sample(
+        example_index.samples,
+        min(num_examples, len(example_index)),
+    )
 
-    return build_examples(manager, example_index, indices[:num_examples], known)
+    return build_examples(manager, examples, known)
 
 
 def find_similar_examples(
     manager: KgManager,
-    example_indices: dict[str, SimilarityIndex],
+    example_indices: dict[str, ExampleIndex],
     question: str,
     num_examples: int,
     known: set[str],
@@ -809,17 +783,9 @@ def find_similar_examples(
         return f"No example index for knowledge graph {manager.kg}"
 
     example_index = example_indices[manager.kg]
+    examples = example_index.find_matches(question, num_examples, **search_kwargs)
 
-    example_ids = [
-        id
-        for id, _ in example_index.find_matches(
-            question,
-            k=num_examples,
-            **search_kwargs,
-        )
-    ]
-
-    return build_examples(manager, example_index, example_ids, known)
+    return build_examples(manager, examples, known)
 
 
 def search_entity(
@@ -872,7 +838,11 @@ def check_known(manager: KgManager, sparql: str, known: set[str]):
     in_query = set()
 
     for iri in find_all(parse, {"IRIREF", "PNAME_NS", "PNAME_LN"}, skip={"Prologue"}):
-        binding = parse_binding(iri["value"], manager)
+        binding = parse_into_binding(
+            iri["value"],
+            manager.iri_literal_parser,
+            manager.prefixes,
+        )
         assert binding is not None, f"Failed to parse binding from {iri['value']}"
         assert binding.typ == "uri", f"Expected IRI, got {binding.typ}"
 
@@ -886,7 +856,7 @@ def check_known(manager: KgManager, sparql: str, known: set[str]):
     unknown_in_query = in_query - known
     if unknown_in_query:
         not_seen = "\n".join(manager.format_iri(iri) for iri in unknown_in_query)
-        raise SPARQLException(f"""\
+        raise FunctionCallException(f"""\
 The following knowledge graph items are used in the SPARQL query \
 without being known from previous searches or query executions. \
 This does not mean they are invalid, but you should verify \
@@ -1072,7 +1042,9 @@ def list_triples(
     known: set[str],
 ) -> str:
     if subject is not None and property is not None and obj is not None:
-        return "Only two of subject, property, or object should be provided."
+        raise FunctionCallException(
+            "Only two of subject, property, or object should be provided."
+        )
 
     triple = []
     bindings = []
@@ -1084,10 +1056,12 @@ def list_triples(
         ver_const = verify_iri_or_literal(const, pos, manager)
         if ver_const is None:
             expected = "IRI" if pos != "object" else "IRI or literal"
-            return f'Constraint "{const}" for {pos} position \
+            raise FunctionCallException(
+                f'Constraint "{const}" for {pos} position \
 is not a valid {expected}. IRIs can be given in prefixed form, like "wd:Q937", \
 as URIs, like "http://www.wikidata.org/entity/Q937", \
 or in full form, like "<http://www.wikidata.org/entity/Q937>".'
+            )
 
         bindings.append(f"BIND({ver_const} AS ?{pos[0]})")
         triple.append(ver_const)
@@ -1103,47 +1077,46 @@ SELECT ?s ?p ?o WHERE {{
     try:
         result = manager.execute_sparql(sparql)
     except Exception as e:
-        return f"Failed to list triples with error:\n{e}"
+        raise FunctionCallException(f"Failed to list triples with error:\n{e}") from e
 
     assert isinstance(result, SelectResult)
 
     # functions to get scores for properties and entities
-    def prop_score(prop: Binding) -> int:
+    def prop_rank(prop: Binding) -> int:
         norm = manager.property_mapping.normalize(prop.identifier())
         if norm is None or norm[0] not in manager.property_mapping:
-            return 0
+            return len(manager.property_mapping)
 
         id = manager.property_mapping[norm[0]]
-        # score is at column index 1 in property index
-        return int(manager.property_index.get_val(id, 1))
+        # lower id means more popular property
+        return id
 
-    def ent_score(ent: Binding) -> int:
+    def ent_rank(ent: Binding) -> int:
         norm = manager.entity_mapping.normalize(ent.identifier())
         if norm is None or norm[0] not in manager.entity_mapping:
-            return 0
+            return len(manager.entity_mapping)
 
         id = manager.entity_mapping[norm[0]]
-        # score is at column index 1 in entity index
-        return int(manager.entity_index.get_val(id, 1))
+        # lower id means more popular entity
+        return id
 
     # make sure that rows presented are diverse and that
     # we show the ones with popular properties or subjects / objects
     # first
     def sort_key(row: SelectRow) -> tuple[int, int]:
         # property score
-        ps = prop_score(row["p"])
+        ps = prop_rank(row["p"])
 
         # entity score
-        es = max(ent_score(row["s"]), ent_score(row["o"]))
+        es = min(ent_rank(row["s"]), ent_rank(row["o"]))
 
         # sort first by properties, then by subjects or objects
         return ps, es
 
-    # rows are now sorted by popularity
+    # rows are now sorted by popularity, lowest rank first
     sorted_rows = sorted(
         enumerate(result.rows()),
         key=lambda item: sort_key(item[1]),
-        reverse=True,
     )
 
     def normalize_prop(prob: Binding) -> str:
@@ -1213,12 +1186,16 @@ def search_constrained(
 
     target_constr = constraints.get(position)
     if target_constr is not None:
-        return f'Cannot look for {position} and constrain it to \
+        raise FunctionCallException(
+            f'Cannot look for {position} and constrain it to \
 "{target_constr}" at the same time.'
+        )
 
     if len(constraints) > 2:
-        return "At most two of subject, property, and \
+        raise FunctionCallException(
+            "At most two of subject, property, and \
 object should be constrained at once."
+        )
 
     unconstrained = all(c is None for c in constraints.values())
 
@@ -1239,10 +1216,12 @@ object should be constrained at once."
             ver_const = verify_iri_or_literal(const, pos, manager)
             if ver_const is None:
                 expected = "IRI" if pos != "object" else "IRI or literal"
-                return f'Constraint "{const}" for {pos} position \
+                raise FunctionCallException(
+                    f'Constraint "{const}" for {pos} position \
 is not a valid {expected}. IRIs can be given in prefixed form, like "wd:Q937", \
 as URIs, like "http://www.wikidata.org/entity/Q937", \
 or in full form, like "<http://www.wikidata.org/entity/Q937>".'
+                )
 
             pos_values[pos] = ver_const
 
@@ -1262,7 +1241,8 @@ LIMIT {MAX_RESULTS + 1}"""
             )
         except Exception as e:
             info = f"""\
-Falling back to an unconstrained search on the full precomputed search indices:
+Falling back to an unconstrained search on the full \
+search indices due to an error:
 {e}
 
 """
@@ -1296,9 +1276,6 @@ def format_alternatives(alternatives: dict[ObjType, list[Alternative]], k: int) 
     return "\n\n".join(fm)
 
 
-AUTOCOMPLETE_QUERY_REGEX = re.compile(r"\?search$")
-
-
 def search_autocomplete(
     manager: KgManager,
     sparql: str,
@@ -1311,14 +1288,15 @@ def search_autocomplete(
     try:
         sparql, position = manager.autocomplete_sparql(sparql, limit=max_results + 1)
     except Exception as e:
-        return f"Invalid SPARQL query: {e}"
+        raise FunctionCallException(f"Invalid SPARQL query: {e}") from e
 
     info = ""
     try:
         search_items = manager.get_search_items(sparql, position, max_results)
     except Exception as e:
         info = f"""\
-Falling back to an unconstrained search on the full precomputed search indices:
+Falling back to an unconstrained search on the full \
+search indices due to an error:
 {e}
 
 """

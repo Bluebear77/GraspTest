@@ -1,14 +1,56 @@
 import json
+import os
 import re
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
+from termcolor import colored
+
+
+def get_index_dir(kg: str | None = None) -> str:
+    index_dir = os.getenv("GRASP_INDEX_DIR", None)
+    if index_dir is None:
+        home_dir = os.path.expanduser("~")
+        index_dir = os.path.join(home_dir, ".grasp", "index")
+
+    if kg is not None:
+        index_dir = os.path.join(index_dir, kg)
+
+    return index_dir
+
+
+class FunctionCallException(Exception):
+    pass
+
+
+def format_enumerate(items: list[str]) -> str:
+    return "\n".join(f"{i + 1}. {item}" for i, item in enumerate(items))
 
 
 def format_model(model: BaseModel | None) -> str:
     if model is None:
         return "None"
     return model.model_dump_json(indent=2)
+
+
+def format_message(message: dict) -> str:
+    role = message["role"].upper()
+
+    content = ""
+
+    if message.get("reasoning_content"):
+        content += f"Reasoning:\n{message['reasoning_content'].strip()}\n\n"
+
+    content += message.get("content", "No content").strip()
+
+    header = colored(role, "blue")
+    return f"{header}\n{content}"
+
+
+def format_function_call(fn_name: str, fn_args: dict) -> str:
+    fn_name = colored(fn_name, "green")
+    fn_args_str = colored(json.dumps(fn_args, indent=2), "yellow")
+    return f"{fn_name}({fn_args_str})"
 
 
 class Sample(BaseModel):
@@ -278,3 +320,23 @@ def get_answer_or_cancel(
         }
 
     return last_answer, last_cancel
+
+
+def clip(s: str, max_len: int = 64) -> str:
+    if len(s) <= max_len + 3:  # 3 for "..."
+        return s
+
+    # clip string to max_len  + 3 by stripping out middle part
+    half = max_len // 2
+    first = s[:half]
+    last = s[-half:]
+    return first + "..." + last
+
+
+def parse_parameters(headers: list[str]) -> dict[str, str]:
+    # each header is formatted as key:value
+    header_dict = {}
+    for header in headers:
+        key, value = header.split(":", 1)
+        header_dict[key.strip()] = value.strip()
+    return header_dict

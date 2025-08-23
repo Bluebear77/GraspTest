@@ -1,6 +1,6 @@
-import json
 import os
 import re
+import sys
 from collections import defaultdict
 from functools import reduce
 from pathlib import Path
@@ -9,10 +9,10 @@ import natsort
 import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+from universal_ml_utils.io import load_json, load_jsonl
 
 from grasp.sparql.sparql import load_sparql_parser, prettify
 from grasp.utils import is_invalid_evaluation, is_invalid_model_output
-from universal_ml_utils.io import load_json, load_jsonl
 
 # Set page configuration
 st.set_page_config(
@@ -59,7 +59,7 @@ def parse_model_name(filename):
 
 def load_available_data():
     """Find all available benchmarks and models."""
-    data_root = Path(os.environ["KG_BENCHMARK_DIR"])
+    data_root = Path(sys.argv[1])
     benchmarks = {}
 
     # Find all directories that might contain our data structure
@@ -208,9 +208,9 @@ def load_and_process_data(
                 if output is None:
                     continue
 
-                assert (
-                    output["id"] not in outputs_dict
-                ), f"Duplicate id {output['id']} in {output_file}"
+                assert output["id"] not in outputs_dict, (
+                    f"Duplicate id {output['id']} in {output_file}"
+                )
                 outputs_dict[output["id"]] = output
 
             model_outputs[model_name] = outputs_dict
@@ -549,14 +549,28 @@ def show_predictions_view(available_data):
     kg_options = list(available_data.keys())
     # Set Wikidata as default if available
     default_index = kg_options.index("wikidata") if "wikidata" in kg_options else 0
-    selected_kg = st.sidebar.selectbox("Select Knowledge Graph", kg_options, index=default_index)
+    selected_kg = st.sidebar.selectbox(
+        "Select Knowledge Graph", kg_options, index=default_index
+    )
 
     benchmark_options = list(available_data[selected_kg].keys())
     # Set default benchmark based on selected knowledge graph
-    default_benchmark = "qald10" if selected_kg == "wikidata" else "wqsp" if selected_kg == "freebase" else benchmark_options[0]
+    default_benchmark = (
+        "qald10"
+        if selected_kg == "wikidata"
+        else "wqsp"
+        if selected_kg == "freebase"
+        else benchmark_options[0]
+    )
     # Make sure the default benchmark exists in the options
-    default_index = benchmark_options.index(default_benchmark) if default_benchmark in benchmark_options else 0
-    selected_benchmark = st.sidebar.selectbox("Select Benchmark", benchmark_options, index=default_index)
+    default_index = (
+        benchmark_options.index(default_benchmark)
+        if default_benchmark in benchmark_options
+        else 0
+    )
+    selected_benchmark = st.sidebar.selectbox(
+        "Select Benchmark", benchmark_options, index=default_index
+    )
 
     # Get available models for this benchmark
     benchmark_info = available_data[selected_kg][selected_benchmark]
@@ -610,7 +624,9 @@ def show_predictions_view(available_data):
         default_index = display_options.index(st.session_state.predictions_view_model)
     else:
         # Otherwise use preferred model if available, or first model if not
-        default_index = next((i for i, m in enumerate(display_options) if preferred_model == m), 0)
+        default_index = next(
+            (i for i, m in enumerate(display_options) if preferred_model == m), 0
+        )
 
     # Show select box with appropriate default index
     selected_model = st.sidebar.selectbox("Model", display_options, index=default_index)
@@ -753,10 +769,12 @@ def show_predictions_view(available_data):
                 with eval_cols[2]:
                     if is_invalid_evaluation(eval_data, empty_target_valid):
                         # Check if invalid due to empty ground truth
-                        if (not empty_target_valid
+                        if (
+                            not empty_target_valid
                             and "target" in eval_data
                             and eval_data["target"].get("size", None) == 0
-                            and eval_data["target"].get("err", None) is None):
+                            and eval_data["target"].get("err", None) is None
+                        ):
                             st.metric("Status", "❌ Empty Ground Truth")
                         else:
                             st.metric("Status", "❌ Invalid")
@@ -1479,14 +1497,28 @@ def main():
         kg_options = list(available_data.keys())
         # Set Wikidata as default if available
         default_index = kg_options.index("wikidata") if "wikidata" in kg_options else 0
-        selected_kg = st.sidebar.selectbox("Select Knowledge Graph", kg_options, index=default_index)
+        selected_kg = st.sidebar.selectbox(
+            "Select Knowledge Graph", kg_options, index=default_index
+        )
 
         benchmark_options = list(available_data[selected_kg].keys())
         # Set default benchmark based on selected knowledge graph
-        default_benchmark = "qald10" if selected_kg == "wikidata" else "wqsp" if selected_kg == "freebase" else benchmark_options[0]
+        default_benchmark = (
+            "qald10"
+            if selected_kg == "wikidata"
+            else "wqsp"
+            if selected_kg == "freebase"
+            else benchmark_options[0]
+        )
         # Make sure the default benchmark exists in the options
-        default_index = benchmark_options.index(default_benchmark) if default_benchmark in benchmark_options else 0
-        selected_benchmark = st.sidebar.selectbox("Select Benchmark", benchmark_options, index=default_index)
+        default_index = (
+            benchmark_options.index(default_benchmark)
+            if default_benchmark in benchmark_options
+            else 0
+        )
+        selected_benchmark = st.sidebar.selectbox(
+            "Select Benchmark", benchmark_options, index=default_index
+        )
 
         # Option to restrict evaluation to common examples - moved to top, without heading
         restrict_to_common = st.sidebar.checkbox(
@@ -1583,7 +1615,9 @@ def main():
         st.dataframe(metrics_df, use_container_width=True)
 
         # Add explanation for the info column
-        empty_ground_truth_text = "" if empty_target_valid else " or those with empty ground truth results"
+        empty_ground_truth_text = (
+            "" if empty_target_valid else " or those with empty ground truth results"
+        )
         st.caption(
             f"* Info format: Outputs (Missing Evaluations/Invalid Evaluations/Invalid Outputs) - 'Outputs' is the total number of model outputs, 'Missing Evaluations' counts outputs without an evaluation, 'Invalid Evaluations' counts evaluations with errors{empty_ground_truth_text}, 'Invalid Outputs' counts model outputs with errors. Note: Accuracy and F1 scores are calculated over all evaluations."
         )

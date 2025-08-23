@@ -4,17 +4,16 @@ This Streamlit application allows you to compare different SPARQL QA models acro
 
 ## Usage
 
-1. Set `KG_BENCHMARK_DIR` env variable to `data/benchmark`: `export KG_BENCHMARK_DIR=$(pwd)/data/benchmark`
-2. Navigate to the `apps/evaluation` directory
-3. Install the required dependencies: `pip install -r requirements.txt`
-4. Run the Streamlit app: `streamlit run app.py`
+1. Navigate to the `apps/evaluation` directory
+2. Install the required dependencies: `pip install -r requirements.txt`
+3. Run the Streamlit app: `streamlit run app.py ../../data/benchmark`
 
 ## Directory structure
 
 The app expects data to be organized in the following format:
 
 ```
-[KG_BENCHMARK_DIR]/
+[benchmark_dir]/
   [knowledge-graph]/            # Name of the knowledge graph
     [benchmark]/                # Name of the benchmark
       test.jsonl                # Benchmark input and ground truth
@@ -25,7 +24,7 @@ The app expects data to be organized in the following format:
         ...
 ```
 
-For example:
+In this Repo for example:
 
 ```
 data/benchmark/

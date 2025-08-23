@@ -5,7 +5,8 @@ import re
 
 from datasets import load_dataset
 
-from grasp.sparql.manager import load_kg_manager
+from grasp.configs import KgConfig
+from grasp.manager import load_kg_manager
 from grasp.utils import Sample
 
 
@@ -679,7 +680,8 @@ def prepare(args: argparse.Namespace):
 
     os.makedirs(args.out_dir, exist_ok=True)
 
-    manager = load_kg_manager(kg)
+    cfg = KgConfig(kg=kg)
+    manager = load_kg_manager(cfg)
 
     for split, samples in benchmark.items():
         out = os.path.join(args.out_dir, f"{split}.jsonl")

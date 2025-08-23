@@ -13,19 +13,18 @@ glob="data/benchmark/$kg/$benchmark/outputs/$name.jsonl"
 args=${ARGS:-""}
 
 for file in $glob; do
-    if [[ ! -f $file ]]; then
-        continue
-    fi
+  if [[ ! -f $file ]]; then
+    continue
+  fi
 
-    dir=$(dirname $(dirname $file))
-    echo "$(basename $dir): $(basename $file)"
+  dir=$(dirname $(dirname $file))
+  echo "$(basename $dir): $(basename $file)"
 
-    python scripts/evaluate.py \
-        $dir/test.jsonl \
-        $file \
-        $args \
-        -kg $kg
+  grasp evaluate \
+    "$kg" \
+    "$dir/test.jsonl" \
+    "$file" \
+    $args
 
-    echo
+  echo
 done
-

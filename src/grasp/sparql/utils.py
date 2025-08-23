@@ -1,4 +1,3 @@
-import os
 import signal
 import uuid
 from contextlib import contextmanager
@@ -6,31 +5,31 @@ from copy import deepcopy
 from functools import partial
 from importlib import resources
 from typing import Iterator
-from urllib.parse import quote_plus, urljoin
+from urllib.parse import quote_plus, urlparse, urlunparse
 
 import requests
-import validators
 from grammar_utils.parse import LR1Parser
 
-from grasp.sparql.constants import (
-    READ_TIMEOUT,
-    REQUEST_TIMEOUT,
-    AskResult,
-    Position,
-    SelectResult,
-)
+from grasp.sparql.types import AskResult, Binding, Position, SelectResult
+
+# default request timeout
+# 6 seconds for establishing a connection, 30 seconds for processing query
+# and beginning to receive the response
+REQUEST_TIMEOUT = (6, 30)
+
+# default read timeout
+# 60 seconds for everything (including receiving the response)
+READ_TIMEOUT = 60
+
+QLEVER_API = "https://qlever.cs.uni-freiburg.de/api"
+
+
+def get_endpoint(kg: str) -> str:
+    return f"{QLEVER_API}/{kg}"
 
 
 class SPARQLException(Exception):
     pass
-
-
-def get_index_dir() -> str | None:
-    return os.getenv("KG_INDEX_DIR", None)
-
-
-def get_benchmark_dir() -> str | None:
-    return os.getenv("KG_BENCHMARK_DIR", None)
 
 
 def load_sparql_grammar() -> tuple[str, str]:
@@ -63,6 +62,125 @@ def find_longest_prefix(iri: str, prefixes: dict[str, str]) -> tuple[str, str] |
         if longest is None or len(long) > len(longest[1]):
             longest = short, long
     return longest
+
+
+def format_literal(s: str) -> str:
+    if s.startswith('"') and s.endswith('"'):
+        s = s.strip('"')
+    elif s.startswith("'") and s.endswith("'"):
+        s = s.strip("'")
+
+    return s.encode().decode("unicode_escape")
+
+
+def parse_into_binding(
+    input: str,
+    parser: LR1Parser,
+    prefixes: dict[str, str],
+) -> Binding | None:
+    try:
+        parse, _ = parse_string(
+            input,
+            parser,
+            skip_empty=True,
+            collapse_single=True,
+        )
+    except Exception:
+        return None
+
+    match parse["name"]:
+        case "IRIREF":
+            # already an IRI
+            return Binding(
+                typ="uri",
+                value=input[1:-1],
+            )
+
+        case "PNAME_LN" | "PNAME_NS":
+            pfx, name = input.split(":", 1)
+            if pfx not in prefixes:
+                return None
+
+            uri = prefixes[pfx][1:] + name
+
+            # prefixed IRI
+            return Binding(
+                typ="uri",
+                value=uri,
+            )
+
+        case lit if lit.startswith("STRING_LITERAL"):
+            # string literal -> strip quotes
+            return Binding(
+                typ="literal",
+                value=format_literal(parse["value"]),
+            )
+
+        case lit if lit.startswith("INTEGER"):
+            # integer literal
+            return Binding(
+                typ="literal",
+                value=parse["value"],
+                datatype="http://www.w3.org/2001/XMLSchema#int",
+            )
+
+        case lit if lit.startswith("DECIMAL"):
+            # decimal literal
+            return Binding(
+                typ="literal",
+                value=parse["value"],
+                datatype="http://www.w3.org/2001/XMLSchema#decimal",
+            )
+
+        case lit if lit.startswith("DOUBLE"):
+            # double literal
+            return Binding(
+                typ="literal",
+                value=parse["value"],
+                datatype="http://www.w3.org/2001/XMLSchema#double",
+            )
+
+        case lit if lit in ["true", "false"]:
+            # boolean literal
+            return Binding(
+                typ="literal",
+                value=parse["value"],
+                datatype="http://www.w3.org/2001/XMLSchema#boolean",
+            )
+
+        case "RDFLiteral":
+            if len(parse["children"]) == 2:
+                # langtag
+                lit, langtag = parse["children"]
+
+                return Binding(
+                    typ="literal",
+                    value=format_literal(lit["value"]),
+                    lang=langtag["value"][1:],
+                )
+
+            elif len(parse["children"]) == 3:
+                # datatype
+                lit, _, datatype = parse["children"]
+                if datatype["name"] == "IRIREF":
+                    datatype = datatype["value"][1:-1]
+                else:
+                    pfx, name = datatype["value"].split(":", 1)
+                    if pfx not in prefixes:
+                        return None
+
+                    datatype = prefixes[pfx][1:] + name
+
+                return Binding(
+                    typ="literal",
+                    value=format_literal(lit["value"]),
+                    datatype=datatype,
+                )
+
+        case other:
+            raise ValueError(
+                f"Unexpected type {other} for IRI or literal: {input}",
+            )
 
 
 def parse_to_string(parse: dict) -> str:
@@ -713,11 +831,11 @@ def execute(
                 response = requests.post(
                     endpoint,
                     headers={
-                        "Content-type": "application/x-www-form-urlencoded",
+                        "Content-type": "application/sparql-query",
                         "Accept": "application/sparql-results+json",
-                        "User-Agent": "sparql-kgqa-bot",
+                        "User-Agent": "grasp-bot",
                     },
-                    data={"query": sparql},
+                    data=sparql,
                     timeout=request_timeout,
                 )
             response.raise_for_status()
@@ -768,8 +886,8 @@ def is_iri(iri: str) -> bool:
     return iri.startswith("<") and iri.endswith(">")
 
 
-def is_fq_iri(iri: str) -> bool:
-    return is_iri(iri) and validators.url(iri[1:-1])  # type: ignore
+# def is_fq_iri(iri: str) -> bool:
+#     return is_iri(iri) and validators.url(iri[1:-1])  # type: ignore
 
 
 def format_iri(
@@ -780,12 +898,13 @@ def format_iri(
     if not is_iri(iri):
         return iri
 
-    elif not is_fq_iri(iri):
-        assert base_uri is not None, (
-            f"Could not find a scheme in the IRI {iri}, it seems "
-            f"you provided a relative IRI without a BASE URI"
-        )
-        iri = "<" + urljoin(base_uri[1:-1], iri[1:-1]) + ">"
+    # disabled for now because base is almost never needed
+    # elif not is_fq_iri(iri):
+    #     assert base_uri is not None, (
+    #         f"Could not find a scheme in the IRI {iri}, it seems "
+    #         f"you provided a relative IRI without a BASE URI"
+    #     )
+    #     iri = "<" + urljoin(base_uri[1:-1], iri[1:-1]) + ">"
 
     longest = find_longest_prefix(iri, prefixes)
     if longest is None:
@@ -802,12 +921,41 @@ def format_iri(
         return iri
 
 
-def clip(s: str, max_len: int = 64) -> str:
-    if len(s) <= max_len + 3:  # 3 for "..."
-        return s
+def load_qlever_prefixes(endpoint: str) -> dict[str, str]:
+    parse = urlparse(endpoint)
+    parse.encode()
+    split = parse.path.split("/")
+    assert len(split) >= 1, "Endpoint path must contain at least one segment"
+    split.insert(len(split) - 1, "prefixes")
+    path = "/".join(split)
+    parse = parse._replace(path=path)
+    prefix_url = urlunparse(parse)
 
-    # clip string to max_len  + 3 by stripping out middle part
-    half = max_len // 2
-    first = s[:half]
-    last = s[-half:]
-    return first + "..." + last
+    response = requests.get(prefix_url)
+    response.raise_for_status()
+    prefixes = {}
+    for line in response.text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        assert line.startswith("PREFIX "), "Each line must start with 'PREFIX '"
+        _, rest = line.split(" ", 1)
+        prefix, uri = rest.split(":", 1)
+        prefixes[prefix.strip()] = uri.strip()[:-1]
+    return prefixes
+
+
+def load_entity_index_sparql() -> str:
+    return resources.read_text("grasp.sparql.queries", "entity.index.sparql").strip()
+
+
+def load_property_index_sparql() -> str:
+    return resources.read_text("grasp.sparql.queries", "property.index.sparql").strip()
+
+
+def load_entity_info_sparql() -> str:
+    return resources.read_text("grasp.sparql.queries", "entity.info.sparql").strip()
+
+
+def load_property_info_sparql() -> str:
+    return resources.read_text("grasp.sparql.queries", "property.info.sparql").strip()

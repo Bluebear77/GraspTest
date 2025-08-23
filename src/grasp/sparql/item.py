@@ -1,21 +1,20 @@
 import random
-import string
 import sys
-from collections import defaultdict
 from dataclasses import dataclass
 from itertools import chain
-from typing import Iterator, Optional
+from typing import Optional
 
-from search_index import SearchIndex, normalize
+from search_index import SearchIndex
 
-from grasp.sparql.constants import Binding, ObjType, Position
-from grasp.sparql.manager.base import KgManager
-from grasp.sparql.mapping import Mapping
-from grasp.sparql.selection import Alternative, Selection
-from grasp.sparql.sparql import (
+from grasp.manager import KgManager
+from grasp.manager.mapping import Mapping
+from grasp.sparql.types import Alternative, ObjType, Position, Selection
+from grasp.sparql.utils import (
     autocomplete_prefix,
     find_all,
     find_longest_prefix,
+    normalize,
+    parse_into_binding,
     parse_string,
 )
 
@@ -98,122 +97,6 @@ def _index(manager: KgManager, obj_type: ObjType) -> SearchIndex:
         raise ValueError(f"Invalid object type: {obj_type}")
 
 
-def format_literal(s: str) -> str:
-    if s.startswith('"') and s.endswith('"'):
-        return s.strip('"')
-    elif s.startswith("'") and s.endswith("'"):
-        return s.strip("'")
-    else:
-        return s
-
-
-def parse_binding(input: str, manager: KgManager) -> Binding | None:
-    try:
-        parse, _ = parse_string(
-            input,
-            manager.iri_literal_parser,
-            skip_empty=True,
-            collapse_single=True,
-        )
-    except Exception:
-        return None
-
-    match parse["name"]:
-        case "IRIREF":
-            # already an IRI
-            return Binding(
-                typ="uri",
-                value=input[1:-1],
-            )
-
-        case "PNAME_LN" | "PNAME_NS":
-            pfx, name = input.split(":", 1)
-            if pfx not in manager.prefixes:
-                return None
-
-            uri = manager.prefixes[pfx][1:] + name
-
-            # prefixed IRI
-            return Binding(
-                typ="uri",
-                value=uri,
-            )
-
-        # not used as of now, but keep for later
-        case lit if lit.startswith("STRING_LITERAL"):
-            # string literal -> strip quotes
-            return Binding(
-                typ="literal",
-                value=format_literal(parse["value"]),
-            )
-
-        case lit if lit.startswith("INTEGER"):
-            # integer literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#int",
-            )
-
-        case lit if lit.startswith("DECIMAL"):
-            # decimal literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#decimal",
-            )
-
-        case lit if lit.startswith("DOUBLE"):
-            # double literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#double",
-            )
-
-        case lit if lit in ["true", "false"]:
-            # boolean literal
-            return Binding(
-                typ="literal",
-                value=parse["value"],
-                datatype="http://www.w3.org/2001/XMLSchema#boolean",
-            )
-
-        case "RDFLiteral":
-            if len(parse["children"]) == 2:
-                # langtag
-                lit, langtag = parse["children"]
-
-                return Binding(
-                    typ="literal",
-                    value=format_literal(lit["value"]),
-                    lang=langtag["value"][1:],
-                )
-
-            elif len(parse["children"]) == 3:
-                # datatype
-                lit, _, datatype = parse["children"]
-                if datatype["name"] == "IRIREF":
-                    datatype = datatype["value"][1:-1]
-                else:
-                    pfx, name = datatype["value"].split(":", 1)
-                    if pfx not in manager.prefixes:
-                        return None
-
-                    datatype = manager.prefixes[pfx][1:] + name
-
-                return Binding(
-                    typ="literal",
-                    value=format_literal(lit["value"]),
-                    datatype=datatype,
-                )
-
-        case other:
-            raise ValueError(
-                f"Unexpected type {other} for IRI or literal: {input}",
-            )
-
-
 def _get_item(
     parse: dict,
     manager: KgManager,
@@ -237,7 +120,7 @@ def _get_item(
         "suffix": suffix,
     }
 
-    binding = parse_binding(item, manager)
+    binding = parse_into_binding(item, manager.iri_literal_parser, manager.prefixes)
     if binding is None:
         return None
 
@@ -290,8 +173,14 @@ def _get_item(
 
         id = map[norm_iri]
 
+        identifier, *labels = _index(manager, obj_type).get_row(id)
+        label, *synonyms = labels
+
         alternative = manager.build_alternative(
-            _index(manager, obj_type).get_row(id),
+            identifier,
+            label,
+            synonyms,
+            [],  # leave empty for now
             {variant} if variant else None,
         )
 
@@ -341,41 +230,11 @@ def natural_sparql_from_items(
     return prefix
 
 
-def _get_indexed_prefixes(
-    index: SearchIndex,
-    prefixes: dict[str, str],
-) -> dict[str, str]:
-    indexed = {}
-    for i in range(len(index)):
-        iri = index.get_val(i, 3)
-        pfx = find_longest_prefix(iri, prefixes)
-        if pfx is None:
-            continue
-
-        short, long = pfx
-        indexed[short] = long
-
-    return indexed
-
-
-def get_indexed_prefixes(manager: KgManager) -> dict[str, str]:
-    entity_indexed = _get_indexed_prefixes(
-        manager.entity_index,
-        manager.prefixes,
-    )
-    property_indexed = _get_indexed_prefixes(
-        manager.property_index,
-        manager.prefixes,
-    )
-    return {**entity_indexed, **property_indexed}
-
-
 def get_sparql_items(
     sparql: str,
     manager: KgManager,
     normalized: bool = False,
     is_prefix: bool = False,
-    indexed_prefixes: dict[str, str] | None = None,
 ) -> tuple[str, list[Item]]:
     sparql = manager.fix_prefixes(
         sparql,
@@ -384,7 +243,7 @@ def get_sparql_items(
     )
 
     if normalized:
-        sparql = manager.normalize_sparql(sparql, is_prefix=is_prefix)
+        sparql = normalize(sparql, manager.sparql_parser, is_prefix=is_prefix)
 
     sparql_encoded = sparql.encode()
     parse, _ = parse_string(
