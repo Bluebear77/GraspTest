@@ -2,10 +2,10 @@
 
 ## News
 
-- August XX 2025:
-  - New:
+- August 23rd 2025:
+  - Changes:
     - Major refactor
-    - Updated indices for all knowledge graphs
+    - New index format and updated indices for all knowledge graphs
     - Additional information for entities / properties is now loaded online
       from a live SPARQL endpoint
     <!-- - Adapt GRASP to different knowledge graphs by inspecting 
