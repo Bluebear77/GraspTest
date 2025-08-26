@@ -9,7 +9,6 @@ import 'package:grasp/config.dart';
 import 'package:grasp/utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/link.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -662,25 +661,32 @@ ${prettyJson(fn["parameters"])}
   Widget buildSparqlQaOutputItem(
     String content,
     String? sparql,
-    String? endpoint,
+    String? selections,
     String? result,
+    String? endpoint,
     double elapsed,
   ) {
     final parsed = endpoint != null ? Uri.parse(endpoint) : null;
+    if (sparql != null && selections != null && result != null) {
+      content +=
+          '''
+          
+```sparql
+$sparql
+```
+
+$selections
+
+$result
+''';
+    }
     return buildCardWithTitle(
       "Output",
       Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          markdown('''$content
-          
-```sparql
-${sparql ?? "No SPARQL query generated."}
-```
-
-${result ?? "No SPARQL result available."}
-'''),
+          markdown(content),
           Divider(height: 16),
           Wrap(
             alignment: WrapAlignment.start,
@@ -770,16 +776,25 @@ ${result ?? "No SPARQL result available."}
         );
       case "output":
         final task = item["task"];
+        final output = item["output"];
         if (task == Task.sparqlQa.identifier) {
           return buildSparqlQaOutputItem(
-            item["content"],
-            item["sparql"],
-            item["endpoint"],
-            item["result"],
+            output["type"] == "answer"
+                ? output["answer"]
+                : output["explanation"],
+            output["sparql"],
+            output["selections"],
+            output["result"],
+            output["endpoint"],
             item["elapsed"],
           );
         } else if (task == Task.generalQa.identifier) {
-          return buildGeneralQaOutputItem(item["content"], item["elapsed"]);
+          return buildGeneralQaOutputItem(
+            output["type"] == "answer"
+                ? output["answer"]
+                : output["explanation"],
+            item["elapsed"],
+          );
         } else {
           // unknown task
           return buildUnknownItem(item);
