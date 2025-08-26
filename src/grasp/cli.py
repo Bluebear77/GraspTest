@@ -94,7 +94,7 @@ def parse_args() -> argparse.Namespace:
     )
     add_config_arg(file_parser)
     file_parser.add_argument(
-        "question-file",
+        "question_file",
         type=str,
         help="Path to file in JSONL format to run GRASP on",
     )

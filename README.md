@@ -75,6 +75,9 @@ Follow these steps to run GRASP and the evaluation app.
 2. Install Faiss (not supported to be installed with pip):
 `conda install -c pytorch -c nvidia faiss-gpu=1.11.0`
 
+> You might have to install the CPU version of Faiss, since
+> the GPU version leads to issues on some systems.
+
 3. Clone the repository: `git clone https://github.com/ad-freiburg/grasp`
 
 4. Go to directory and install with pip: `cd grasp && pip install -e .`
