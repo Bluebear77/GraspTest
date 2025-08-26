@@ -181,7 +181,7 @@ class _GRASPState extends State<GRASP> {
     running = true;
     // initialize new history with question
     histories.add([
-      {"typ": "question", "question": question},
+      {"type": "question", "question": question},
     ]);
     channel?.sink.add(
       jsonEncode({
@@ -515,7 +515,7 @@ class _GRASPState extends State<GRASP> {
 
   Widget buildUnknownItem(dynamic item) {
     return buildCard(
-      item["typ"],
+      item["type"],
       markdown("```json\n${prettyJson(item)}\n```"),
     );
   }
@@ -759,7 +759,7 @@ $result
   }
 
   Widget buildHistoryItem(dynamic item) {
-    switch (item["typ"] as String) {
+    switch (item["type"] as String) {
       case "question":
         return buildQuestionItem(item["question"]);
       case "system":
@@ -847,7 +847,7 @@ $result
                 } else if (data.hasData && data.data != lastData) {
                   lastData = data.data;
                   final json = jsonDecode(data.data);
-                  final hasTyp = json.containsKey("typ");
+                  final hasTyp = json.containsKey("type");
                   if (!hasTyp && json.containsKey("error")) {
                     showMessageDelayed(json["error"], color: uniRed);
                   } else if (!hasTyp && json.containsKey("cancelled")) {
@@ -855,7 +855,7 @@ $result
                   } else if (hasTyp) {
                     received(cancel: cancelling);
                     histories.last.add(json);
-                    if (json["typ"] == "output") {
+                    if (json["type"] == "output") {
                       questionController.text = "";
                       cancelling = false;
                       running = false;
