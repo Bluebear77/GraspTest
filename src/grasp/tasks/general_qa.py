@@ -36,9 +36,6 @@ def rules() -> list[str]:
         "Your answers preferably should be based on the information available in the \
 knowledge graphs. If you do not need them to answer the question, e.g. if \
 you know the answer by heart, still try to verify it with the knowledge graphs.",
-        "Do not use 'SERVICE wikibase:label { bd:serviceParam wikibase:language ...' \
-in SPARQL queries. It is not SPARQL standard and unsupported by the used QLever \
-SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.",
     ]
 
 
