@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -200,17 +199,22 @@ class _GRASPState extends State<GRASP> {
     setState(() {});
   }
 
-  Future<void> clear({bool full = false}) async {
+  Future<void> clear(Clear clear) async {
     cancelling = false;
     running = false;
-    if (full) {
-      questionController.text = "";
-      histories.clear();
-      past = null;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove("lastOutput");
-    } else if (histories.isNotEmpty) {
-      histories.removeLast();
+    switch (clear) {
+      case Clear.full:
+        questionController.text = "";
+        histories.clear();
+        past = null;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove("lastOutput");
+        break;
+      case Clear.last:
+        histories.removeLast();
+        break;
+      case Clear.none:
+        break;
     }
     setState(() {});
   }
@@ -368,12 +372,12 @@ class _GRASPState extends State<GRASP> {
   Widget buildTextField() {
     final question = questionController.text.trim();
 
-    final inAction = cancelling || !connected || running;
-
     return KeyboardListener(
       focusNode: questionFocus,
       onKeyEvent: (event) {
-        if (!inAction &&
+        if (!cancelling &&
+            connected &&
+            !running &&
             question.isNotEmpty &&
             event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.enter &&
@@ -432,14 +436,24 @@ class _GRASPState extends State<GRASP> {
                     : null,
               ),
               IconButton(
-                tooltip: "Reset for new question",
-                onPressed: inAction || histories.isEmpty
-                    ? null
-                    : () async => await clear(full: true),
-                icon: Icon(
-                  Icons.refresh,
-                  color: inAction || histories.isEmpty ? null : uniRed,
-                ),
+                tooltip: running && !cancelling
+                    ? "Answering question"
+                    : "Reset for new question",
+                onPressed: !running && !cancelling && histories.isNotEmpty
+                    ? () async => await clear(Clear.full)
+                    : null,
+                icon: running && !cancelling
+                    ? SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(),
+                      )
+                    : Icon(
+                        Icons.refresh,
+                        color: !running && !cancelling && histories.isNotEmpty
+                            ? uniRed
+                            : null,
+                      ),
               ),
             ],
           ),
@@ -838,6 +852,7 @@ $result
                       duration: Duration(days: 365),
                     );
                   }
+                  clear(Clear.none);
                 }
                 if (data.hasError) {
                   showMessageDelayed(
@@ -851,7 +866,7 @@ $result
                   if (!hasTyp && json.containsKey("error")) {
                     showMessageDelayed(json["error"], color: uniRed);
                   } else if (!hasTyp && json.containsKey("cancelled")) {
-                    doDelayed(() => clear());
+                    doDelayed(() => clear(Clear.last));
                   } else if (hasTyp) {
                     received(cancel: cancelling);
                     histories.last.add(json);
