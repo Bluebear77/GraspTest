@@ -4,6 +4,7 @@ import json
 import os
 import random
 import time
+from logging import INFO, FileHandler, Logger
 
 from fastapi import WebSocketDisconnect
 from pydantic import BaseModel, conlist
@@ -73,6 +74,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=8000,
         help="Port to run the GRASP server on",
+    )
+    server_parser.add_argument(
+        "--log-outputs",
+        type=str,
+        help="File to log all inputs and outputs to (in JSONL format)",
     )
 
     # run GRASP on a single question
@@ -383,6 +389,15 @@ def serve_grasp(args: argparse.Namespace) -> None:
 
     app = FastAPI()
     logger = get_logger("GRASP SERVER", args.log_level)
+    if args.log_outputs is not None:
+        os.makedirs(os.path.dirname(args.log_outputs), exist_ok=True)
+        output_logger = Logger("GRASP JSONL OUTPUTS")
+        output_logger.addHandler(
+            FileHandler(args.log_outputs, mode="a", encoding="utf-8")
+        )
+        output_logger.setLevel(INFO)
+    else:
+        output_logger = None
 
     # add cors
     from fastapi.middleware.cors import CORSMiddleware
@@ -517,6 +532,9 @@ def serve_grasp(args: argparse.Namespace) -> None:
                         logger.info(f"Generation cancelled by {client}")
                         await websocket.send_json({"cancelled": True})
                         break
+
+                    if output["type"] == "output" and output_logger is not None:
+                        output_logger.info(json.dumps(output))
 
         except WebSocketDisconnect:
             pass
