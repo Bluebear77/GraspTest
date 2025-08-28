@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import json
 import os
 import random
@@ -17,6 +18,7 @@ from grasp.configs import Adapt, Config
 from grasp.core import generate, setup
 from grasp.evaluate import evaluate
 from grasp.examples import ExampleIndex
+from grasp.tasks import Task
 from grasp.utils import is_invalid_model_output, parse_parameters
 
 
@@ -245,7 +247,7 @@ def parse_args() -> argparse.Namespace:
     # build example index
     example_parser = subparsers.add_parser(
         "examples",
-        help="Build an example index used for few-shot learning",
+        help="Build an example index used for few-shot learning (only for 'sparql-qa' task)",
     )
     example_parser.add_argument(
         "examples_file",
@@ -352,9 +354,11 @@ def run_grasp(args: argparse.Namespace) -> None:
 
 # keep track of connections and limit to 10 concurrent connections
 active_connections = 0
-MAX_CONNECTIONS = 10
-# maximum duration for a query in seconds
-MAX_QUERY_DURATION = 300.0
+MAX_CONNECTIONS = 16
+# maximum time for a query in seconds
+MAX_QUERY_TIME = 300.0
+# maximum idle time for a connection in seconds
+MAX_IDLE_TIME = 300.0
 
 
 class Past(BaseModel):
@@ -364,7 +368,7 @@ class Past(BaseModel):
 
 
 class Request(BaseModel):
-    task: str
+    task: Task
     question: str
     knowledge_graphs: conlist(str, min_length=1)  # type: ignore
     past: Past | None = None
@@ -405,30 +409,64 @@ def serve_grasp(args: argparse.Namespace) -> None:
     @app.websocket("/live")
     async def _live(websocket: WebSocket):
         global active_connections
+        assert websocket.client is not None
+        client = f"{websocket.client.host}:{websocket.client.port}"
 
         # Check if we've reached the maximum number of connections
         if active_connections >= MAX_CONNECTIONS:
-            await websocket.close(code=1008)  # HTTP Status 503: Service Unavailable
+            logger.warning(
+                f"Connection from {client} rejected: maximum of {MAX_CONNECTIONS:,} active connections reached"
+            )
+            await websocket.close(code=1013)  # Try Again Later
             return
 
         await websocket.accept()
         active_connections += 1
+        logger.info(f"{client} connected ({active_connections=:,})")
+        last_active = time.perf_counter()
+
+        async def idle_checker():
+            nonlocal last_active
+            while True:
+                await asyncio.sleep(min(5, MAX_IDLE_TIME))
+
+                if time.perf_counter() - last_active <= MAX_IDLE_TIME:
+                    continue
+
+                msg = f"Connection to {client} closed due to inactivity after {MAX_IDLE_TIME:,} seconds"
+                logger.info(msg)
+                await websocket.send_json({"error": msg})
+                await websocket.close(code=1013)  # Try Again Later
+                break
+
+        idle_task = asyncio.create_task(idle_checker())
 
         try:
             while True:
                 data = await websocket.receive_json()
+                last_active = time.perf_counter()
                 try:
                     request = Request(**data)
                 except Exception:
+                    logger.error(
+                        f"Invalid request from {client}:\n{json.dumps(data, indent=2)}"
+                    )
                     await websocket.send_json({"error": "Invalid request format"})
                     continue
 
                 sel = request.knowledge_graphs
                 if not sel or not all(kg in kgs for kg in sel):
+                    logger.error(
+                        f"Unsupported knowledge graph selection by {client}:\n{request.model_dump_json(indent=2)}"
+                    )
                     await websocket.send_json(
                         {"error": "Unsupported knowledge graph selection"}
                     )
                     continue
+
+                logger.info(
+                    f"Processing request from {client}:\n{request.model_dump_json(indent=2)}"
+                )
 
                 sel_managers, _ = partition_by(managers, lambda m: m.kg in sel)
 
@@ -451,7 +489,7 @@ def serve_grasp(args: argparse.Namespace) -> None:
                     past_questions,
                     past_messages,
                     past_known,
-                    logger=logger,
+                    logger,
                 )
 
                 # Track start time for timeout
@@ -461,22 +499,22 @@ def serve_grasp(args: argparse.Namespace) -> None:
                 for output in generator:
                     # Check if we've exceeded the time limit
                     current_time = time.perf_counter()
-                    if current_time - start_time > MAX_QUERY_DURATION:
+                    if current_time - start_time > MAX_QUERY_TIME:
                         # Send timeout message to client
-                        await websocket.send_json(
-                            {
-                                "error": f"Operation timed out after {MAX_QUERY_DURATION} seconds",
-                            }
-                        )
+                        msg = f"Operation with {client} timed out after {MAX_QUERY_TIME:,} seconds"
+                        logger.warning(msg)
+                        await websocket.send_json({"error": msg})
                         break
 
                     # Process the output normally
                     await websocket.send_json(output)
                     data = await websocket.receive_json()
+                    last_active = time.perf_counter()
 
                     # Check if client requested cancellation
                     if data.get("cancel", False):
                         # Send cancellation confirmation to client
+                        logger.info(f"Generation cancelled by {client}")
                         await websocket.send_json({"cancelled": True})
                         break
 
@@ -484,10 +522,13 @@ def serve_grasp(args: argparse.Namespace) -> None:
             pass
 
         except Exception as e:
+            logger.error(f"Unexpected error with {client}:\n{e}")
             await websocket.send_json({"error": f"Failed to handle request:\n{e}"})
 
         finally:
+            idle_task.cancel()
             active_connections -= 1
+            logger.info(f"{client} disconnected ({active_connections=:,})")
 
     uvicorn.run(app, host="0.0.0.0", port=args.port)
 

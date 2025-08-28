@@ -1,13 +1,13 @@
 import re
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from itertools import groupby
 from typing import Any, Iterator
 
 from grasp.utils import clip
 
 
-class ObjType(str, Enum):
+class ObjType(StrEnum):
     ENTITY = "entity"
     PROPERTY = "property"
     OTHER = "other"
@@ -25,7 +25,7 @@ def obj_types_before(obj_type: ObjType) -> list[ObjType]:
     return values[: values.index(obj_type)]
 
 
-class Position(str, Enum):
+class Position(StrEnum):
     SUBJECT = "subject"
     PROPERTY = "property"
     OBJECT = "object"

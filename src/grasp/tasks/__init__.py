@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Any
 
 from grasp.configs import Config
@@ -11,6 +12,11 @@ from grasp.tasks.sparql_qa import functions as sparql_qa_functions
 from grasp.tasks.sparql_qa import output as sparql_qa_output
 from grasp.tasks.sparql_qa import rules as sparql_qa_rules
 from grasp.tasks.sparql_qa import system_information as sparql_qa_system_information
+
+
+class Task(StrEnum):
+    SPARQL_QA = "sparql-qa"
+    GENERAL_QA = "general-qa"
 
 
 def rules() -> list[str]:
