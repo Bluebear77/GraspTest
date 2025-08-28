@@ -411,16 +411,17 @@ def serve_grasp(args: argparse.Namespace) -> None:
         global active_connections
         assert websocket.client is not None
         client = f"{websocket.client.host}:{websocket.client.port}"
+        await websocket.accept()
 
         # Check if we've reached the maximum number of connections
         if active_connections >= MAX_CONNECTIONS:
             logger.warning(
-                f"Connection from {client} rejected: maximum of {MAX_CONNECTIONS:,} active connections reached"
+                f"Connection from {client} immediately closed: "
+                f"maximum of {MAX_CONNECTIONS:,} active connections reached"
             )
-            await websocket.close(code=1013)  # Try Again Later
+            await websocket.close(code=1013, reason="Server too busy, try again later")
             return
 
-        await websocket.accept()
         active_connections += 1
         logger.info(f"{client} connected ({active_connections=:,})")
         last_active = time.perf_counter()
@@ -433,10 +434,9 @@ def serve_grasp(args: argparse.Namespace) -> None:
                 if time.perf_counter() - last_active <= MAX_IDLE_TIME:
                     continue
 
-                msg = f"Connection to {client} closed due to inactivity after {MAX_IDLE_TIME:,} seconds"
-                logger.info(msg)
-                await websocket.send_json({"error": msg})
-                await websocket.close(code=1013)  # Try Again Later
+                msg = f"Connection closed due to inactivity after {MAX_IDLE_TIME:,} seconds"
+                logger.info(f"{client}: {msg}")
+                await websocket.close(code=1013, reason=msg)  # Try Again Later
                 break
 
         idle_task = asyncio.create_task(idle_checker())
