@@ -2,6 +2,10 @@
 
 ## News
 
+- August 28th 2025:
+  - Demo paper of GRASP has also been accepted to [ISWC 2025](https://iswc2025.semanticweb.org/)
+  - Preview of camera-ready version coming soon
+
 - August 23rd 2025:
   - Changes:
     - Major refactor
@@ -29,12 +33,14 @@
 
 - July 10th 2025:
   - Code release
-  - Data available at [ad-publications.cs.uni-freiburg.de/grasp](https://ad-publications.cs.uni-freiburg.de/grasp)
+  - Data release
 
 ## Overview and directory structure
 
+Data available at [ad-publications.cs.uni-freiburg.de/grasp](https://ad-publications.cs.uni-freiburg.de/grasp)
+
 ```
-Makefile                          # Makefile for getting data and building indices
+Makefile                          # Makefile for building benchmarks
 src/                              # Source code for GRASP
 bash/                             # Bash scripts to run and evaluate GRASP
 scripts/                          # Various helper scripts
