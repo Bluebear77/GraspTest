@@ -39,6 +39,12 @@ extension TaskExtension on Task {
   }
 }
 
+enum Clear {
+  full,
+  last,
+  none,
+}
+
 const wsPath = "/live";
 const configPath = "/config";
 const kgPath = "/knowledge_graphs";

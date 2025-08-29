@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -76,7 +75,6 @@ class Past {
 }
 
 class _GRASPState extends State<GRASP> {
-  final retry = 10;
   bool initial = true;
   bool running = false;
   bool cancelling = false;
@@ -116,8 +114,8 @@ class _GRASPState extends State<GRASP> {
       channel = null;
 
       // open new ws connection
-      final newChannel = WebSocketChannel.connect(Uri.parse(wsEndpoint));
-      await newChannel.ready;
+      channel = WebSocketChannel.connect(Uri.parse(wsEndpoint));
+      await channel?.ready;
 
       // get stuff
       var res = await http.get(Uri.parse(configEndpoint));
@@ -157,14 +155,16 @@ class _GRASPState extends State<GRASP> {
           knowledgeGraphs[newKgs.first] = true;
         }
       }
-      channel = newChannel;
     } catch (e) {
       showMessage(
-        "Failed to connect to backend. Retrying in $retry seconds.",
+        "Failed to connect to backend. Reload to retry.",
         color: uniRed,
+        duration: Duration(days: 365),
       );
       debugPrint("error connecting: $e");
     }
+    initial = false;
+    setState(() {});
   }
 
   bool get connected =>
@@ -199,28 +199,24 @@ class _GRASPState extends State<GRASP> {
     setState(() {});
   }
 
-  Future<void> clear({bool full = false}) async {
+  Future<void> clear(Clear clear) async {
     cancelling = false;
     running = false;
-    if (full) {
-      questionController.text = "";
-      histories.clear();
-      past = null;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove("lastOutput");
-    } else if (histories.isNotEmpty) {
-      histories.removeLast();
+    switch (clear) {
+      case Clear.full:
+        questionController.text = "";
+        histories.clear();
+        past = null;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove("lastOutput");
+        break;
+      case Clear.last:
+        histories.removeLast();
+        break;
+      case Clear.none:
+        break;
     }
     setState(() {});
-  }
-
-  void startConnectTimer() {
-    timer = Timer.periodic(Duration(seconds: retry), (_) async {
-      if (connected) return;
-
-      await connect();
-      setState(() {});
-    });
   }
 
   @override
@@ -244,18 +240,7 @@ class _GRASPState extends State<GRASP> {
       });
     });
 
-    connect().then(
-      (_) {
-        startConnectTimer();
-        initial = false;
-        setState(() {});
-      },
-      onError: (_) {
-        startConnectTimer();
-        initial = false;
-        setState(() {});
-      },
-    );
+    connect();
   }
 
   @override
@@ -387,12 +372,12 @@ class _GRASPState extends State<GRASP> {
   Widget buildTextField() {
     final question = questionController.text.trim();
 
-    final inAction = cancelling || !connected || running;
-
     return KeyboardListener(
       focusNode: questionFocus,
       onKeyEvent: (event) {
-        if (!inAction &&
+        if (!cancelling &&
+            connected &&
+            !running &&
             question.isNotEmpty &&
             event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.enter &&
@@ -451,14 +436,24 @@ class _GRASPState extends State<GRASP> {
                     : null,
               ),
               IconButton(
-                tooltip: "Reset for new question",
-                onPressed: inAction || histories.isEmpty
-                    ? null
-                    : () async => await clear(full: true),
-                icon: Icon(
-                  Icons.refresh,
-                  color: inAction || histories.isEmpty ? null : uniRed,
-                ),
+                tooltip: running && !cancelling
+                    ? "Answering question"
+                    : "Reset for new question",
+                onPressed: !running && !cancelling && histories.isNotEmpty
+                    ? () async => await clear(Clear.full)
+                    : null,
+                icon: running && !cancelling
+                    ? SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(),
+                      )
+                    : Icon(
+                        Icons.refresh,
+                        color: !running && !cancelling && histories.isNotEmpty
+                            ? uniRed
+                            : null,
+                      ),
               ),
             ],
           ),
@@ -808,18 +803,26 @@ $result
     Future.delayed(Duration.zero, () => fn());
   }
 
-  void showMessageDelayed(String message, {Color? color}) {
-    doDelayed(() => showMessage(message, color: color));
+  void showMessageDelayed(
+    String message, {
+    Color? color,
+    Duration duration = const Duration(seconds: 5),
+  }) {
+    doDelayed(() => showMessage(message, color: color, duration: duration));
   }
 
-  void showMessage(String message, {Color? color}) {
+  void showMessage(
+    String message, {
+    Color? color,
+    Duration duration = const Duration(seconds: 3),
+  }) {
     rootScaffoldMessenger.currentState?.showSnackBar(
       SnackBar(
         content: Text(message),
         margin: EdgeInsets.all(8),
         behavior: SnackBarBehavior.floating,
         backgroundColor: color,
-        duration: Duration(seconds: min(3, retry)),
+        duration: duration,
       ),
     );
   }
@@ -839,6 +842,18 @@ $result
           : StreamBuilder(
               stream: channel?.stream,
               builder: (_, data) {
+                if (data.connectionState == ConnectionState.done) {
+                  final code = channel?.closeCode;
+                  final reason = channel?.closeReason;
+                  if (code != null) {
+                    showMessageDelayed(
+                      reason ?? "Connection closed with code $code",
+                      color: uniRed,
+                      duration: Duration(days: 365),
+                    );
+                  }
+                  clear(Clear.none);
+                }
                 if (data.hasError) {
                   showMessageDelayed(
                     "Unknown error: ${data.error}",
@@ -851,7 +866,7 @@ $result
                   if (!hasTyp && json.containsKey("error")) {
                     showMessageDelayed(json["error"], color: uniRed);
                   } else if (!hasTyp && json.containsKey("cancelled")) {
-                    doDelayed(() => clear());
+                    doDelayed(() => clear(Clear.last));
                   } else if (hasTyp) {
                     received(cancel: cancelling);
                     histories.last.add(json);
