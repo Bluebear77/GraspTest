@@ -309,6 +309,9 @@ The system has access to the following knowledge graphs:
 The system was provided the following notes across all knowledge graphs:
 {format_notes(notes)}
 
+The system was provided the following rules to follow:
+{format_list(rules())}
+
 There are two possible cases:
 
 1) The system was able to find an answer
@@ -321,9 +324,6 @@ it uses, and its execution result.
 You are given the system's explanation for why it failed to find an answer. \
 Optionally, you are provided with the system's best attempt at a SPARQL query \
 so far including the same additional information as in case 1.
-
-In any case, make sure that the following rules for SPARQL queries are followed:
-{format_list(rules())}
 
 Provide your feedback with the give_feedback function."""
 

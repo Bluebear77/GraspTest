@@ -136,7 +136,7 @@ def is_invalid_model_output(model_output: dict | None) -> bool:
 
 
 def parse_parameters(headers: list[str]) -> dict[str, str]:
-    # each header is formatted as key:value
+    # each parameter is formatted as key:value
     header_dict = {}
     for header in headers:
         key, value = header.split(":", 1)

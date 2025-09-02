@@ -2,7 +2,7 @@ import json
 import time
 from copy import deepcopy
 from logging import Logger
-from typing import Iterator
+from typing import Any, Iterator
 
 from litellm.exceptions import Timeout
 from search_index.similarity import EmbeddingModel
@@ -24,7 +24,7 @@ from grasp.tasks import (
     task_functions,
     task_output,
     task_rules,
-    task_state,
+    task_setup,
     task_system_information,
 )
 from grasp.tasks.feedback import format_feedback, generate_feedback
@@ -63,7 +63,7 @@ You should follow these rules:
 {format_list(general_rules() + task_rules(task))}"""
 
 
-def setup(config: Config) -> tuple[list[KgManager], list[str]]:
+def setup(task: str, config: Config) -> tuple[list[KgManager], list[str]]:
     emb_model: EmbeddingModel | None = None
     managers: list[KgManager] = []
     for kg in config.knowledge_graphs:
@@ -72,6 +72,7 @@ def setup(config: Config) -> tuple[list[KgManager], list[str]]:
             emb_model = find_embedding_model(managers)
 
         manager = load_kg_manager(
+            task,
             kg,
             entities_kwargs={"model": emb_model},
             properties_kwargs={"model": emb_model},
@@ -79,36 +80,35 @@ def setup(config: Config) -> tuple[list[KgManager], list[str]]:
         )
         managers.append(manager)
 
-    notes = load_general_notes(config.notes_file)
+    notes = load_general_notes(task, config.notes_file)
 
     return managers, notes
 
 
 def generate(
     task: str,
-    question: str,
+    input: Any,
     config: Config,
     managers: list[KgManager],
     notes: list[str],
-    past_questions: list[str] | None = None,
+    past_inputs: list[str] | None = None,
     past_messages: list[dict] | None = None,
     past_known: set[str] | None = None,
     logger: Logger = get_logger("GRASP"),
 ) -> Iterator[dict]:
     if task != "sparql-qa":
-        # disable feedback and examples for tasks other than sparql-qa
+        # disable examples for tasks other than sparql-qa
         # to avoid errors due to missing implementations
         config = deepcopy(config)
-        config.feedback = False
         config.force_examples = None
-        logger.debug(f"Disabling feedback and examples for {task} task")
+        logger.debug(f"Disabling examples for {task} task")
 
     # setup functions
     fns = kg_functions(managers, config.fn_set)
     task_fns, task_handler = task_functions(managers, task)
     fns.extend(task_fns)
 
-    state = task_state(task)
+    input, task_state = task_setup(task, input)
 
     # setup messages
     system_instruction = system_instructions(task, managers, notes)
@@ -147,21 +147,21 @@ def generate(
 
         api_messages.extend(past_messages[1:])
 
-    questions = past_questions or []
-    questions.append(question)
+    inputs = past_inputs or []
+    inputs.append(input)
     known = past_known or set()
 
     start = time.perf_counter()
 
-    # add user question
-    api_messages.append({"role": "user", "content": question})
+    # add user input
+    api_messages.append({"role": "user", "content": input})
 
     if config.force_examples:
         try:
             example_messages = find_examples(
                 managers,
                 config.force_examples,
-                question,
+                input,
                 config.num_examples,
                 config.random_examples,
                 known,
@@ -270,6 +270,7 @@ def generate(
                     config.fn_set,
                     known,
                     task_handler,
+                    task_state,
                     result_max_rows=config.result_max_rows,
                     result_max_columns=config.result_max_columns,
                     list_k=config.list_k,
@@ -311,7 +312,7 @@ def generate(
             break
 
         # get latest output
-        output = task_output(task, api_messages, managers, config, state)
+        output = task_output(task, api_messages, managers, config, task_state)
         if output is None:
             break
 
@@ -322,7 +323,7 @@ def generate(
                 managers,
                 config,
                 notes,
-                questions,
+                inputs,
                 output,
                 logger,
             )
@@ -356,7 +357,7 @@ def generate(
         # if not done, continue
         retries += 1
 
-    output = task_output(task, api_messages, managers, config, state)
+    output = task_output(task, api_messages, managers, config, task_state)
 
     logger.info(
         format_message({"role": "output", "content": json.dumps(output, indent=2)})
@@ -369,7 +370,7 @@ def generate(
         "output": output,
         "elapsed": end - start,
         "error": error,
-        "questions": questions,
+        "inputs": inputs,
         "messages": api_messages,
         "known": list(known),
     }

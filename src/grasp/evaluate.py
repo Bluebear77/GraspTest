@@ -77,7 +77,7 @@ def evaluate(
             },
         }
 
-        sparql = pred["sparql"]
+        sparql = pred["output"]["sparql"]
         if target_set is None or sparql is None:
             dump_json(evaluations, evaluation_file)
             continue

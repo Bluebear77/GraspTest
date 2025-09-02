@@ -225,6 +225,8 @@ class Alternative:
             s += ", also known as " + ", ".join(
                 clip(a) for a in self.aliases[:max_aliases]
             )
+            if len(self.aliases) > max_aliases:
+                s += ", etc."
 
         variants = self.variants if include_variants is None else include_variants
         if self.has_label() and not variants:

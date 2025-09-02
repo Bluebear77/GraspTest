@@ -51,7 +51,9 @@ def build_index(
 
 
 def build_indices(
-    knowledge_graph: KgConfig,
+    kg: str,
+    entities_type: str,
+    properties_type: str,
     overwrite: bool = False,
     log_level: str | int | None = None,
     sim_precision: str | None = None,
@@ -60,11 +62,10 @@ def build_indices(
 ) -> None:
     logger = get_logger("GRASP INDEX", log_level)
 
-    index_dir = get_index_dir(knowledge_graph.kg)
+    index_dir = get_index_dir(kg)
 
     # entities
     entities_dir = os.path.join(index_dir, "entities")
-    entities_type = knowledge_graph.entities_type or "prefix"
     build_index(
         entities_dir,
         entities_type,
@@ -77,7 +78,6 @@ def build_indices(
 
     # properties
     properties_dir = os.path.join(index_dir, "properties")
-    properties_type = knowledge_graph.properties_type or "similarity"
     build_index(
         properties_dir,
         properties_type,

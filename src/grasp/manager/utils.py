@@ -132,10 +132,17 @@ def load_kg_prefixes(kg: str, endpoint: str | None = None) -> dict[str, str]:
     return prefixes
 
 
-def load_kg_notes(kg: str, notes_file: str | None = None) -> list[str]:
+def resolve_notes_path(dir: str, task: str) -> Path:
+    task_notes_file = Path(dir, f"notes.{task}.json")
+    if task_notes_file.exists():
+        return task_notes_file
+    else:
+        return task_notes_file.with_name("notes.json")
+
+
+def load_kg_notes(kg: str, task: str, notes_file: str | None = None) -> list[str]:
     if notes_file is None:
-        index_dir = get_index_dir()
-        notes_path = Path(index_dir, kg, "notes.json")
+        notes_path = resolve_notes_path(os.path.join(get_index_dir(), kg), task)
     else:
         notes_path = Path(notes_file)
 
@@ -163,9 +170,9 @@ def load_kg_info_sparqls(kg: str) -> tuple[str | None, str | None]:
     return ent_info, prop_info
 
 
-def load_general_notes(notes_file: str | None = None) -> list[str]:
+def load_general_notes(task: str, notes_file: str | None = None) -> list[str]:
     if notes_file is None:
-        notes_path = Path(get_index_dir(), "notes.json")
+        notes_path = resolve_notes_path(get_index_dir(), task)
     else:
         notes_path = Path(notes_file)
 

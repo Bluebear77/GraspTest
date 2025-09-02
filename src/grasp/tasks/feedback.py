@@ -8,6 +8,12 @@ from universal_ml_utils.logging import get_logger
 from grasp.configs import Config
 from grasp.manager import KgManager
 from grasp.model import call_model
+from grasp.tasks.cea import (
+    feedback_instructions as cea_feedback_instructions,
+)
+from grasp.tasks.cea import (
+    feedback_system_message as cea_feedback_system_instructions,
+)
 from grasp.tasks.sparql_qa import (
     feedback_instructions as sparql_qa_feedback_instructions,
 )
@@ -66,12 +72,18 @@ def system_instructions(
     if task == "sparql-qa":
         return sparql_qa_feedback_system_instructions(managers, notes)
 
+    elif task == "cea":
+        return cea_feedback_system_instructions(managers, notes)
+
     raise ValueError(f"System message not implemented for task: {task}")
 
 
-def feedback_instructions(task: str, questions: list[str], output: Any) -> str:
+def feedback_instructions(task: str, inputs: list[str], output: Any) -> str:
     if task == "sparql-qa":
-        return sparql_qa_feedback_instructions(questions, output)
+        return sparql_qa_feedback_instructions(inputs, output)
+
+    elif task == "cea":
+        return cea_feedback_instructions(inputs, output)
 
     raise ValueError(f"Feedback not implemented for task: {task}")
 
@@ -81,7 +93,7 @@ def generate_feedback(
     managers: list[KgManager],
     config: Config,
     notes: list[str],
-    questions: list[str],
+    inputs: list[str],
     output: dict,
     logger: Logger = get_logger("GRASP FEEDBACK"),
 ) -> dict | None:
@@ -92,7 +104,7 @@ def generate_feedback(
         },
         {
             "role": "user",
-            "content": feedback_instructions(task, questions, output),
+            "content": feedback_instructions(task, inputs, output),
         },
     ]
     for msg in api_messages:

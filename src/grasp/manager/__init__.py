@@ -794,6 +794,7 @@ class KgManager:
 
 
 def load_kg_manager(
+    task: str,
     cfg: KgConfig,
     entities_kwargs: dict[str, Any] | None = None,
     properties_kwargs: dict[str, Any] | None = None,
@@ -807,7 +808,7 @@ def load_kg_manager(
         properties_kwargs,
     )
     prefixes = load_kg_prefixes(cfg.kg, cfg.endpoint)
-    notes = load_kg_notes(cfg.kg, cfg.notes_file)
+    notes = load_kg_notes(cfg.kg, task, cfg.notes_file)
     ent_info_sparql, prop_info_sparql = load_kg_info_sparqls(cfg.kg)
 
     if cfg.example_index is not None:
