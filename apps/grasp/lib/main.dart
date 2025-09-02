@@ -63,14 +63,14 @@ class GRASP extends StatefulWidget {
 }
 
 class Past {
-  final List<dynamic> questions;
+  final List<dynamic> inputs;
   final List<dynamic> messages;
   final List<dynamic> known;
 
-  Past(this.questions, this.messages, this.known);
+  Past(this.inputs, this.messages, this.known);
 
   Map<String, dynamic> toJson() {
-    return {"questions": questions, "messages": messages, "known": known};
+    return {"inputs": inputs, "messages": messages, "known": known};
   }
 }
 
@@ -83,13 +83,12 @@ class _GRASPState extends State<GRASP> {
   bool showScrollButtons = false;
   DateTime lastScroll = DateTime.now();
 
-  TextEditingController questionController = TextEditingController();
-  FocusNode questionFocus = FocusNode();
+  TextEditingController inputController = TextEditingController();
+  FocusNode inputFocus = FocusNode();
   WebSocketChannel? channel;
   Timer? timer;
 
   int task = 0;
-  dynamic lastData;
   dynamic config;
   List<List<dynamic>> histories = [];
   Past? past;
@@ -117,6 +116,55 @@ class _GRASPState extends State<GRASP> {
       channel = WebSocketChannel.connect(Uri.parse(wsEndpoint));
       await channel?.ready;
 
+      channel?.stream.listen(
+        (data) async {
+          final json = jsonDecode(data);
+          final hasTyp = json.containsKey("type");
+          if (!hasTyp && json.containsKey("error")) {
+            showMessage(json["error"], color: uniRed);
+          } else if (!hasTyp && json.containsKey("cancelled")) {
+            await clear(Clear.last);
+          } else if (hasTyp) {
+            received(cancel: cancelling);
+            histories.last.add(json);
+            if (json["type"] == "output") {
+              inputController.text = "";
+              cancelling = false;
+              running = false;
+              past = Past(json["inputs"], json["messages"], json["known"]);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(
+                "lastOutput",
+                jsonEncode({
+                  "pastInputs": past!.inputs,
+                  "pastMessages": past!.messages,
+                  "pastKnown": past!.known,
+                  "histories": histories,
+                }),
+              );
+            }
+          }
+          setState(() {});
+        },
+        onError: (e) {
+          showMessage("Unknown error: $e", color: uniRed);
+        },
+        onDone: () async {
+          final code = channel?.closeCode;
+          final reason = channel?.closeReason;
+          showMessage(
+            code == null
+                ? "Connection to server lost, most likely the server is down. Please try again later."
+                : reason ?? "Connection closed with code $code",
+            color: uniRed,
+            duration: Duration(days: 365),
+          );
+          await clear(Clear.none);
+          setState(() {});
+        },
+        cancelOnError: true,
+      );
+
       // get stuff
       var res = await http.get(Uri.parse(configEndpoint));
       final newConfig = jsonDecode(res.body);
@@ -131,7 +179,7 @@ class _GRASPState extends State<GRASP> {
         final lastOutput = prefs.getString("lastOutput");
         final lastData = jsonDecode(lastOutput!);
         past = Past(
-          lastData["pastQuestions"],
+          lastData["pastInputs"],
           lastData["pastMessages"],
           lastData["pastKnown"],
         );
@@ -156,12 +204,11 @@ class _GRASPState extends State<GRASP> {
         }
       }
     } catch (e) {
-      showMessage(
+      showMessageDelayed(
         "Failed to connect to backend. Reload to retry.",
         color: uniRed,
         duration: Duration(days: 365),
       );
-      debugPrint("error connecting: $e");
     }
     initial = false;
     setState(() {});
@@ -177,16 +224,16 @@ class _GRASPState extends State<GRASP> {
     channel?.sink.add(jsonEncode({"received": true, "cancel": cancel}));
   }
 
-  void ask(String question) {
+  void run(String input) {
     running = true;
-    // initialize new history with question
+    // initialize new history with input
     histories.add([
-      {"type": "question", "question": question},
+      {"type": "input", "input": input},
     ]);
     channel?.sink.add(
       jsonEncode({
         "task": Task.values[task].identifier,
-        "question": question,
+        "input": input,
         "knowledge_graphs": selectedKgs,
         "past": past?.toJson(),
       }),
@@ -204,7 +251,7 @@ class _GRASPState extends State<GRASP> {
     running = false;
     switch (clear) {
       case Clear.full:
-        questionController.text = "";
+        inputController.text = "";
         histories.clear();
         past = null;
         final prefs = await SharedPreferences.getInstance();
@@ -216,7 +263,6 @@ class _GRASPState extends State<GRASP> {
       case Clear.none:
         break;
     }
-    setState(() {});
   }
 
   @override
@@ -246,9 +292,9 @@ class _GRASPState extends State<GRASP> {
   @override
   void dispose() {
     channel?.sink.close();
-    questionController.dispose();
+    inputController.dispose();
     timer?.cancel();
-    questionFocus.dispose();
+    inputFocus.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -370,26 +416,26 @@ class _GRASPState extends State<GRASP> {
   }
 
   Widget buildTextField() {
-    final question = questionController.text.trim();
+    final input = inputController.text.trim();
 
     return KeyboardListener(
-      focusNode: questionFocus,
+      focusNode: inputFocus,
       onKeyEvent: (event) {
         if (!cancelling &&
             connected &&
             !running &&
-            question.isNotEmpty &&
+            input.isNotEmpty &&
             event is KeyDownEvent &&
             event.logicalKey == LogicalKeyboardKey.enter &&
             HardwareKeyboard.instance.isControlPressed) {
-          ask(question);
+          run(input);
         }
       },
       child: TextField(
         minLines: 1,
         maxLines: 5,
         keyboardType: TextInputType.multiline,
-        controller: questionController,
+        controller: inputController,
         autofocus: true,
         onChanged: (value) {
           setState(() {});
@@ -425,14 +471,14 @@ class _GRASPState extends State<GRASP> {
                     ? Icon(Icons.cancel_outlined, color: uniRed)
                     : Icon(
                         Icons.question_answer_outlined,
-                        color: question.isEmpty ? null : uniBlue,
+                        color: input.isEmpty ? null : uniBlue,
                       ),
                 onPressed: cancelling || !connected
                     ? null
                     : running
                     ? () => cancel()
-                    : question.isNotEmpty
-                    ? () => ask(question)
+                    : input.isNotEmpty
+                    ? () => run(input)
                     : null,
               ),
               IconButton(
@@ -440,7 +486,10 @@ class _GRASPState extends State<GRASP> {
                     ? "Answering question"
                     : "Reset for new question",
                 onPressed: !running && !cancelling && histories.isNotEmpty
-                    ? () async => await clear(Clear.full)
+                    ? () async {
+                        await clear(Clear.full);
+                        setState(() {});
+                      }
                     : null,
                 icon: running && !cancelling
                     ? SizedBox(
@@ -504,8 +553,8 @@ class _GRASPState extends State<GRASP> {
     );
   }
 
-  Widget buildQuestionItem(String question) {
-    return buildCardWithTitle("Question", markdown(question), color: uniGreen);
+  Widget buildInputItem(String input) {
+    return buildCardWithTitle("Question", markdown(input), color: uniGreen);
   }
 
   Widget buildUnknownItem(dynamic item) {
@@ -755,8 +804,8 @@ $result
 
   Widget buildHistoryItem(dynamic item) {
     switch (item["type"] as String) {
-      case "question":
-        return buildQuestionItem(item["question"]);
+      case "input":
+        return buildInputItem(item["input"]);
       case "system":
         return buildSystemItem(item["functions"], item["system_message"]);
       case "feedback":
@@ -836,118 +885,58 @@ $result
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: initial
-          ? Center(child: CircularProgressIndicator())
-          : StreamBuilder(
-              stream: channel?.stream,
-              builder: (_, data) {
-                if (data.connectionState == ConnectionState.done) {
-                  final code = channel?.closeCode;
-                  final reason = channel?.closeReason;
-                  if (code != null) {
-                    showMessageDelayed(
-                      reason ?? "Connection closed with code $code",
-                      color: uniRed,
-                      duration: Duration(days: 365),
-                    );
-                  }
-                  clear(Clear.none);
-                }
-                if (data.hasError) {
-                  showMessageDelayed(
-                    "Unknown error: ${data.error}",
-                    color: uniRed,
-                  );
-                } else if (data.hasData && data.data != lastData) {
-                  lastData = data.data;
-                  final json = jsonDecode(data.data);
-                  final hasTyp = json.containsKey("type");
-                  if (!hasTyp && json.containsKey("error")) {
-                    showMessageDelayed(json["error"], color: uniRed);
-                  } else if (!hasTyp && json.containsKey("cancelled")) {
-                    doDelayed(() => clear(Clear.last));
-                  } else if (hasTyp) {
-                    received(cancel: cancelling);
-                    histories.last.add(json);
-                    if (json["type"] == "output") {
-                      questionController.text = "";
-                      cancelling = false;
-                      running = false;
-                      past = Past(
-                        json["questions"],
-                        json["messages"],
-                        json["known"],
-                      );
-                      SharedPreferences.getInstance().then(
-                        (prefs) => prefs.setString(
-                          "lastOutput",
-                          jsonEncode({
-                            "pastQuestions": past!.questions,
-                            "pastMessages": past!.messages,
-                            "pastKnown": past!.known,
-                            "histories": histories,
-                          }),
-                        ),
-                      );
-                    }
-                  }
-                }
+    if (initial) {
+      return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
-                final items = histories.expand((h) => h).toList();
-                return Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: constrainWidth(
-                      Column(
-                        mainAxisAlignment: histories.isEmpty
-                            ? MainAxisAlignment.center
-                            : MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          if (histories.isNotEmpty) ...[
-                            Expanded(
-                              child: Stack(
-                                alignment: AlignmentDirectional.bottomCenter,
-                                children: [
-                                  ListView.separated(
-                                    padding: EdgeInsets.zero,
-                                    controller: scrollController,
-                                    itemCount: items.length,
-                                    itemBuilder: (_, i) =>
-                                        buildHistoryItem(items[i]),
-                                    separatorBuilder: (_, i) =>
-                                        SizedBox(height: 8),
-                                  ),
-                                  if (showScrollButtons)
-                                    Align(
-                                      alignment: Alignment.bottomRight,
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                          right: 16,
-                                          bottom: 16,
-                                        ),
-                                        child: buildUpDown(),
-                                      ),
-                                    ),
-                                ],
-                              ),
+    final items = histories.expand((h) => h).toList();
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(8),
+          child: constrainWidth(
+            Column(
+              mainAxisAlignment: histories.isEmpty
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                if (histories.isNotEmpty) ...[
+                  Expanded(
+                    child: Stack(
+                      alignment: AlignmentDirectional.bottomCenter,
+                      children: [
+                        ListView.separated(
+                          padding: EdgeInsets.zero,
+                          controller: scrollController,
+                          itemCount: items.length,
+                          itemBuilder: (_, i) => buildHistoryItem(items[i]),
+                          separatorBuilder: (_, i) => SizedBox(height: 8),
+                        ),
+                        if (showScrollButtons)
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Padding(
+                              padding: EdgeInsets.only(right: 16, bottom: 16),
+                              child: buildUpDown(),
                             ),
-                            SizedBox(height: 8),
-                          ],
-                          buildTextField(),
-                          SizedBox(height: 8),
-                          buildSelection(),
-                          SizedBox(height: 8),
-                          buildInfo(),
-                        ],
-                      ),
+                          ),
+                      ],
                     ),
                   ),
-                );
-              },
+                  SizedBox(height: 8),
+                ],
+                buildTextField(),
+                SizedBox(height: 8),
+                buildSelection(),
+                SizedBox(height: 8),
+                buildInfo(),
+              ],
             ),
+          ),
+        ),
+      ),
     );
   }
 }
