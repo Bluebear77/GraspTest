@@ -16,13 +16,11 @@ from universal_ml_utils.logging import get_logger
 from universal_ml_utils.table import generate_table
 
 from grasp.configs import KgConfig
-from grasp.examples import ExampleIndex
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import (
     is_sim_index,
     load_kg_indices,
     load_kg_info_sparqls,
-    load_kg_notes,
     load_kg_prefixes,
 )
 from grasp.sparql.types import (
@@ -64,7 +62,6 @@ class KgManager:
     entity_mapping_cls: Type[Mapping] = Mapping
     property_mapping_cls: Type[Mapping] = Mapping
     prefixes: dict[str, str]
-    notes: list[str]
     kg: str
     endpoint: str
 
@@ -76,11 +73,9 @@ class KgManager:
         entity_mapping: Mapping,
         property_mapping: Mapping,
         prefixes: dict[str, str] | None = None,
-        notes: list[str] | None = None,
         endpoint: str | None = None,
         entity_info_sparql: str | None = None,
         property_info_sparql: str | None = None,
-        example_index: ExampleIndex | None = None,
     ):
         self.kg = kg
 
@@ -93,14 +88,11 @@ class KgManager:
         self.iri_literal_parser = load_iri_and_literal_parser()
 
         self.prefixes = prefixes or {}
-        self.notes = notes or []
 
         self.entity_info_sparql = entity_info_sparql or load_entity_info_sparql()
         self.property_info_sparql = property_info_sparql or load_property_info_sparql()
 
         self.endpoint = endpoint or get_endpoint(self.kg)
-
-        self.example_index = example_index
 
         self.logger = get_logger(f"{self.kg.upper()} KG MANAGER")
 
@@ -794,11 +786,9 @@ class KgManager:
 
 
 def load_kg_manager(
-    task: str,
     cfg: KgConfig,
     entities_kwargs: dict[str, Any] | None = None,
     properties_kwargs: dict[str, Any] | None = None,
-    example_index_kwargs: dict[str, Any] | None = None,
 ) -> KgManager:
     indices = load_kg_indices(
         cfg.kg,
@@ -808,23 +798,15 @@ def load_kg_manager(
         properties_kwargs,
     )
     prefixes = load_kg_prefixes(cfg.kg, cfg.endpoint)
-    notes = load_kg_notes(cfg.kg, task, cfg.notes_file)
     ent_info_sparql, prop_info_sparql = load_kg_info_sparqls(cfg.kg)
-
-    if cfg.example_index is not None:
-        example_index = ExampleIndex.load(cfg.example_index, example_index_kwargs)
-    else:
-        example_index = None
 
     return KgManager(
         cfg.kg,
         *indices,
         prefixes,
-        notes,
         cfg.endpoint,
         ent_info_sparql,
         prop_info_sparql,
-        example_index,
     )
 
 
@@ -838,20 +820,24 @@ def find_embedding_model(managers: list[KgManager]) -> EmbeddingModel | None:
     )
 
 
-def format_kgs(managers: list[KgManager], with_notes: bool = True) -> str:
+def format_kgs(managers: list[KgManager], kg_notes: dict[str, list[str]]) -> str:
     if not managers:
         return "No knowledge graphs available"
 
-    return "\n".join(format_kg(manager, with_notes) for manager in managers)
+    return "\n".join(
+        format_kg(
+            manager,
+            kg_notes.get(manager.kg, []),
+        )
+        for manager in managers
+    )
 
 
-def format_kg(manager: KgManager, with_notes: bool = True) -> str:
+def format_kg(manager: KgManager, notes: list[str]) -> str:
     msg = f"{manager.kg} at {manager.endpoint}"
 
-    if not with_notes:
-        return msg
-    elif not manager.notes:
+    if not notes:
         return msg + " without notes"
 
-    msg += " with notes:\n" + format_list(manager.notes)
+    msg += " with notes:\n" + format_list(notes)
     return msg

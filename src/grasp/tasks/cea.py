@@ -337,13 +337,17 @@ def output(state: Annotations) -> dict:
     return {"annotations": annotations, "formatted": state.format()}
 
 
-def feedback_system_message(managers: list[KgManager], notes: list[str]) -> str:
+def feedback_system_message(
+    managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
+    notes: list[str],
+) -> str:
     return f"""\
 You are a table annotation assistant providing feedback on the \
 output of a table annotation system for a given input table.
 
 The system has access to the following knowledge graphs:
-{format_kgs(managers)}
+{format_kgs(managers, kg_notes)}
 
 The system was provided the following notes across all knowledge graphs:
 {format_notes(notes)}

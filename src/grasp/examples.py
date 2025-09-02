@@ -6,6 +6,7 @@ from search_index import IndexData, SimilarityIndex
 from universal_ml_utils.io import dump_jsonl, load_jsonl
 from universal_ml_utils.logging import get_logger
 
+from grasp.configs import Config
 from grasp.utils import Sample
 
 
@@ -105,3 +106,13 @@ class ExampleIndex:
         )
         end = time.perf_counter()
         logger.info(f"Example index built in {end - start:.2f} seconds")
+
+
+def load_example_indices(config: Config, **kwargs: Any) -> dict[str, ExampleIndex]:
+    indices = {}
+    for kg in config.knowledge_graphs:
+        if kg.example_index is None:
+            continue
+
+        indices[kg] = ExampleIndex.load(kg.example_index, **kwargs)
+    return indices

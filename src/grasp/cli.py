@@ -19,9 +19,11 @@ from grasp.adapt import adapt
 from grasp.build import build_indices, get_data
 from grasp.build.data import merge_kgs
 from grasp.configs import Adapt, Config
-from grasp.core import generate, setup
+from grasp.core import generate, load_task_notes, setup
 from grasp.evaluate import evaluate
-from grasp.examples import ExampleIndex
+from grasp.examples import ExampleIndex, load_example_indices
+from grasp.manager import find_embedding_model
+from grasp.manager.utils import load_general_notes, load_kg_notes
 from grasp.tasks import Task, default_input_field
 from grasp.utils import is_invalid_model_output, parse_parameters
 
@@ -366,7 +368,12 @@ def run_grasp(args: argparse.Namespace) -> None:
     logger = get_logger("GRASP", args.log_level)
     config = Config(**load_config(args.config))
 
-    managers, notes = setup(args.task, config)
+    managers = setup(config)
+
+    model = find_embedding_model(managers)
+    example_indices = load_example_indices(config, model=model)
+
+    notes, kg_notes = load_task_notes(args.task, config)
 
     if args.input_field is None:
         input_field = default_input_field(args.task)
@@ -437,7 +444,9 @@ def run_grasp(args: argparse.Namespace) -> None:
             ipt,
             config,
             managers,
+            kg_notes,
             notes,
+            example_indices=example_indices,
             logger=logger,
         )
 
@@ -475,7 +484,7 @@ class Past(BaseModel):
 
 class Request(BaseModel):
     task: Task
-    question: str
+    input: str
     knowledge_graphs: conlist(str, min_length=1)  # type: ignore
     past: Past | None = None
 
@@ -510,8 +519,18 @@ def serve_grasp(args: argparse.Namespace) -> None:
         allow_headers=["*"],
     )
 
-    managers, notes = setup(args.task, config)
+    managers = setup(config)
     kgs = [manager.kg for manager in managers]
+
+    model = find_embedding_model(managers)
+    example_indices = load_example_indices(config, model=model)
+
+    notes = {}
+    kg_notes = {}
+    for task in Task:
+        general_notes, kg_specific_notes = load_task_notes(task.value, config)
+        notes[task.value] = general_notes
+        kg_notes[task.value] = kg_specific_notes
 
     @app.get("/knowledge_graphs")
     async def _knowledge_graphs():
@@ -600,7 +619,9 @@ def serve_grasp(args: argparse.Namespace) -> None:
                     request.input,
                     config,
                     sel_managers,
-                    notes,
+                    kg_notes[request.task],
+                    notes[request.task],
+                    example_indices,
                     past_inputs,
                     past_messages,
                     past_known,

@@ -67,13 +67,14 @@ and provide suggestions for improving the output if applicable.""",
 def system_instructions(
     task: str,
     managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
     notes: list[str],
 ) -> str:
     if task == "sparql-qa":
-        return sparql_qa_feedback_system_instructions(managers, notes)
+        return sparql_qa_feedback_system_instructions(managers, kg_notes, notes)
 
     elif task == "cea":
-        return cea_feedback_system_instructions(managers, notes)
+        return cea_feedback_system_instructions(managers, kg_notes, notes)
 
     raise ValueError(f"System message not implemented for task: {task}")
 
@@ -92,6 +93,7 @@ def generate_feedback(
     task: str,
     managers: list[KgManager],
     config: Config,
+    kg_notes: dict[str, list[str]],
     notes: list[str],
     inputs: list[str],
     output: dict,
@@ -100,7 +102,7 @@ def generate_feedback(
     api_messages: list[dict] = [
         {
             "role": "system",
-            "content": system_instructions(task, managers, notes),
+            "content": system_instructions(task, managers, kg_notes, notes),
         },
         {
             "role": "user",

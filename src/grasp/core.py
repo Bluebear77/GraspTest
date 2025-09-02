@@ -9,12 +9,13 @@ from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
+from grasp.examples import ExampleIndex
 from grasp.functions import (
     call_function,
     kg_functions,
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
-from grasp.manager.utils import load_general_notes
+from grasp.manager.utils import load_general_notes, load_kg_notes
 from grasp.model import call_model
 from grasp.tasks import (
     rules as general_rules,
@@ -29,6 +30,7 @@ from grasp.tasks import (
 )
 from grasp.tasks.feedback import format_feedback, generate_feedback
 from grasp.tasks.sparql_qa_examples import find_examples
+from grasp.tasks.sparql_qa_examples import functions as example_functions
 from grasp.utils import (
     format_list,
     format_message,
@@ -40,7 +42,12 @@ MAX_FEEDBACKS = 2
 MAX_MESSAGES = 200
 
 
-def system_instructions(task: str, managers: list[KgManager], notes: list[str]) -> str:
+def system_instructions(
+    task: str,
+    managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
+    notes: list[str],
+) -> str:
     prefixes = {}
     for manager in managers:
         prefixes.update(manager.prefixes)
@@ -51,7 +58,7 @@ def system_instructions(task: str, managers: list[KgManager], notes: list[str]) 
 {system_info}
 
 You have access to the following knowledge graphs:
-{format_kgs(managers)}
+{format_kgs(managers, kg_notes)}
 
 You are provided with the following notes across all knowledge graphs:
 {format_notes(notes)}
@@ -63,7 +70,7 @@ You should follow these rules:
 {format_list(general_rules() + task_rules(task))}"""
 
 
-def setup(task: str, config: Config) -> tuple[list[KgManager], list[str]]:
+def setup(config: Config) -> list[KgManager]:
     emb_model: EmbeddingModel | None = None
     managers: list[KgManager] = []
     for kg in config.knowledge_graphs:
@@ -72,17 +79,28 @@ def setup(task: str, config: Config) -> tuple[list[KgManager], list[str]]:
             emb_model = find_embedding_model(managers)
 
         manager = load_kg_manager(
-            task,
             kg,
             entities_kwargs={"model": emb_model},
             properties_kwargs={"model": emb_model},
-            example_index_kwargs={"model": emb_model},
         )
         managers.append(manager)
 
-    notes = load_general_notes(task, config.notes_file)
+    return managers
 
-    return managers, notes
+
+def load_task_notes(
+    task: str,
+    config: Config,
+) -> tuple[list[str], dict[str, list[str]]]:
+    # load notes
+    general_notes = load_general_notes(task, config.notes_file)
+
+    kg_notes = {}
+    for kg in config.knowledge_graphs:
+        notes = load_kg_notes(kg.kg, task, kg.notes_file)
+        kg_notes[kg.kg] = notes
+
+    return general_notes, kg_notes
 
 
 def generate(
@@ -90,7 +108,9 @@ def generate(
     input: Any,
     config: Config,
     managers: list[KgManager],
-    notes: list[str],
+    kg_notes: dict[str, list[str]] | None = None,
+    notes: list[str] | None = None,
+    example_indices: dict[str, ExampleIndex] | None = None,
     past_inputs: list[str] | None = None,
     past_messages: list[dict] | None = None,
     past_known: set[str] | None = None,
@@ -108,10 +128,23 @@ def generate(
     task_fns, task_handler = task_functions(managers, task)
     fns.extend(task_fns)
 
+    if task == "sparql-qa" and example_indices:
+        ex_fns = example_functions(
+            example_indices,
+            config.num_examples,
+            config.random_examples,
+        )
+        task_fns.extend(ex_fns)
+
     input, task_state = task_setup(task, input)
 
+    if notes is None:
+        notes = []
+    if kg_notes is None:
+        kg_notes = {}
+
     # setup messages
-    system_instruction = system_instructions(task, managers, notes)
+    system_instruction = system_instructions(task, managers, kg_notes, notes)
     yield {
         "type": "system",
         "functions": fns,
@@ -156,10 +189,11 @@ def generate(
     # add user input
     api_messages.append({"role": "user", "content": input})
 
-    if config.force_examples:
+    if config.force_examples and example_indices:
         try:
             example_messages = find_examples(
                 managers,
+                example_indices,
                 config.force_examples,
                 input,
                 config.num_examples,
@@ -277,6 +311,7 @@ def generate(
                     search_top_k=config.search_top_k,
                     num_examples=config.num_examples,
                     know_before_use=config.know_before_use,
+                    example_indices=example_indices,
                 )
             except Exception as e:
                 result = f"Call to function {fn_name} returned an error:\n{e}"
@@ -322,6 +357,7 @@ def generate(
                 task,
                 managers,
                 config,
+                kg_notes,
                 notes,
                 inputs,
                 output,
