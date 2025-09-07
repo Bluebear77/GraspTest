@@ -12,17 +12,16 @@
     - New index format and updated indices for all knowledge graphs
     - Additional information for entities / properties is now loaded online
       from a live SPARQL endpoint
-    <!-- - Adapt GRASP to different knowledge graphs by inspecting 
-      its own outputs -->
+
   - New CLI as part of the refactor:
-    - `grasp run <config> <question>`: Run GRASP on a question
-    - `grasp file <config> <file>`: Run GRASP on a file with questions
+    - `grasp run <config> <input>`: Run GRASP on an input
+    - `grasp file <config> <file>`: Run GRASP on a file with inputs
     - `grasp serve <config>`: Start a GRASP server
-    - `grasp data <config> <kg>`: Download data for a knowledge graph
-    - `grasp index <config> <kg>`: Build indices for a knowledge graph
+    - `grasp data <kg>`: Download data for a knowledge graph
+    - `grasp merge <kg1> <kg2> ... <kg_out>`: Merge data of multiple knowledge graphs
+    - `grasp index <kg>`: Build indices for a knowledge graph
     - `grasp evaluate <file> <pred> <endpoint>`: Evaluate GRASP predictions for
-    a question file against a SPARQL endpoint
-    <!-- - `grasp adapt <config>`: Adapt GRASP to knowledge graphs -->
+    a input file against a SPARQL endpoint
 
 - July 31st 2025:
   - GRASP has been accepted to [ISWC 2025](https://iswc2025.semanticweb.org/)
