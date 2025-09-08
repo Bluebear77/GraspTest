@@ -237,20 +237,11 @@ class Alternative:
 
         s += ")"
 
-        if add_infos and self.aliases:
-            show_aliases = []
-            for i, alias in enumerate(self.aliases):
-                if i == self.matched_alias:
-                    continue
-                elif len(show_aliases) >= max_aliases:
-                    break
-
-                show_aliases.append(clip(alias))
-
-            if show_aliases:
-                s += ", also known as " + ", ".join(show_aliases)
-                if len(self.aliases) > len(show_aliases):
-                    s += ", etc."
+        if add_infos and self.aliases and max_aliases > 0:
+            show_aliases = [clip(a) for a in self.aliases[:max_aliases]]
+            s += ", also known as " + ", ".join(show_aliases)
+            if len(self.aliases) > max_aliases:
+                s += ", etc."
 
         if add_infos and self.infos:
             s += ": " + " / ".join(clip(info) for info in self.infos)
