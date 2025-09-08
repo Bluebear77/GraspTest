@@ -38,9 +38,6 @@ from grasp.utils import (
     format_prefixes,
 )
 
-MAX_FEEDBACKS = 2
-MAX_MESSAGES = 200
-
 
 def system_instructions(
     task: str,
@@ -232,7 +229,7 @@ def generate(
     error: dict | None = None
 
     retries = 0
-    while len(api_messages) < MAX_MESSAGES:
+    while len(api_messages) < config.max_messages:
         try:
             response = call_model(api_messages, fns, config)
         except Timeout:
@@ -332,7 +329,7 @@ def generate(
                 should_stop = True
                 break
 
-        can_give_feedback = config.feedback and retries < MAX_FEEDBACKS
+        can_give_feedback = config.feedback and retries < config.max_feedbacks
 
         if should_stop and not can_give_feedback:
             # done

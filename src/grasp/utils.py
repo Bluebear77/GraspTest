@@ -54,8 +54,8 @@ def format_message(message: dict) -> str:
     if message.get("reasoning_content"):
         content += f"Reasoning:\n{message['reasoning_content'].strip()}\n\n"
 
-    content += message.get("content", "").strip()
-    content += "\n\n"
+    if message.get("content"):
+        content += f"Content:\n{message['content'].strip()}\n\n"
 
     for tool_call in message.get("tool_calls", []):
         call = tool_call["function"]

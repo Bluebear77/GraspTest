@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Iterator
 
 from pydantic import BaseModel
@@ -7,6 +8,30 @@ from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.sparql.utils import parse_into_binding
 from grasp.utils import FunctionCallException, format_list, format_notes
+
+
+@dataclass
+class Annotation:
+    identifier: str
+    entity: str
+    label: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "identifier": self.identifier,
+            "entity": self.entity,
+            "label": self.label,
+        }
+
+    def format(self, with_label: bool = False) -> str:
+        s = self.entity
+        if self.label and with_label:
+            s += f": {self.label}"
+        return s
+
+
+def clean(s: str) -> str:
+    return " ".join(s.strip().split())
 
 
 class Annotations:
@@ -23,16 +48,16 @@ class Annotations:
         )
         self.width = len(header)
         self.height = len(data)
-        self.header = header
-        self.data = data
+        self.header = [clean(h) for h in header]
+        self.data = [[clean(cell) for cell in row] for row in data]
 
         self.rows = set(annotate_rows) if annotate_rows is not None else None
         self.cols = set(annotate_columns) if annotate_columns is not None else None
 
-        # map from cell (row, column) to entity IRI
-        self.annotations = {}
+        # map from cell (row, column) to annoation
+        self.annotations: dict[tuple[int, int], Annotation] = {}
 
-    def iter(self) -> Iterator[list[tuple[str, str] | None]]:
+    def iter(self) -> Iterator[list[Annotation | None]]:
         for r in range(self.height):
             yield [self.get(r, c) for c in range(self.width)]
 
@@ -40,8 +65,8 @@ class Annotations:
         self,
         row: int,
         column: int,
-        entity: tuple[str, str] | None,
-    ) -> tuple[str, str] | None:
+        annotation: Annotation | None,
+    ) -> Annotation | None:
         if row < 0 or row >= self.height:
             raise ValueError(f"Row {row} out of bounds")
 
@@ -55,38 +80,45 @@ class Annotations:
             raise ValueError(f"Column {column} must not be annotated")
 
         current = self.annotations.pop((row, column), None)
-        if entity is not None:
-            self.annotations[(row, column)] = entity
+        if annotation is not None:
+            self.annotations[(row, column)] = annotation
         return current
 
-    def get(self, row: int, column: int) -> tuple[str, str] | None:
+    def get(self, row: int, column: int) -> Annotation | None:
         return self.annotations.get((row, column), None)
 
-    def to_dict(self) -> dict:
+    def to_dict(self, with_labels: bool = False) -> dict:
         return {
-            "formatted": self.format(),
+            "formatted": self.format(with_labels),
             "annotations": [
                 {
                     "row": row,
                     "column": column,
-                    "entity": entity,
-                    "identifier": identifier,
+                    **annot.to_dict(),
                 }
-                for (row, column), (entity, identifier) in self.annotations.items()
+                for (row, column), annot in self.annotations.items()
             ],
         }
 
-    def format(self) -> str:
+    def format(self, with_labels: bool = False) -> str:
         data = [
             [str(i)]
             + [
-                col + (f" ({entity[0]})" if entity is not None else "")
-                for col, entity in zip(row, annots)
+                col + (f" ({annot.format(with_labels)})" if annot is not None else "")
+                for col, annot in zip(row, annots)
             ]
             for i, (row, annots) in enumerate(zip(self.data, self.iter()))
         ]
+        max_data_width = max(len(cell) for row in data for cell in row)
+
         header = ["Row"] + [f"Column {i}: {name}" for i, name in enumerate(self.header)]
-        table = generate_table(data=data, headers=[header])
+        max_header_width = max(len(h) for h in header)
+
+        table = generate_table(
+            data=data,
+            headers=[header],
+            max_column_width=max(max_data_width, max_header_width),
+        )
         return table
 
 
@@ -100,6 +132,7 @@ def rules() -> list[str]:
         "All of your annotations should be full or prefixed IRIs.",
         "Every once in a while and before stopping, look at your current annotations and "
         "verify that they make sense.",
+        "If the same entity occurs multiple times in the table, annotate all occurrences.",
     ]
 
 
@@ -203,6 +236,24 @@ Finalize your annotations and stop the annotation process.""",
     return fns, call_function
 
 
+def prepare_annotation(manager: KgManager, entity: str) -> Annotation:
+    binding = parse_into_binding(entity, manager.iri_literal_parser, manager.prefixes)
+    if binding is None or binding.typ != "uri":
+        raise ValueError(f"Entity {entity} is not a valid IRI")
+
+    identifier = binding.identifier()
+
+    label = None
+
+    map = manager.entity_mapping
+    norm = map.normalize(identifier)
+    if norm is not None and norm[0] in map:
+        id = map[norm[0]]
+        label = manager.entity_index.get_name(id)
+
+    return Annotation(identifier, entity, label)
+
+
 def annotate(
     managers: list[KgManager],
     kg: str,
@@ -213,19 +264,16 @@ def annotate(
 ) -> str:
     manager, _ = find_manager(managers, kg)
 
-    binding = parse_into_binding(entity, manager.iri_literal_parser, manager.prefixes)
-    if binding is None or binding.typ != "uri":
-        raise FunctionCallException(f"Entity {entity} is not a valid IRI")
-
     try:
-        current = state.annotate(row, column, (entity, binding.identifier()))
+        annotation = prepare_annotation(manager, entity)
+        current = state.annotate(row, column, annotation)
     except ValueError as e:
         raise FunctionCallException(str(e)) from e
 
     if current is None:
         return f"Annotated cell ({row}, {column}) with entity {entity}"
     else:
-        return f"Updated annotation of cell ({row}, {column}) from {current[0]} to {entity}"
+        return f"Updated annotation of cell ({row}, {column}) from {current.entity} to {entity}"
 
 
 def clear(row: int, column: int, state: Annotations) -> str:
@@ -237,7 +285,7 @@ def clear(row: int, column: int, state: Annotations) -> str:
     if current is None:
         raise FunctionCallException(f"Cell ({row}, {column}) is not annotated")
 
-    return f"Cleared annotation {current[0]} from cell ({row}, {column})"
+    return f"Cleared annotation {current.entity} from cell ({row}, {column})"
 
 
 class CEAInput(BaseModel):
@@ -256,15 +304,17 @@ for some cells, they are shown in parentheses after the cell value.
 
     if annotations.rows is not None and len(annotations.rows) != annotations.height:
         rows_to_annotate = ", ".join(str(r) for r in sorted(annotations.rows))
-        instructions += f"Only annotate rows with indices {rows_to_annotate}.\n\n"
+        sfx = "s" if len(annotations.rows) != 1 else ""
+        instructions += f"Only annotate row{sfx} {rows_to_annotate}.\n\n"
     else:
-        instructions += "You should annotate all rows.\n\n"
+        instructions += "Annotate all rows.\n\n"
 
     if annotations.cols is not None and len(annotations.cols) != annotations.width:
         cols_to_annotate = ", ".join(str(c) for c in sorted(annotations.cols))
-        instructions += f"Only annotate columns with indices {cols_to_annotate}.\n\n"
+        sfx = "s" if len(annotations.cols) != 1 else ""
+        instructions += f"Only annotate column{sfx} {cols_to_annotate}.\n\n"
     else:
-        instructions += "You should annotate all columns.\n\n"
+        instructions += "Annotate all columns.\n\n"
 
     instructions += annotations.format()
     return instructions
@@ -324,17 +374,7 @@ def call_function(
 
 
 def output(state: Annotations) -> dict:
-    annotations = []
-    for (row, column), (entity, identifier) in state.annotations.items():
-        annotations.append(
-            {
-                "row": row,
-                "column": column,
-                "entity": entity,
-                "identifier": identifier,
-            }
-        )
-    return {"annotations": annotations, "formatted": state.format()}
+    return state.to_dict(with_labels=True)
 
 
 def feedback_system_message(

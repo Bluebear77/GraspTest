@@ -14,6 +14,7 @@ class KgConfig(BaseModel):
 class Config(BaseModel):
     model: str = "openai/gpt-5-mini"
     model_endpoint: str | None = None
+    model_kwargs: dict[str, Any] | None = None
 
     seed: int | None = None
     fn_set: str = "search_extended"
@@ -42,8 +43,9 @@ class Config(BaseModel):
     reasoning_effort: str | None = None
 
     # completion parameters
-    max_completion_tokens: int = 16384  # 16k, leaves enough space for reasoning models
+    max_completion_tokens: int = 8192  # 8k, leaves enough space for reasoning models
     completion_timeout: float = 120.0
+    max_messages: int = 200
 
     # example parameters
     num_examples: int = 3
@@ -52,6 +54,7 @@ class Config(BaseModel):
 
     # enable feedback loop
     feedback: bool = False
+    max_feedbacks: int = 2
 
 
 class AdaptInput(BaseModel):
