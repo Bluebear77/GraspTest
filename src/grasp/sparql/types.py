@@ -247,9 +247,10 @@ class Alternative:
 
                 show_aliases.append(clip(alias))
 
-            s += ", also known as " + ", ".join(show_aliases)
-            if len(self.aliases) > len(show_aliases):
-                s += ", etc."
+            if show_aliases:
+                s += ", also known as " + ", ".join(show_aliases)
+                if len(self.aliases) > len(show_aliases):
+                    s += ", etc."
 
         if add_infos and self.infos:
             s += ": " + " / ".join(clip(info) for info in self.infos)

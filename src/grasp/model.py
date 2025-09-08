@@ -24,8 +24,7 @@ def call_model(
         base_url=config.model_endpoint,
         timeout=config.completion_timeout,
         seed=config.seed,
-        extra_body=config.model_kwargs,
-        # extra_body={"chat_template_kwargs": {"enable_thinking": False}},
+        extra_body={} if config.model_kwargs is None else config.model_kwargs,
         # drop unsupported parameters
         drop_params=True,
     )
