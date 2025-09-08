@@ -8,6 +8,12 @@ from universal_ml_utils.logging import get_logger
 from grasp.configs import Config
 from grasp.manager import KgManager
 from grasp.model import call_model
+from grasp.tasks.cea import (
+    feedback_instructions as cea_feedback_instructions,
+)
+from grasp.tasks.cea import (
+    feedback_system_message as cea_feedback_system_instructions,
+)
 from grasp.tasks.sparql_qa import (
     feedback_instructions as sparql_qa_feedback_instructions,
 )
@@ -61,17 +67,24 @@ and provide suggestions for improving the output if applicable.""",
 def system_instructions(
     task: str,
     managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
     notes: list[str],
 ) -> str:
     if task == "sparql-qa":
-        return sparql_qa_feedback_system_instructions(managers, notes)
+        return sparql_qa_feedback_system_instructions(managers, kg_notes, notes)
+
+    elif task == "cea":
+        return cea_feedback_system_instructions(managers, kg_notes, notes)
 
     raise ValueError(f"System message not implemented for task: {task}")
 
 
-def feedback_instructions(task: str, questions: list[str], output: Any) -> str:
+def feedback_instructions(task: str, inputs: list[str], output: Any) -> str:
     if task == "sparql-qa":
-        return sparql_qa_feedback_instructions(questions, output)
+        return sparql_qa_feedback_instructions(inputs, output)
+
+    elif task == "cea":
+        return cea_feedback_instructions(inputs, output)
 
     raise ValueError(f"Feedback not implemented for task: {task}")
 
@@ -80,19 +93,20 @@ def generate_feedback(
     task: str,
     managers: list[KgManager],
     config: Config,
+    kg_notes: dict[str, list[str]],
     notes: list[str],
-    questions: list[str],
+    inputs: list[str],
     output: dict,
     logger: Logger = get_logger("GRASP FEEDBACK"),
 ) -> dict | None:
     api_messages: list[dict] = [
         {
             "role": "system",
-            "content": system_instructions(task, managers, notes),
+            "content": system_instructions(task, managers, kg_notes, notes),
         },
         {
             "role": "user",
-            "content": feedback_instructions(task, questions, output),
+            "content": feedback_instructions(task, inputs, output),
         },
     ]
     for msg in api_messages:

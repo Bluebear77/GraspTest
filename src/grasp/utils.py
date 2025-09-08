@@ -54,8 +54,8 @@ def format_message(message: dict) -> str:
     if message.get("reasoning_content"):
         content += f"Reasoning:\n{message['reasoning_content'].strip()}\n\n"
 
-    content += message.get("content", "").strip()
-    content += "\n\n"
+    if message.get("content"):
+        content += f"Content:\n{message['content'].strip()}\n\n"
 
     for tool_call in message.get("tool_calls", []):
         call = tool_call["function"]
@@ -136,7 +136,7 @@ def is_invalid_model_output(model_output: dict | None) -> bool:
 
 
 def parse_parameters(headers: list[str]) -> dict[str, str]:
-    # each header is formatted as key:value
+    # each parameter is formatted as key:value
     header_dict = {}
     for header in headers:
         key, value = header.split(":", 1)

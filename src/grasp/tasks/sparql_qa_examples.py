@@ -2,7 +2,7 @@ import json
 import random
 from uuid import uuid4
 
-from grasp.functions import find_manager
+from grasp.examples import ExampleIndex
 from grasp.manager import KgManager
 from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
 from grasp.utils import Sample
@@ -12,16 +12,14 @@ MIN_EXAMPLE_SCORE = 0.5
 
 
 def functions(
-    managers: list[KgManager],
+    example_indices: dict[str, ExampleIndex],
     num_examples: int = 3,
     random_examples: bool = False,
 ) -> list[dict]:
-    example_kgs = [
-        manager.kg for manager in managers if manager.example_index is not None
-    ]
-    if not example_kgs:
+    if not example_indices:
         return []
 
+    example_kgs = list(example_indices)
     example_info = "\n".join(example_kgs)
 
     if random_examples:
@@ -122,20 +120,20 @@ def format_examples(
 
 def find_random_examples(
     managers: list[KgManager],
+    example_indices: dict[str, ExampleIndex],
     kg: str,
     num_examples: int,
     known: set[str],
     max_rows: int,
     max_cols: int,
 ) -> str:
-    manager, _ = find_manager(managers, kg)
+    if kg not in example_indices:
+        return f"No example index for knowledge graph {kg}"
 
-    if manager.example_index is None:
-        return f"No example index for knowledge graph {manager.kg}"
-
+    example_index = example_indices[kg]
     examples = random.sample(
-        manager.example_index.samples,
-        min(num_examples, len(manager.example_index)),
+        example_index.samples,
+        min(num_examples, len(example_index)),
     )
 
     return format_examples(
@@ -150,6 +148,7 @@ def find_random_examples(
 
 def find_similar_examples(
     managers: list[KgManager],
+    example_indices: dict[str, ExampleIndex],
     kg: str,
     question: str,
     num_examples: int,
@@ -157,13 +156,12 @@ def find_similar_examples(
     max_rows: int,
     max_cols: int,
 ) -> str:
-    manager, _ = find_manager(managers, kg)
+    if kg not in example_indices:
+        return f"No example index for knowledge graph {kg}"
 
-    if manager.example_index is None:
-        # should not happen, but handle anyway
-        return f"No example index for knowledge graph {manager.kg}"
+    example_index = example_indices[kg]
 
-    examples = manager.example_index.find_matches(
+    examples = example_index.find_matches(
         question,
         num_examples,
         min_score=MIN_EXAMPLE_SCORE,
@@ -181,6 +179,7 @@ def find_similar_examples(
 
 def find_examples(
     managers: list[KgManager],
+    example_indices: dict[str, ExampleIndex],
     kg: str,
     question: str,
     num_examples: int,
@@ -192,6 +191,7 @@ def find_examples(
     if random_examples:
         tool_result = find_random_examples(
             managers,
+            example_indices,
             kg,
             num_examples,
             known,
@@ -205,6 +205,7 @@ def find_examples(
     else:
         tool_result = find_similar_examples(
             managers,
+            example_indices,
             kg,
             question,
             num_examples,

@@ -29,9 +29,12 @@ class Mapping:
         mapping.map = SearchIndexMapping.load(data, mapping_file)  # type: ignore
         return mapping
 
-    def __getitem__(self, iri: str) -> int:
+    def get(self, iri: str) -> int | None:
         assert self.map is not None, "mapping not loaded"
-        item = self.map.get(iri)
+        return self.map.get(iri)
+
+    def __getitem__(self, iri: str) -> int:
+        item = self.get(iri)
         assert item is not None, f"{iri} not in mapping"
         return item
 
@@ -49,8 +52,7 @@ class Mapping:
         return None
 
     def __contains__(self, iri: str) -> bool:
-        assert self.map is not None, "mapping not loaded"
-        return self.map.get(iri) is not None
+        return self.get(iri) is not None
 
 
 class WikidataPropertyMapping(Mapping):

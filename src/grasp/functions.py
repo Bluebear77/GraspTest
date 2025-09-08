@@ -380,6 +380,7 @@ def call_function(
     fn_set: str,
     known: set[str],
     task_handler: TaskHandler | None = None,
+    task_state: Any = None,
     **kwargs: Any,
 ) -> str:
     if fn_name == "execute":
@@ -477,7 +478,7 @@ def call_function(
             fn_name,
             fn_args,
             known,
-            kwargs.get("task_state"),
+            task_state,
         )
 
     else:

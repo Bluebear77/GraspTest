@@ -16,13 +16,11 @@ from universal_ml_utils.logging import get_logger
 from universal_ml_utils.table import generate_table
 
 from grasp.configs import KgConfig
-from grasp.examples import ExampleIndex
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import (
     is_sim_index,
     load_kg_indices,
     load_kg_info_sparqls,
-    load_kg_notes,
     load_kg_prefixes,
 )
 from grasp.sparql.types import (
@@ -64,7 +62,6 @@ class KgManager:
     entity_mapping_cls: Type[Mapping] = Mapping
     property_mapping_cls: Type[Mapping] = Mapping
     prefixes: dict[str, str]
-    notes: list[str]
     kg: str
     endpoint: str
 
@@ -76,11 +73,9 @@ class KgManager:
         entity_mapping: Mapping,
         property_mapping: Mapping,
         prefixes: dict[str, str] | None = None,
-        notes: list[str] | None = None,
         endpoint: str | None = None,
         entity_info_sparql: str | None = None,
         property_info_sparql: str | None = None,
-        example_index: ExampleIndex | None = None,
     ):
         self.kg = kg
 
@@ -93,14 +88,11 @@ class KgManager:
         self.iri_literal_parser = load_iri_and_literal_parser()
 
         self.prefixes = prefixes or {}
-        self.notes = notes or []
 
         self.entity_info_sparql = entity_info_sparql or load_entity_info_sparql()
         self.property_info_sparql = property_info_sparql or load_property_info_sparql()
 
         self.endpoint = endpoint or get_endpoint(self.kg)
-
-        self.example_index = example_index
 
         self.logger = get_logger(f"{self.kg.upper()} KG MANAGER")
 
@@ -343,6 +335,7 @@ class KgManager:
         synonyms: list[str],
         infos: list[str],
         variants: set[str] | None = None,
+        matched_synonym: int | None = None,
     ) -> Alternative:
         return Alternative(
             identifier=identifier,
@@ -351,6 +344,7 @@ class KgManager:
             variants=variants,
             aliases=synonyms,
             infos=sorted(infos, key=len, reverse=True),
+            matched_alias=matched_synonym,
         )
 
     def parse_bindings(self, result: Iterable[Binding | None]) -> dict[ObjType, Any]:
@@ -493,6 +487,7 @@ class KgManager:
         if id_map is not None:
             index = index.sub_index_by_ids(list(id_map))
 
+        col_map = None
         if query is None:
             if id_map is None:
                 ids = list(range(min(k, len(index))))
@@ -501,15 +496,14 @@ class KgManager:
         else:
             kwargs = {}
             if index.get_type() == "similarity":
-                # similarity index needs k and min score passed
-                # to find_matches
-                kwargs["k"] = k
+                # similarity index can also have min score passed
                 kwargs["min_score"] = search_kwargs.get("min_score")
-            elif index.get_type() == "prefix":
-                kwargs["no_refinement"] = search_kwargs.get("no_refinement", False)
-                kwargs["min_keyword_length"] = search_kwargs.get("min_keyword_length")
 
-            ids = [id for id, _ in index.find_matches(query, **kwargs)[:k]]
+            ids = []
+            col_map = {}
+            for id, _, col in index.find_matches(query, k=k, **kwargs):
+                ids.append(id)
+                col_map[id] = col
 
         if info_sparql is None:
             infos = {}
@@ -526,12 +520,21 @@ class KgManager:
 
             identifier, label, *synonyms = index.get_row(id)
 
+            matched_synonym = None
+            if col_map is not None and id in col_map:
+                matched_synonym = col_map[id] - 1  # for identifier column
+                if matched_synonym == 0:  # main label, always shown
+                    matched_synonym = None
+                else:
+                    matched_synonym -= 1  # offset in synonyms
+
             alternative = self.build_alternative(
                 identifier,
                 label,
                 synonyms,
                 infos.get(identifier, []),
                 variants,
+                matched_synonym,
             )
             alternatives.append(alternative)
 
@@ -542,7 +545,6 @@ class KgManager:
         data: list[tuple[str, str, list[str]]],
         query: str | None = None,
         k: int = 10,
-        **search_kwargs: Any,
     ) -> list[Alternative]:
         if query is None:
             return [
@@ -558,7 +560,7 @@ class KgManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             # build temporary index and search in it
             data_file = os.path.join(temp_dir, "data.tsv")
-            offset_file = os.path.join(temp_dir, "data.offsets")
+            offset_file = os.path.join(temp_dir, "offsets.bin")
             index_dir = os.path.join(temp_dir, "index")
             os.makedirs(index_dir, exist_ok=True)
             self.logger.debug(
@@ -585,12 +587,8 @@ class KgManager:
             index = PrefixIndex.load(index_data, index_dir)
 
             alternatives = []
-            matches = index.find_matches(
-                query,
-                min_keyword_length=search_kwargs.get("min_keyword_length"),
-                no_refinement=search_kwargs.get("no_refinement", False),
-            )
-            for id, _ in matches[:k]:
+            matches = index.find_matches(query, k=k)
+            for id, _ in matches:
                 identifier, label = index_data.get_row(id)  # type: ignore
                 alternatives.append(
                     Alternative(
@@ -763,7 +761,6 @@ class KgManager:
                 search_items[obj_type],
                 search_query,
                 k,
-                **search_kwargs,
             )
 
         end = time.perf_counter()
@@ -797,7 +794,6 @@ def load_kg_manager(
     cfg: KgConfig,
     entities_kwargs: dict[str, Any] | None = None,
     properties_kwargs: dict[str, Any] | None = None,
-    example_index_kwargs: dict[str, Any] | None = None,
 ) -> KgManager:
     indices = load_kg_indices(
         cfg.kg,
@@ -807,23 +803,15 @@ def load_kg_manager(
         properties_kwargs,
     )
     prefixes = load_kg_prefixes(cfg.kg, cfg.endpoint)
-    notes = load_kg_notes(cfg.kg, cfg.notes_file)
     ent_info_sparql, prop_info_sparql = load_kg_info_sparqls(cfg.kg)
-
-    if cfg.example_index is not None:
-        example_index = ExampleIndex.load(cfg.example_index, example_index_kwargs)
-    else:
-        example_index = None
 
     return KgManager(
         cfg.kg,
         *indices,
         prefixes,
-        notes,
         cfg.endpoint,
         ent_info_sparql,
         prop_info_sparql,
-        example_index,
     )
 
 
@@ -837,20 +825,24 @@ def find_embedding_model(managers: list[KgManager]) -> EmbeddingModel | None:
     )
 
 
-def format_kgs(managers: list[KgManager], with_notes: bool = True) -> str:
+def format_kgs(managers: list[KgManager], kg_notes: dict[str, list[str]]) -> str:
     if not managers:
         return "No knowledge graphs available"
 
-    return "\n".join(format_kg(manager, with_notes) for manager in managers)
+    return "\n".join(
+        format_kg(
+            manager,
+            kg_notes.get(manager.kg, []),
+        )
+        for manager in managers
+    )
 
 
-def format_kg(manager: KgManager, with_notes: bool = True) -> str:
+def format_kg(manager: KgManager, notes: list[str]) -> str:
     msg = f"{manager.kg} at {manager.endpoint}"
 
-    if not with_notes:
-        return msg
-    elif not manager.notes:
+    if not notes:
         return msg + " without notes"
 
-    msg += " with notes:\n" + format_list(manager.notes)
+    msg += " with notes:\n" + format_list(notes)
     return msg

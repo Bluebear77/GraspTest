@@ -2,19 +2,20 @@ import json
 import time
 from copy import deepcopy
 from logging import Logger
-from typing import Iterator
+from typing import Any, Iterator
 
 from litellm.exceptions import Timeout
 from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
+from grasp.examples import ExampleIndex
 from grasp.functions import (
     call_function,
     kg_functions,
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
-from grasp.manager.utils import load_general_notes
+from grasp.manager.utils import load_general_notes, load_kg_notes
 from grasp.model import call_model
 from grasp.tasks import (
     rules as general_rules,
@@ -24,11 +25,12 @@ from grasp.tasks import (
     task_functions,
     task_output,
     task_rules,
-    task_state,
+    task_setup,
     task_system_information,
 )
 from grasp.tasks.feedback import format_feedback, generate_feedback
 from grasp.tasks.sparql_qa_examples import find_examples
+from grasp.tasks.sparql_qa_examples import functions as example_functions
 from grasp.utils import (
     format_list,
     format_message,
@@ -36,11 +38,21 @@ from grasp.utils import (
     format_prefixes,
 )
 
-MAX_FEEDBACKS = 2
-MAX_MESSAGES = 200
+
+def message_hash(msg: dict) -> str:
+    msg = deepcopy(msg)
+    for tool_call in msg.get("tool_calls", []):
+        # id would make hash useless
+        tool_call.pop("id")
+    return json.dumps(msg, sort_keys=True)
 
 
-def system_instructions(task: str, managers: list[KgManager], notes: list[str]) -> str:
+def system_instructions(
+    task: str,
+    managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
+    notes: list[str],
+) -> str:
     prefixes = {}
     for manager in managers:
         prefixes.update(manager.prefixes)
@@ -51,7 +63,7 @@ def system_instructions(task: str, managers: list[KgManager], notes: list[str]) 
 {system_info}
 
 You have access to the following knowledge graphs:
-{format_kgs(managers)}
+{format_kgs(managers, kg_notes)}
 
 You are provided with the following notes across all knowledge graphs:
 {format_notes(notes)}
@@ -63,7 +75,7 @@ You should follow these rules:
 {format_list(general_rules() + task_rules(task))}"""
 
 
-def setup(config: Config) -> tuple[list[KgManager], list[str]]:
+def setup(config: Config) -> list[KgManager]:
     emb_model: EmbeddingModel | None = None
     managers: list[KgManager] = []
     for kg in config.knowledge_graphs:
@@ -75,43 +87,69 @@ def setup(config: Config) -> tuple[list[KgManager], list[str]]:
             kg,
             entities_kwargs={"model": emb_model},
             properties_kwargs={"model": emb_model},
-            example_index_kwargs={"model": emb_model},
         )
         managers.append(manager)
 
-    notes = load_general_notes(config.notes_file)
+    return managers
 
-    return managers, notes
+
+def load_task_notes(
+    task: str,
+    config: Config,
+) -> tuple[list[str], dict[str, list[str]]]:
+    # load notes
+    general_notes = load_general_notes(task, config.notes_file)
+
+    kg_notes = {}
+    for kg in config.knowledge_graphs:
+        notes = load_kg_notes(kg.kg, task, kg.notes_file)
+        kg_notes[kg.kg] = notes
+
+    return general_notes, kg_notes
 
 
 def generate(
     task: str,
-    question: str,
+    input: Any,
     config: Config,
     managers: list[KgManager],
-    notes: list[str],
-    past_questions: list[str] | None = None,
+    kg_notes: dict[str, list[str]] | None = None,
+    notes: list[str] | None = None,
+    example_indices: dict[str, ExampleIndex] | None = None,
+    past_inputs: list[str] | None = None,
     past_messages: list[dict] | None = None,
     past_known: set[str] | None = None,
     logger: Logger = get_logger("GRASP"),
 ) -> Iterator[dict]:
     if task != "sparql-qa":
-        # disable feedback and examples for tasks other than sparql-qa
+        # disable examples for tasks other than sparql-qa
         # to avoid errors due to missing implementations
         config = deepcopy(config)
-        config.feedback = False
         config.force_examples = None
-        logger.debug(f"Disabling feedback and examples for {task} task")
+        logger.debug(f"Disabling examples for {task} task")
 
     # setup functions
     fns = kg_functions(managers, config.fn_set)
     task_fns, task_handler = task_functions(managers, task)
     fns.extend(task_fns)
 
-    state = task_state(task)
+    if task == "sparql-qa" and example_indices:
+        ex_fns = example_functions(
+            example_indices,
+            config.num_examples,
+            config.random_examples,
+        )
+        task_fns.extend(ex_fns)
+
+    input, task_state = task_setup(task, input)
+
+    if notes is None:
+        notes = []
+    if kg_notes is None:
+        kg_notes = {}
 
     # setup messages
-    system_instruction = system_instructions(task, managers, notes)
+    system_instruction = system_instructions(task, managers, kg_notes, notes)
     yield {
         "type": "system",
         "functions": fns,
@@ -147,21 +185,22 @@ def generate(
 
         api_messages.extend(past_messages[1:])
 
-    questions = past_questions or []
-    questions.append(question)
+    inputs = past_inputs or []
+    inputs.append(input)
     known = past_known or set()
 
     start = time.perf_counter()
 
-    # add user question
-    api_messages.append({"role": "user", "content": question})
+    # add user input
+    api_messages.append({"role": "user", "content": input})
 
-    if config.force_examples:
+    if config.force_examples and example_indices:
         try:
             example_messages = find_examples(
                 managers,
+                example_indices,
                 config.force_examples,
-                question,
+                input,
                 config.num_examples,
                 config.random_examples,
                 known,
@@ -197,8 +236,11 @@ def generate(
 
     error: dict | None = None
 
+    # keep track of last serialized message to detect loops
+    # if model emits the same message twice, we are stuck
+    last_msg_hash: str | None = None
     retries = 0
-    while len(api_messages) < MAX_MESSAGES:
+    while len(api_messages) < config.max_messages:
         try:
             response = call_model(api_messages, fns, config)
         except Timeout:
@@ -229,6 +271,17 @@ def generate(
 
         msg = choice.message.model_dump(exclude_none=True)  # type: ignore
         api_messages.append(msg)
+
+        msg_hash = message_hash(msg)
+        if last_msg_hash == msg_hash:
+            error = {
+                "content": "LLM appears to be stuck in a loop",
+                "reason": "loop",
+            }
+            logger.error(format_message({"role": "error", **error}))
+            break
+
+        last_msg_hash = msg_hash
 
         # display usage info for assistant messages
         fmt_msg = deepcopy(msg)
@@ -270,12 +323,14 @@ def generate(
                     config.fn_set,
                     known,
                     task_handler,
+                    task_state,
                     result_max_rows=config.result_max_rows,
                     result_max_columns=config.result_max_columns,
                     list_k=config.list_k,
                     search_top_k=config.search_top_k,
                     num_examples=config.num_examples,
                     know_before_use=config.know_before_use,
+                    example_indices=example_indices,
                 )
             except Exception as e:
                 result = f"Call to function {fn_name} returned an error:\n{e}"
@@ -296,7 +351,7 @@ def generate(
                 should_stop = True
                 break
 
-        can_give_feedback = config.feedback and retries < MAX_FEEDBACKS
+        can_give_feedback = config.feedback and retries < config.max_feedbacks
 
         if should_stop and not can_give_feedback:
             # done
@@ -311,7 +366,7 @@ def generate(
             break
 
         # get latest output
-        output = task_output(task, api_messages, managers, config, state)
+        output = task_output(task, api_messages, managers, config, task_state)
         if output is None:
             break
 
@@ -321,8 +376,9 @@ def generate(
                 task,
                 managers,
                 config,
+                kg_notes,
                 notes,
-                questions,
+                inputs,
                 output,
                 logger,
             )
@@ -356,7 +412,7 @@ def generate(
         # if not done, continue
         retries += 1
 
-    output = task_output(task, api_messages, managers, config, state)
+    output = task_output(task, api_messages, managers, config, task_state)
 
     logger.info(
         format_message({"role": "output", "content": json.dumps(output, indent=2)})
@@ -369,7 +425,7 @@ def generate(
         "output": output,
         "elapsed": end - start,
         "error": error,
-        "questions": questions,
+        "inputs": inputs,
         "messages": api_messages,
         "known": list(known),
     }

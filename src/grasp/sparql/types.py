@@ -180,6 +180,7 @@ class Alternative:
         variants: set[str] | None = None,
         aliases: list[str] | None = None,
         infos: list[str] | None = None,
+        matched_alias: int | None = None,
     ) -> None:
         self.identifier = identifier
         self.short_identifier = short_identifier
@@ -187,6 +188,7 @@ class Alternative:
         self.aliases = aliases
         self.variants = variants
         self.infos = infos
+        self.matched_alias = matched_alias
 
     def __hash__(self) -> int:
         # hash identifier
@@ -221,18 +223,33 @@ class Alternative:
     ) -> str:
         s = self.get_label() or self.get_identifier()
 
-        if add_infos and max_aliases and self.aliases:
-            s += ", also known as " + ", ".join(
-                clip(a) for a in self.aliases[:max_aliases]
-            )
-
         variants = self.variants if include_variants is None else include_variants
         if self.has_label() and not variants:
-            s += f" ({self.get_identifier()})"
+            s += f" ({self.get_identifier()}"
         elif not self.has_label() and variants:
-            s += f" (as {'/'.join(variants)})"
+            s += f" (as {'/'.join(variants)}"
         elif self.has_label() and variants:
-            s += f" ({self.get_identifier()} as {'/'.join(variants)})"
+            s += f" ({self.get_identifier()} as {'/'.join(variants)}"
+
+        if self.aliases and self.matched_alias is not None:
+            alias = clip(self.aliases[self.matched_alias])
+            s += f", matched via {alias}"
+
+        s += ")"
+
+        if add_infos and self.aliases:
+            show_aliases = []
+            for i, alias in enumerate(self.aliases):
+                if i == self.matched_alias:
+                    continue
+                elif len(show_aliases) >= max_aliases:
+                    break
+
+                show_aliases.append(clip(alias))
+
+            s += ", also known as " + ", ".join(show_aliases)
+            if len(self.aliases) > len(show_aliases):
+                s += ", etc."
 
         if add_infos and self.infos:
             s += ": " + " / ".join(clip(info) for info in self.infos)

@@ -681,7 +681,7 @@ def prepare(args: argparse.Namespace):
     os.makedirs(args.out_dir, exist_ok=True)
 
     cfg = KgConfig(kg=kg)
-    manager = load_kg_manager(cfg)
+    manager = load_kg_manager("sparql-qa", cfg)
 
     for split, samples in benchmark.items():
         out = os.path.join(args.out_dir, f"{split}.jsonl")

@@ -128,10 +128,6 @@ the SPARQL query needs to be executed",
             },
         },
     ]
-
-    example_fns = example_functions(managers)
-    fns.extend(example_fns)
-
     return fns, call_function
 
 
@@ -152,6 +148,7 @@ def call_function(
     elif fn_name == "find_examples":
         return find_random_examples(
             managers,
+            kwargs["example_indices"],
             fn_args["kg"],
             kwargs["num_examples"],
             known,
@@ -162,6 +159,7 @@ def call_function(
     elif fn_name == "find_similar_examples":
         return find_similar_examples(
             managers,
+            kwargs["example_indices"],
             fn_args["kg"],
             fn_args["question"],
             kwargs["num_examples"],
@@ -298,16 +296,23 @@ def output(
     return output
 
 
-def feedback_system_message(managers: list[KgManager], notes: list[str]) -> str:
+def feedback_system_message(
+    managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
+    notes: list[str],
+) -> str:
     return f"""\
 You are a question answering assistant providing feedback on the \
 output of a SPARQL-based question answering system for a given user question.
 
 The system has access to the following knowledge graphs:
-{format_kgs(managers)}
+{format_kgs(managers, kg_notes)}
 
 The system was provided the following notes across all knowledge graphs:
 {format_notes(notes)}
+
+The system was provided the following rules to follow:
+{format_list(rules())}
 
 There are two possible cases:
 
@@ -321,9 +326,6 @@ it uses, and its execution result.
 You are given the system's explanation for why it failed to find an answer. \
 Optionally, you are provided with the system's best attempt at a SPARQL query \
 so far including the same additional information as in case 1.
-
-In any case, make sure that the following rules for SPARQL queries are followed:
-{format_list(rules())}
 
 Provide your feedback with the give_feedback function."""
 

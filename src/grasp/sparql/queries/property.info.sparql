@@ -10,26 +10,26 @@ WHERE {
   {
     VALUES ?id { {IDS} }
     ?id rdfs:comment ?info
-    FILTER(LANG(?info) = "en" || LANG(?info) = "" || DATATYPE(?info) = xsd:string)
+    FILTER(LANGMATCHES(LANG(?info), "en") || LANG(?info) = "" || DATATYPE(?info) = xsd:string)
   } UNION {
     VALUES ?id { {IDS} }
     ?id rdfs:domain/rdfs:label ?domain
-    FILTER(LANG(?domain) = "en" || LANG(?domain) = "" || DATATYPE(?domain) = xsd:string)
+    FILTER(LANGMATCHES(LANG(?domain), "en") || LANG(?domain) = "" || DATATYPE(?domain) = xsd:string)
     BIND(CONCAT("has domain ", ?domain) AS ?info)
   } UNION {
     VALUES ?id { {IDS} }
     ?id rdfs:range/rdfs:label ?range
-    FILTER(LANG(?range) = "en" || LANG(?range) = "" || DATATYPE(?range) = xsd:string)
+    FILTER(LANGMATCHES(LANG(?range), "en") || LANG(?range) = "" || DATATYPE(?range) = xsd:string)
     BIND(CONCAT("has range ", ?range) AS ?info)
   } UNION {
     VALUES ?id { {IDS} }
     ?id rdf:type/rdfs:label ?type
-    FILTER(LANG(?type) = "en" || LANG(?type) = "" || DATATYPE(?type) = xsd:string)
+    FILTER(LANGMATCHES(LANG(?type), "en") || LANG(?type) = "" || DATATYPE(?type) = xsd:string)
     BIND(CONCAT("is a ", ?type) AS ?info)
   } UNION {
     VALUES ?id { {IDS} }
     ?id rdfs:subPropertyOf/rdfs:label ?superproperty
-    FILTER(LANG(?superproperty) = "en" || LANG(?superproperty) = "" || DATATYPE(?superproperty) = xsd:string)
+    FILTER(LANGMATCHES(LANG(?superproperty), "en") || LANG(?superproperty) = "" || DATATYPE(?superproperty) = xsd:string)
     BIND(CONCAT("is subproperty of ", ?superproperty) AS ?info)
   }
 }
