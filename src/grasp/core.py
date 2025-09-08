@@ -39,6 +39,14 @@ from grasp.utils import (
 )
 
 
+def message_hash(msg: dict) -> str:
+    msg = deepcopy(msg)
+    for tool_call in msg.get("tool_calls", []):
+        # id would make hash useless
+        tool_call.pop("id")
+    return json.dumps(msg, sort_keys=True)
+
+
 def system_instructions(
     task: str,
     managers: list[KgManager],
@@ -228,6 +236,9 @@ def generate(
 
     error: dict | None = None
 
+    # keep track of last serialized message to detect loops
+    # if model emits the same message twice, we are stuck
+    last_msg_hash: str | None = None
     retries = 0
     while len(api_messages) < config.max_messages:
         try:
@@ -260,6 +271,17 @@ def generate(
 
         msg = choice.message.model_dump(exclude_none=True)  # type: ignore
         api_messages.append(msg)
+
+        msg_hash = message_hash(msg)
+        if last_msg_hash == msg_hash:
+            error = {
+                "content": "LLM appears to be stuck in a loop",
+                "reason": "loop",
+            }
+            logger.error(format_message({"role": "error", **error}))
+            break
+
+        last_msg_hash = msg_hash
 
         # display usage info for assistant messages
         fmt_msg = deepcopy(msg)
