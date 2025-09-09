@@ -23,7 +23,6 @@ from grasp.core import generate, load_task_notes, setup
 from grasp.evaluate import evaluate
 from grasp.examples import ExampleIndex, load_example_indices
 from grasp.manager import find_embedding_model
-from grasp.manager.utils import load_general_notes, load_kg_notes
 from grasp.tasks import Task, default_input_field
 from grasp.utils import is_invalid_model_output, parse_parameters
 
@@ -139,10 +138,16 @@ def parse_args() -> argparse.Namespace:
         help="Shuffle the inputs",
     )
     file_parser.add_argument(
+        "--skip",
+        type=int,
+        default=0,
+        help="Skip the first N inputs",
+    )
+    file_parser.add_argument(
         "--take",
         type=int,
         default=None,
-        help="Limit number of inputs",
+        help="Limit number of inputs (after skipping) to N",
     )
     file_parser.add_argument(
         "--input-field",
@@ -395,8 +400,9 @@ def run_grasp(args: argparse.Namespace) -> None:
             random.seed(config.seed)
             random.shuffle(inputs)
 
+        skip = max(0, args.skip)
         take = args.take or len(inputs)
-        inputs = inputs[:take]
+        inputs = inputs[skip : skip + take]
 
         if args.output_file:
             if os.path.exists(args.output_file) and not args.overwrite:
