@@ -268,7 +268,7 @@ With the CLI, you can use the `grasp index` command as follows:
 # For example, to build the indices for IMDB:
 grasp index imdb
 
-# You can also change types of indices that are built. By default, we build a
+# You can also change the types of indices that are built. By default, we build a
 # prefix index for entities and a similarity index for properties.
 grasp index imdb \
   --entities-type <prefix|similarity> \
@@ -279,7 +279,7 @@ grasp index -h
 ```
 
 After this step is done, you can use the knowledge graph with GRASP by
-including its name in your config file (see above).
+including it in your config file (see above).
 
 #### Customizing prefixes and info SPARQL queries
 
@@ -293,11 +293,11 @@ knowledge graph at build time and runtime.
 For that, create a file `$GRASP_INDEX_DIR/<kg_name>/prefixes.json`
 in the following format (example for Wikidata):
 
-```json
+```jsonc
 {
   "wd": "<http://www.wikidata.org/entity/",
   "wdt": "<http://www.wikidata.org/prop/direct/",
-  ...
+  // other prefixes ...
 }
 ```
 
