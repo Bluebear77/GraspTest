@@ -124,13 +124,21 @@ tar -xzf train.example-index.tar.gz
 # Tip: Set --log-level DEBUG to show the individual steps of GRASP
 # (reasoning and function calls) in a nicely formatted way.
 
-# Run GRASP on an input and output the result to stdout.
+# Run GRASP on an input and output the result to stdout as JSON with metadata.
+# Actual output for the task is in the "output" field of that JSON object.
 
 # Input from stdin:
 echo "Where was Angela Merkel born?" | grasp run configs/run.yaml
 
 # Input via CLI argument:
 grasp run configs/run.yaml --input "Where was Angela Merkel born?"
+
+# You can run different tasks with GRASP (default is sparql-qa). 
+# Depending on the task, the expected input format and output format
+# will differ. For general-qa, the input is also a natural language
+# question, same as for sparql-qa, but the output will be just a natural
+# language answer instead of a SPARQL query.
+echo "Where was Angela Merkel born?" | grasp run configs/run.yaml --task general-qa
 
 # Show all available options:
 grasp run -h
@@ -356,11 +364,12 @@ See our [info SPARQL query for Wikidata entities](queries/wikidata.entity.info.s
 ## Run GRASP webapp
 
 Make sure to start a GRASP server first (see above).
-The follow [these instructions](apps/grasp/README.md) to run the GRASP web app.
+Then follow [these instructions](apps/grasp/README.md) to run the GRASP web app.
 
 ## Run evaluation app
 
-Follow [these instructions](apps/evaluation/README.md) to run the evaluation app.
+Follow [these instructions](apps/evaluation/README.md) to run the
+evaluation app for the SPARQL QA task.
 
 ## Supported models
 
