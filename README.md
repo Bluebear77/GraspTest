@@ -348,43 +348,7 @@ replaced by the list of entity/property IRIs to get information for.
 Typically, this will be within a `VALUES ?id { ... }` clause as
 shown above.
 
-For example, our SPARQL info query for Wikidata entities looks like this:
-
-```sparql
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-PREFIX schema: <http://schema.org/>
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-
-SELECT
-  ?id
-  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
-WHERE {
-  # Get additional information
-  # (values inside each union block to make the query faster
-  # with QLever)
-  {
-    VALUES ?id { {IDS} }
-    ?id schema:description ?info
-    FILTER(LANGMATCHES(LANG(?info), "en"))
-  } UNION {
-    VALUES ?id { {IDS} }
-    ?id wdt:P279/rdfs:label ?supclass
-    FILTER(LANGMATCHES(LANG(?supclass), "en"))
-    BIND(CONCAT("is subclass of ", ?supclass) AS ?info)
-  } UNION {
-    VALUES ?id { {IDS} }
-    ?id wdt:P31/rdfs:label ?inst
-    FILTER(LANGMATCHES(LANG(?inst), "en"))
-    BIND(CONCAT("is instance of ", ?inst) AS ?info)
-  } UNION {
-    VALUES ?id { {IDS} }
-    ?id wdt:P106/rdfs:label ?job
-    FILTER(LANGMATCHES(LANG(?job), "en"))
-    BIND(CONCAT("has occupation ", ?job) AS ?info)
-  }
-}
-GROUP BY ?id
-```
+See our [info SPARQL query for Wikidata entities](queries/wikidata.entity.info.sparql) as an example.
 
 > Note: If no custom info SPARQL query is found, we use the
 > default ones from [here](src/grasp/sparql/queries)
