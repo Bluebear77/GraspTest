@@ -206,6 +206,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Rerun failed evaluations due to timeouts or errors",
     )
+    add_task_arg(eval_parser)
     add_overwrite_arg(eval_parser)
 
     # run GRASP adaptation
