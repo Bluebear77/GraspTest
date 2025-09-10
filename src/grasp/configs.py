@@ -14,7 +14,6 @@ class KgConfig(BaseModel):
 class Config(BaseModel):
     model: str = "openai/gpt-5-mini"
     model_endpoint: str | None = None
-    model_kwargs: dict[str, Any] | None = None
 
     seed: int | None = None
     fn_set: str = "search_extended"
@@ -37,9 +36,10 @@ class Config(BaseModel):
     # were previously seen
     know_before_use: bool = False
 
-    # model decoding parameters
-    temperature: float | None = 0.2
-    top_p: float | None = 0.9
+    # model inference parameters
+    model_kwargs: dict[str, Any] | None = None
+    temperature: float | None = 1.0
+    top_p: float | None = 1.0
     reasoning_effort: str | None = None
 
     # completion parameters
