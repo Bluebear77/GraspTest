@@ -15,6 +15,7 @@ fi
 IFS=" " read -ra benchmarks <<<"$BENCHMARKS"
 
 args=${ARGS:-""}
+log_level=${LOG_LEVEL:-"INFO"}
 
 for benchmark in "${benchmarks[@]}"; do
   dir="data/benchmark/$kg/$benchmark"
@@ -31,9 +32,9 @@ for benchmark in "${benchmarks[@]}"; do
 
   mkdir -p "$dir/outputs"
 
-  grasp file \
+  grasp --log-level $log_level file \
     configs/run.yaml \
-    "$file" \
+    --input-file "$file" \
     --output-file "$dir/outputs/$name.jsonl" \
     $args \
     --shuffle

@@ -1,3 +1,4 @@
+import sys
 from dataclasses import dataclass
 from typing import Any, Iterator
 
@@ -109,15 +110,13 @@ class Annotations:
             ]
             for i, (row, annots) in enumerate(zip(self.data, self.iter()))
         ]
-        max_data_width = max(len(cell) for row in data for cell in row)
 
         header = ["Row"] + [f"Column {i}: {name}" for i, name in enumerate(self.header)]
-        max_header_width = max(len(h) for h in header)
 
         table = generate_table(
             data=data,
             headers=[header],
-            max_column_width=max(max_data_width, max_header_width),
+            max_column_width=sys.maxsize,
         )
         return table
 
