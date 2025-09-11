@@ -41,7 +41,7 @@
     PREFIX imdb_principal: <https://www.imdb.com/principal/>
     PREFIX imdb: <https://www.imdb.com/>
     SELECT ?person WHERE {
-      ?movie imdb:titleType "movie" .
+      ?movie imdb:type "movie" .
       ?movie imdb_principal:director ?person .
       ?person imdb:birthYear ?birthYear .
       ?movie imdb:startYear ?startYear .
@@ -70,7 +70,7 @@
     PREFIX imdb_principal: <https://www.imdb.com/principal/>
     PREFIX imdb: <https://www.imdb.com/>
     SELECT ?person WHERE {
-      ?movie imdb:titleType "movie" .
+      ?movie imdb:type "movie" .
       ?movie imdb_principal:actor ?person .
       ?person imdb:birthYear ?birth_year .
       ?movie imdb:startYear ?start_year .
@@ -88,14 +88,14 @@
       ?movie imdb_principal:director ?director .
       ?movie imdb:averageRating ?rating .
       ?movie imdb:numVotes ?votes .
-      ?movie imdb:titleType "movie" .
+      ?movie imdb:type "movie" .
       FILTER (?votes >= 100000)
       {
         SELECT ?director (MAX(?ratingSub) AS ?maxRatingSub) WHERE {
           ?movieSub imdb_principal:director ?director .
           ?movieSub imdb:averageRating ?ratingSub .
           ?movieSub imdb:numVotes ?votesSub .
-          ?movieSub imdb:titleType "movie" .
+          ?movieSub imdb:type "movie" .
           FILTER (?votesSub >= 100000)
         }
         GROUP BY ?director
@@ -142,7 +142,7 @@
     PREFIX imdb_principal: <https://www.imdb.com/principal/>
     PREFIX imdb: <https://www.imdb.com/>
     SELECT ?actor ?director (COUNT(?movie) AS ?collaboration_count) WHERE {
-      ?movie imdb:titleType "movie" .
+      ?movie imdb:type "movie" .
       ?movie imdb:numVotes ?votes .
       FILTER (?votes >= 100000) .
       ?movie imdb_principal:actor ?actor .
@@ -156,7 +156,7 @@
     PREFIX imdb: <https://www.imdb.com/>
     PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
     SELECT ?decade (AVG(?rating) AS ?avg_rating) WHERE {
-      ?movie imdb:titleType "movie" .
+      ?movie imdb:type "movie" .
       ?movie imdb:genre "Sci-Fi" .
       ?movie imdb:averageRating ?rating .
       ?movie imdb:numVotes ?votes .
@@ -188,7 +188,7 @@
       {
         SELECT ?series (AVG(?rating) AS ?ep_rating) (COUNT(?episode) AS ?ep_count) WHERE {
           ?episode imdb:parentTitle ?series .
-          ?series imdb:titleType "tvSeries" .
+          ?series imdb:type "tvSeries" .
           ?episode imdb:averageRating ?rating .
           ?episode imdb:numVotes ?numvotes .
           FILTER (?numvotes >= 10000)
@@ -205,7 +205,7 @@
     SELECT ?series WHERE {
       ?series imdb:numVotes ?votes .
       FILTER (?votes > 100000) .
-      ?series imdb:titleType "tvSeries" .
+      ?series imdb:type "tvSeries" .
       {
         SELECT ?series (MIN(?runtime) AS ?min_runtime) (MAX(?runtime) AS ?max_runtime) WHERE {
           ?episode imdb:parentTitle ?series .
