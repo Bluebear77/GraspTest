@@ -588,7 +588,7 @@ class KgManager:
 
             alternatives = []
             matches = index.find_matches(query, k=k)
-            for id, _ in matches:
+            for id, *_ in matches:
                 identifier, label = index_data.get_row(id)  # type: ignore
                 alternatives.append(
                     Alternative(
