@@ -77,23 +77,26 @@ def evaluate(
             },
         }
 
-        output = pred["output"]
-        if target_set is None or output is None or output["sparql"] is None:
+        if target_set is None:
             dump_json(evaluations, evaluation_file)
             continue
 
-        sparql = output["sparql"]
+        output = pred["output"]
+        sparql = None if output is None else output["sparql"]
 
-        pred_set, pred_err = get_result_or_error(
-            sparql,
-            endpoint,
-            request_timeout=timeout,
-            read_timeout=timeout,
-        )
+        score = 0.0
+        pred_err = "No prediction"
+        pred_set = None
+        if sparql is not None:
+            pred_set, pred_err = get_result_or_error(
+                sparql,
+                endpoint,
+                request_timeout=timeout,
+                read_timeout=timeout,
+            )
+
         if pred_set is not None:
             score = f1_score(pred_set, target_set, exact_after)
-        else:
-            score = 0.0
 
         evaluations[id]["prediction"] = {
             "sparql": sparql,
