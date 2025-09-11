@@ -739,14 +739,12 @@ def show_predictions_view(available_data):
 
             # Display model output
             st.subheader("Model Output")
-            # output = output["output"] or {}
-            if "sparql" in output:
-                # old format
-                sparql_query = output["sparql"]
-            else:
-                sparql_query = (output["output"] or {}).get(
-                    "sparql", "No SPARQL query found"
-                )
+
+            if "output" in output:
+                # new format
+                output = output["output"] or {}
+
+            sparql_query = output.get("sparql", "No SPARQL query found")
             st.code(prettify_sparql(sparql_query), language="sparql")
 
             # Display evaluation if available
