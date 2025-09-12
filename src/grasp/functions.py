@@ -479,6 +479,7 @@ def call_function(
             fn_args,
             known,
             task_state,
+            **kwargs,
         )
 
     else:
@@ -561,7 +562,7 @@ def check_known(manager: KgManager, sparql: str, known: set[str]):
         not_seen = "\n".join(manager.format_iri(iri) for iri in unknown_in_query)
         raise FunctionCallException(f"""\
 The following knowledge graph items are used in the SPARQL query \
-without being known from previous searches or query executions. \
+without being known from previous function call results. \
 This does not mean they are invalid, but you should verify \
 that they indeed exist in the knowledge graphs before executing the SPARQL \
 query again:

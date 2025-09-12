@@ -123,14 +123,14 @@ class Annotations:
 
 def rules() -> list[str]:
     return [
+        "Annotate cells only with entities that you verified to exist in "
+        "the knowledge graphs using the provided functions.",
         "If you cannot find a suitable entity for a cell, leave it unannotated.",
         "If there are multiple suitable entities for a cell, choose the one that "
         "fits best in the context of the table, or the one that is more popular/general.",
         "If you find common patterns within or across rows and columns, executing a corresponding SPARQL query "
         "to retrieve multiple entities at once might be easier than searching for each cell individually.",
         "All of your annotations should be full or prefixed IRIs.",
-        "Every once in a while and before stopping, look at your current annotations and "
-        "verify that they make sense.",
         "If the same entity occurs multiple times in the table, annotate all occurrences.",
     ]
 
@@ -260,11 +260,21 @@ def annotate(
     column: int,
     entity: str,
     state: Annotations,
+    known: set[str],
+    know_before_use: bool = False,
 ) -> str:
     manager, _ = find_manager(managers, kg)
 
     try:
         annotation = prepare_annotation(manager, entity)
+        if know_before_use and annotation.identifier not in known:
+            raise FunctionCallException(
+                f"The entity {entity} cannot be used for annotation "
+                "without being known from previous function call results. "
+                "This does not mean it is invalid, but you should verify "
+                "that it indeed exists in the knowledge graphs first."
+            )
+
         current = state.annotate(row, column, annotation)
     except ValueError as e:
         raise FunctionCallException(str(e)) from e
@@ -357,6 +367,8 @@ def call_function(
             fn_args["column"],
             fn_args["entity"],
             state,
+            known,
+            kwargs["know_before_use"],
         )
 
     elif fn_name == "clear":
