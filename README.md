@@ -4,7 +4,7 @@
 
 - August 28th 2025:
   - Demo paper of GRASP has also been accepted to [ISWC 2025](https://iswc2025.semanticweb.org/)
-  - Preview of camera-ready version coming soon
+  - Preview of camera-ready version available [here](https://ad-publications.cs.uni-freiburg.de/ISWC_grasp_demo_WB_2025.pdf)
 
 - July 31st 2025:
   - GRASP has been accepted to [ISWC 2025](https://iswc2025.semanticweb.org/)
