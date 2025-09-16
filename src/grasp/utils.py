@@ -29,11 +29,11 @@ def format_prefixes(prefixes: dict[str, str]) -> str:
     return format_list(f"{short}: {long}" for short, long in sorted(prefixes.items()))
 
 
-def format_notes(notes: list[str]) -> str:
+def format_notes(notes: list[str], indent: int = 0) -> str:
     if not notes:
         return "No notes available"
     else:
-        return format_list(notes)
+        return format_list(notes, indent)
 
 
 def format_list(items: Iterable[str], indent: int = 0) -> str:

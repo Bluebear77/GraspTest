@@ -13,7 +13,6 @@ def call_model(
         model=config.model,
         messages=messages,
         tools=[{"type": "function", "function": fn} for fn in functions],
-        parallel_tool_calls=False,
         tool_choice="auto",
         # decoding parameters
         temperature=config.temperature,
