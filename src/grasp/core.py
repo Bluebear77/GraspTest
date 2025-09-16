@@ -411,6 +411,8 @@ def generate(
 
         # if not done, continue
         retries += 1
+        # reset loop detection
+        last_msg_hash = None
 
     output = task_output(task, api_messages, managers, config, task_state)
 

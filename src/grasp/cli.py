@@ -394,6 +394,13 @@ def run_grasp(args: argparse.Namespace) -> None:
         else:
             inputs = load_jsonl(args.input_file)
 
+        # id fallback in case of missing ids
+        # before shuffling/skipping/taking
+        for i, ipt in enumerate(inputs):
+            id = extract_field(ipt, "id")
+            if id is None:
+                ipt["id"] = str(i)
+
         if args.shuffle:
             assert config.seed is not None, (
                 "Seed must be set for deterministic shuffling"
@@ -432,19 +439,19 @@ def run_grasp(args: argparse.Namespace) -> None:
             input_field = "input"  # overwrite
 
     for i, ipt in enumerate(inputs):
-        id = extract_field(ipt, "id")
-        if id is None:
-            id = str(i)
+        id = extract_field(ipt, "id") or "unknown"
 
         if input_field is not None:
             ipt = extract_field(ipt, input_field)
 
         assert ipt is not None, f"Input not found for input {i:,}"
 
-        if i < len(outputs) and (
-            not args.retry_failed or not is_invalid_model_output(outputs[i])
-        ):
-            continue
+        if i < len(outputs):
+            # overwrite id
+            output = outputs[i]
+            output["id"] = id
+            if not args.retry_failed or not is_invalid_model_output(output):
+                continue
 
         *_, output = generate(
             args.task,
@@ -471,6 +478,11 @@ def run_grasp(args: argparse.Namespace) -> None:
         else:
             outputs.append(output)
 
+        dump_jsonl(outputs, args.output_file)
+
+    if run_on_file:
+        # final dump, necessary if no new outputs were added
+        # but some outputs were updated with ids
         dump_jsonl(outputs, args.output_file)
 
 
