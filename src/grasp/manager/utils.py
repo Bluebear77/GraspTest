@@ -243,17 +243,23 @@ def get_common_sparql_prefixes() -> dict[str, str]:
     }
 
 
-def get_index_desc(index: SearchIndex) -> str:
-    if not is_sim_index(index):
-        index_type = "Prefix-keyword index"
-        dist_info = "number of exact and prefix keyword matches"
-
-    else:
-        index_type = "Similarity index"
-        dist_info = "vector embedding distance"
-
-    return f"{index_type} ranking by {dist_info}"
-
-
 def is_sim_index(index: SearchIndex) -> bool:
     return index.get_type() == "similarity"
+
+
+def describe_index(index_type: str) -> tuple[str, str]:
+    if index_type == "prefix":
+        title = "Prefix-keyword index"
+        desc = "Retrieves items by overlap between query keywords \
+and item words. The query keywords can match item words exactly or \
+as prefixes."
+
+    elif index_type == "similarity":
+        title = "Similarity index"
+        desc = "Retrieves items by cosine similarity between their embeddings and \
+the query embedding."
+
+    else:
+        raise ValueError(f"Unknown index type {index_type}")
+
+    return title, desc

@@ -131,7 +131,8 @@ list(kg="wikidata", property="wdt:P19")""",
                     "name": "search_entity",
                     "description": """\
 Search for entities in the knowledge graph with a search query. \
-This function uses a prefix keyword index internally.
+This function uses the index type for entities of the \
+given knowledge graph internally.
 
 For example, to search for the entity Albert Einstein in Wikidata, \
 do the following:
@@ -158,7 +159,8 @@ search_entity(kg="wikidata", query="albert einstein")""",
                     "name": "search_property",
                     "description": """\
 Search for properties in the knowledge graph with a search query. \
-This function uses an embedding-based similarity index internally.
+This function uses the index type for properties of the \
+given knowledge graph internally.
 
 For example, to search for properties related to birth in Wikidata, do the following:
 search_property(kg="wikidata", query="birth")""",
@@ -190,7 +192,8 @@ search_property(kg="wikidata", query="birth")""",
                     "name": "search_property_of_entity",
                     "description": """\
 Search for properties of a given entity in the knowledge graph. \
-This function uses an embedding-based similarity index internally.
+This function uses the index type for properties of the \
+given knowledge graph internally.
 
 For example, to search for properties related to birth for Albert Einstein \
 in Wikidata, do the following:
@@ -221,7 +224,8 @@ search_property_of_entity(kg="wikidata", entity="wd:Q937", query="birth")""",
                     "name": "search_object_of_property",
                     "description": """\
 Search for objects (entities or literals) for a given property in the knowledge graph. \
-This function uses a prefix keyword index internally.
+This function uses the index type for entities of the \
+given knowledge graph and a temporary prefix-keyword index for literals internally.
 
 For example, to search for football jobs in Wikidata, do the following:
 search_object_of_property(kg="wikidata", property="wdt:P106", query="football")""",
@@ -259,10 +263,9 @@ Search for knowledge graph items in a context-sensitive way by specifying a cons
 SPARQL query together with a search query. The SPARQL query must be a SELECT query \
 with a variable ?search occurring at least once in the WHERE clause. The search is \
 then restricted to knowledge graph items that fit at the ?search positions in the SPARQL \
-query.
-
-For the search itself, we use a prefix keyword index for subjects, objects, and \
-literals, and an embedding-based similarity index for properties.
+query. This function uses the index type for entities of the given knowledge graph internally \
+if the ?search variable first occurs at the subject or object position, and the index type for \
+properties otherwise.
 
 For example, to search for Albert Einstein at the subject position in \
 Wikidata, do the following:
@@ -301,11 +304,10 @@ search(kg="wikidata", sparql="SELECT * WHERE { wd:Q937 ?search ?o }", query="bir
                 "name": "search",
                 "description": """\
 Search for knowledge graph items at a particular position (subject, property, or object) \
-with optional constraints.
-
-If constraints are provided, they are used to limit the search space accordingly. \
-For the search itself, we use a prefix keyword index for subjects, objects, \
-and literals, and an embedding-based similarity index for properties.
+with optional constraints. If constraints are provided, they are used to limit the search \
+space accordingly. This function uses the index type for entities of the \
+given knowledge graph internally if the position is subject or object, and the index type for properties \
+otherwise.
 
 For example, to search for the subject Albert Einstein in Wikidata, do the following:
 search(kg="wikidata", position="subject", query="albert einstein")

@@ -15,7 +15,7 @@ from grasp.functions import (
     kg_functions,
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
-from grasp.manager.utils import load_general_notes, load_kg_notes
+from grasp.manager.utils import load_general_notes, load_kg_notes, describe_index
 from grasp.model import call_model
 from grasp.tasks import (
     rules as general_rules,
@@ -53,26 +53,46 @@ def system_instructions(
     kg_notes: dict[str, list[str]],
     notes: list[str],
 ) -> str:
+    index_types = set()
     prefixes = {}
     for manager in managers:
         prefixes.update(manager.prefixes)
+        index_types.add(manager.entity_index.get_type())
+        index_types.add(manager.property_index.get_type())
+
+    index_infos = []
+    for index_type in sorted(index_types):
+        title, desc = describe_index(index_type)
+        index_infos.append(f"{title}: {desc}")
 
     system_info = task_system_information(task)
 
-    return f"""\
+    instructions = f"""\
 {system_info}
 
-You have access to the following knowledge graphs:
+Available knowledge graphs:
 {format_kgs(managers, kg_notes)}
 
-You are provided with the following notes across all knowledge graphs:
+Index types used for entities and properties:
+{format_list(index_infos)}
+
+"""
+
+    if notes:
+        instructions += f"""\
+General notes across knowledge graphs:
 {format_notes(notes)}
 
-You can use the following SPARQL prefixes implicitly in all functions:
+"""
+
+    instructions += f"""\
+SPARQL prefixes for use in function calls:
 {format_prefixes(prefixes)}
 
-You should follow these rules:
+Additional rules to follow:
 {format_list(general_rules() + task_rules(task))}"""
+
+    return instructions
 
 
 def setup(config: Config) -> list[KgManager]:

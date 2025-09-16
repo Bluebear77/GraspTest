@@ -18,6 +18,7 @@ from universal_ml_utils.table import generate_table
 from grasp.configs import KgConfig
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import (
+    describe_index,
     is_sim_index,
     load_kg_indices,
     load_kg_info_sparqls,
@@ -829,7 +830,7 @@ def format_kgs(managers: list[KgManager], kg_notes: dict[str, list[str]]) -> str
     if not managers:
         return "No knowledge graphs available"
 
-    return "\n".join(
+    return format_list(
         format_kg(
             manager,
             kg_notes.get(manager.kg, []),
@@ -839,10 +840,16 @@ def format_kgs(managers: list[KgManager], kg_notes: dict[str, list[str]]) -> str
 
 
 def format_kg(manager: KgManager, notes: list[str]) -> str:
-    msg = f"{manager.kg} at {manager.endpoint}"
+    ent_type, _ = describe_index(manager.entity_index.get_type())
+    prop_type, _ = describe_index(manager.property_index.get_type())
+
+    msg = (
+        f"{manager.kg} at {manager.endpoint} with {ent_type.lower()} for entities and "
+        f"{prop_type.lower()} for properties"
+    )
 
     if not notes:
-        return msg + " without notes"
+        return msg
 
-    msg += " with notes:\n" + format_list(notes)
+    msg += ", and notes:\n" + format_list(notes, indent=2)
     return msg

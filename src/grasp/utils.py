@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any
+from typing import Any, Iterable
 
 from pydantic import BaseModel
 from termcolor import colored
@@ -24,9 +24,9 @@ class FunctionCallException(Exception):
 
 def format_prefixes(prefixes: dict[str, str]) -> str:
     if not prefixes:
-        return "No prefixes defined"
+        return "No prefixes available"
 
-    return "\n".join(f"{short}: {long}" for short, long in prefixes.items())
+    return format_list(f"{short}: {long}" for short, long in sorted(prefixes.items()))
 
 
 def format_notes(notes: list[str]) -> str:
@@ -36,8 +36,9 @@ def format_notes(notes: list[str]) -> str:
         return format_list(notes)
 
 
-def format_list(items: list[str]) -> str:
-    return "\n".join(f"- {item}" for item in items)
+def format_list(items: Iterable[str], indent: int = 0) -> str:
+    indent_str = " " * indent
+    return "\n".join(f"{indent_str}- {item}" for item in items)
 
 
 def format_model(model: BaseModel | None) -> str:
