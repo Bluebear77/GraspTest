@@ -15,7 +15,7 @@ from grasp.functions import (
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
 from grasp.manager.utils import describe_index, load_general_notes, load_kg_notes
-from grasp.model import call_model
+from grasp.model import Message, Response, call_model
 from grasp.tasks import (
     rules as general_rules,
 )
@@ -32,19 +32,13 @@ from grasp.tasks.feedback import format_feedback, generate_feedback
 from grasp.tasks.sparql_qa.examples import find_examples
 from grasp.tasks.sparql_qa.examples import functions as example_functions
 from grasp.utils import (
+    format_error,
     format_list,
     format_message,
     format_notes,
     format_prefixes,
+    format_response,
 )
-
-
-def message_hash(msg: dict) -> str:
-    msg = deepcopy(msg)
-    for tool_call in msg.get("tool_calls", []):
-        # id would make hash useless
-        tool_call.pop("id")
-    return json.dumps(msg, sort_keys=True)
 
 
 def system_instructions(
@@ -136,8 +130,7 @@ def generate(
     kg_notes: dict[str, list[str]] | None = None,
     notes: list[str] | None = None,
     example_indices: dict[str, ExampleIndex] | None = None,
-    past_inputs: list[str] | None = None,
-    past_messages: list[dict] | None = None,
+    past_messages: list[Message] | None = None,
     past_known: set[str] | None = None,
     logger: Logger = get_logger("GRASP"),
 ) -> Iterator[dict]:
@@ -177,48 +170,38 @@ def generate(
     }
 
     # log stuff
-    logger.debug(
-        format_message(
-            {
-                "role": "config",
-                "content": config.model_dump_json(indent=2, exclude_none=True),
-            }
-        )
+    config_msg = Message(
+        role="config",
+        content=config.model_dump_json(indent=2, exclude_none=True),
     )
-    logger.debug(
-        format_message(
-            {
-                "role": "functions",
-                "content": json.dumps([fn["name"] for fn in fns]),
-            }
-        )
+    logger.debug(format_message(config_msg))
+
+    fn_msg = Message(
+        role="functions",
+        content=json.dumps([fn["name"] for fn in fns]),
     )
+    logger.debug(format_message(fn_msg))
 
     # handle past
-    api_messages = [{"role": "system", "content": system_instruction}]
+    messages = [Message(role="system", content=system_instruction)]
     if past_messages:
-        # overwrite system message because new set of
-        # knowledge graphs or functions might be present
-        assert past_messages[0]["role"] == "system", (
-            "First past message should be system"
-        )
+        first, *past = past_messages
+        assert first.role == "system", "First past message should be system"
+        messages[0].content = first.content
+        messages.extend(past)
 
-        api_messages.extend(past_messages[1:])
-
-    inputs = past_inputs or []
-    inputs.append(input)
     known = past_known or set()
 
     start = time.perf_counter()
 
     # add user input
-    api_messages.append({"role": "user", "content": input})
+    messages.append(Message(role="user", content=input))
 
     if config.force_examples and example_indices:
         try:
-            example_messages = find_examples(
+            example_message = find_examples(
                 managers,
-                example_indices,
+                example_indices,  # type: ignore
                 config.force_examples,
                 input,
                 config.num_examples,
@@ -229,19 +212,19 @@ def generate(
             )
 
             # add to messages
-            api_messages.extend(example_messages)
+            messages.append(example_message)
 
             # yield to user
-            content = example_messages[0]["content"]
-            yield {"type": "model", "content": content}
+            assert isinstance(example_message.content, Response)
+            content = example_message.content
+            yield {"type": "model", "content": content.get_content()}
 
-            tool_call = example_messages[0]["tool_calls"][0]["function"]
-            content = example_messages[1]["content"]
+            tool_call = content.tool_calls[0]
             yield {
                 "type": "tool",
-                "name": tool_call["name"],
-                "args": json.loads(tool_call["arguments"]),
-                "result": content,
+                "name": tool_call.name,
+                "args": tool_call.args,
+                "result": tool_call.result,
             }
 
         except Exception:
@@ -251,18 +234,18 @@ def generate(
             )
 
     # log all messages so far
-    for msg in api_messages:
+    for msg in messages:
         logger.debug(format_message(msg))
 
     error: dict | None = None
 
     # keep track of last serialized message to detect loops
     # if model emits the same message twice, we are stuck
-    last_msg_hash: str | None = None
+    last_resp_hash: str | None = None
     retries = 0
-    while len(api_messages) < config.max_messages:
+    while len(messages) < config.max_steps:
         try:
-            response = call_model(api_messages, fns, config)
+            response = call_model(messages, fns, config)
         except Timeout:
             error = {
                 "content": "LLM API timed out",
@@ -275,71 +258,44 @@ def generate(
                 "content": f"Failed to generate response:\n{e}",
                 "reason": "api",
             }
-            logger.error(format_message({"role": "error", **error}))
+            logger.error(format_error(**error))
             break
 
-        if not response.choices:  # type: ignore
+        if response.is_empty:
             error = {
-                "content": "No choices from LLM API",
-                "reason": "no_choices",
+                "content": "Empty response from LLM API",
+                "reason": "empty",
             }
-            logger.error(format_message({"role": "error", **error}))
+            logger.error(format_error(**error))
             break
 
-        choice = response.choices[0]  # type: ignore
-        usage = response.usage.model_dump(exclude_none=True)  # type: ignore
+        messages.append(Message(role="assistant", content=response))
 
-        msg = choice.message.model_dump(exclude_none=True)  # type: ignore
-        api_messages.append(msg)
-
-        msg_hash = message_hash(msg)
-        if last_msg_hash == msg_hash:
+        resp_hash = response.hash()
+        if last_resp_hash == resp_hash:
             error = {
                 "content": "LLM appears to be stuck in a loop",
                 "reason": "loop",
             }
-            logger.error(format_message({"role": "error", **error}))
+            logger.error(format_error(**error))
             break
 
-        last_msg_hash = msg_hash
+        last_resp_hash = resp_hash
 
-        # display usage info for assistant messages
-        fmt_msg = deepcopy(msg)
-        fmt_msg["role"] += f" (usage={usage})"
-        logger.debug(format_message(fmt_msg))
-
-        # yield message
-        content = ""
-        if msg.get("reasoning_content"):
-            content += f"Reasoning:\n{msg['reasoning_content'].strip()}\n\n"
-        content += msg.get("content", "").strip()
-        if content:
-            yield {"type": "model", "content": content}
-
-        if choice.finish_reason not in ["tool_calls", "stop", "length"]:
-            error = {
-                "content": f"Unexpected finish reason {choice.finish_reason}",
-                "reason": "invalid_finish_reason",
-            }
-            logger.error(format_message({"role": "error", **error}))
-            break
-
-        elif choice.finish_reason == "length":
-            break
+        # yield message if there is content
+        if response.has_content:
+            yield {"type": "model", "content": response.get_content()}
 
         # no tool calls mean we should stop
-        should_stop = not choice.message.tool_calls  # type: ignore
+        should_stop = not response.tool_calls
 
         # execute tool calls
-        for tool_call in choice.message.tool_calls or []:  # type: ignore
-            fn_name: str = tool_call.function.name  # type: ignore
-            fn_args = json.loads(tool_call.function.arguments)
-
+        for tool_call in response.tool_calls:
             try:
                 result = call_function(
                     managers,
-                    fn_name,
-                    fn_args,
+                    tool_call.name,
+                    tool_call.args,
                     config.fn_set,
                     known,
                     task_handler,
@@ -353,23 +309,23 @@ def generate(
                     example_indices=example_indices,
                 )
             except Exception as e:
-                result = f"Call to function {fn_name} returned an error:\n{e}"
+                result = f"Call to function {tool_call.name} returned an error:\n{e}"
 
-            tool_msg = {"role": "tool", "content": result, "tool_call_id": tool_call.id}
-            api_messages.append(tool_msg)
-            logger.debug(format_message(tool_msg))
+            tool_call.result = result
 
             yield {
                 "type": "tool",
-                "name": fn_name,
-                "args": fn_args,
-                "result": result,
+                "name": tool_call.name,
+                "args": tool_call.args,
+                "result": tool_call.result,
             }
 
-            if task_done(task, fn_name):
+            if task_done(task, tool_call.name):
                 # we are done
                 should_stop = True
-                break
+
+        # only log now to show also tool calls results
+        logger.debug(format_response(response))
 
         can_give_feedback = config.feedback and retries < config.max_feedbacks
 
@@ -386,19 +342,20 @@ def generate(
             break
 
         # get latest output
-        output = task_output(task, api_messages, managers, config, task_state)
+        output = task_output(task, messages, managers, config, task_state)
         if output is None:
             break
 
         # provide feedback
         try:
+            inputs = [message.content for message in messages if message.role == "user"]
             feedback = generate_feedback(
                 task,
                 managers,
                 config,
                 kg_notes,
                 notes,
-                inputs,
+                inputs,  # type: ignore
                 output,
                 logger,
             )
@@ -407,19 +364,14 @@ def generate(
                 "content": f"Failed to generate feedback:\n{e}",
                 "reason": "feedback",
             }
-            logger.error(format_message({"role": "error", **error}))
+            logger.error(format_error(**error))
             break
 
         if feedback is None:
             # no feedback
             break
 
-        msg = {
-            "role": "user",
-            "content": format_feedback(feedback),
-        }
-        logger.debug(format_message(msg))
-        api_messages.append(msg)
+        messages.append(Message(role="feedback", content=format_feedback(feedback)))
         yield {
             "type": "feedback",
             "status": feedback["status"],
@@ -432,13 +384,12 @@ def generate(
         # if not done, continue
         retries += 1
         # reset loop detection
-        last_msg_hash = None
+        last_resp_hash = None
 
-    output = task_output(task, api_messages, managers, config, task_state)
+    output = task_output(task, messages, managers, config, task_state)
 
-    logger.info(
-        format_message({"role": "output", "content": json.dumps(output, indent=2)})
-    )
+    out_msg = Message(role="output", content=json.dumps(output, indent=2))
+    logger.info(format_message(out_msg))
 
     end = time.perf_counter()
     yield {
@@ -447,7 +398,6 @@ def generate(
         "output": output,
         "elapsed": end - start,
         "error": error,
-        "inputs": inputs,
-        "messages": api_messages,
+        "messages": [message.model_dump(exclude_defaults=True) for message in messages],
         "known": list(known),
     }

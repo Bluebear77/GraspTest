@@ -1,8 +1,8 @@
-import json
 from typing import Any
 
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
+from grasp.model import Message, ToolCall
 from grasp.tasks.sparql_qa.examples import (
     find_random_examples,
     find_similar_examples,
@@ -168,53 +168,42 @@ def call_function(
     raise FunctionCallException(f"Unknown function: {fn_name}")
 
 
-def get_answer_or_cancel(messages: list[dict]) -> tuple[dict | None, dict | None]:
+def get_answer_or_cancel(
+    messages: list[Message],
+) -> tuple[ToolCall | None, ToolCall | None]:
     last_message: str | None = None
-    last_answer: dict | None = None
-    last_cancel: str | None = None
-    last_execute: dict | None = None
-    assert messages[0]["role"] == "system", "First message should be system"
-    assert messages[1]["role"] == "user", "Second message should be user"
+    last_answer: ToolCall | None = None
+    last_cancel: ToolCall | None = None
+    last_execute: ToolCall | None = None
+    assert messages[0].role == "system", "First message should be system"
+    assert messages[1].role == "user", "Second message should be user"
     for message in messages[2:]:
-        if message["role"] == "user" and message != messages[-1]:
-            # reset stuff after intermediate user feedback
+        if message.role == "feedback":
+            # reset stuff after intermediate feedback
             last_answer = None
             last_cancel = None
             last_message = None
             last_execute = None
 
-        if message["role"] != "assistant":
+        if isinstance(message.content, str):
+            # not assistant message
             continue
 
-        if "content" in message:
-            last_message = message["content"]
+        last_message = message.content.message
 
-        if "tool_calls" not in message:
-            continue
-
-        for tool_call in message["tool_calls"]:
-            if tool_call["type"] != "function":
-                continue
-
-            tool_call = tool_call["function"]
-            name = tool_call["name"]
-            try:
-                args = json.loads(tool_call["arguments"])
-            except json.JSONDecodeError:
-                continue
-
-            if name == "answer":
-                last_answer = args
+        for tool_call in message.content.tool_calls:
+            if tool_call.name == "answer":
+                last_answer = tool_call
                 # reset last cancel
                 last_cancel = None
 
-            elif tool_call["name"] == "cancel":
-                last_cancel = args
+            elif tool_call.name == "cancel":
+                last_cancel = tool_call
                 # reset last answer
                 last_answer = None
 
-            elif tool_call["name"] == "execute":
-                last_execute = args
+            elif tool_call.name == "execute":
+                last_execute = tool_call
 
     # try to parse answer from last message if neither are set
     if last_answer is None and last_cancel is None:
@@ -230,16 +219,17 @@ def get_answer_or_cancel(messages: list[dict]) -> tuple[dict | None, dict | None
 
     # try last execute function call for SPARQL QA
     if last_answer is None and last_cancel is None and last_execute is not None:
-        last_answer = {
-            **last_execute,
-            "answer": last_message or "No answer provided",
-        }
+        last_answer = ToolCall(
+            id="dummy",
+            name="answer",
+            args={**last_execute.args, "answer": last_message or "No answer provided"},
+        )
 
     return last_answer, last_cancel  # type: ignore
 
 
 def output(
-    messages: list[dict],
+    messages: list[Message],
     managers: list[KgManager],
     max_rows: int,
     max_cols: int,
@@ -258,16 +248,16 @@ def output(
 
     if answer is not None:
         output["type"] = "answer"
-        output["answer"] = answer["answer"].strip()
-        output["sparql"] = answer["sparql"]
-        output["kg"] = answer["kg"]
+        output["answer"] = answer.args["answer"].strip()
+        output["sparql"] = answer.args["sparql"]
+        output["kg"] = answer.args["kg"]
 
     else:
         assert cancel is not None
         output["type"] = "cancel"
-        output["explanation"] = cancel["explanation"].strip()
+        output["explanation"] = cancel.args["explanation"].strip()
 
-        best_attempt = cancel.get("best_attempt")
+        best_attempt = cancel.args.get("best_attempt")
         if best_attempt:
             output["sparql"] = best_attempt.get("sparql")
             output["kg"] = best_attempt.get("kg")

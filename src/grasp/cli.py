@@ -21,9 +21,10 @@ from grasp.build.data import merge_kgs
 from grasp.configs import Adapt, Config
 from grasp.core import generate, load_task_notes, setup
 from grasp.evaluate import evaluate
-from grasp.tasks.examples import ExampleIndex, load_example_indices
 from grasp.manager import find_embedding_model
+from grasp.model import Message
 from grasp.tasks import Task, default_input_field
+from grasp.tasks.examples import ExampleIndex, load_example_indices
 from grasp.utils import is_invalid_model_output, parse_parameters
 
 
@@ -496,8 +497,7 @@ MAX_IDLE_TIME = 300.0
 
 
 class Past(BaseModel):
-    inputs: conlist(str, min_length=1)  # type: ignore
-    messages: conlist(dict, min_length=1)  # type: ignore
+    messages: conlist(Message, min_length=1)  # type: ignore
     known: set[str]
 
 
@@ -630,13 +630,11 @@ def serve_grasp(args: argparse.Namespace) -> None:
 
                 sel_managers, _ = partition_by(managers, lambda m: m.kg in sel)
 
-                past_inputs = None
                 past_messages = None
                 past_known = None
                 if request.past is not None:
                     # set past
                     past_messages = request.past.messages
-                    past_inputs = request.past.inputs
                     past_known = request.past.known
 
                 # Setup generator
@@ -648,7 +646,6 @@ def serve_grasp(args: argparse.Namespace) -> None:
                     kg_notes[request.task],
                     notes[request.task],
                     example_indices[request.task],
-                    past_inputs,
                     past_messages,
                     past_known,
                     logger,

@@ -1,12 +1,11 @@
-import json
 from typing import Any
 
 from grasp.functions import TaskFunctions
 from grasp.manager import KgManager
+from grasp.model import Message, ToolCall
 from grasp.tasks.utils import (
     get_answer_from_message,
     get_cancel_from_message,
-    get_sparql_from_message,
 )
 from grasp.utils import FunctionCallException
 
@@ -101,46 +100,35 @@ def call_function(
     raise FunctionCallException(f"Unknown function: {fn_name}")
 
 
-def get_answer_or_cancel(messages: list[dict]) -> tuple[dict | None, dict | None]:
+def get_answer_or_cancel(
+    messages: list[Message],
+) -> tuple[ToolCall | None, ToolCall | None]:
     last_message: str | None = None
-    last_answer: dict | None = None
-    last_cancel: str | None = None
-    assert messages[0]["role"] == "system", "First message should be system"
-    assert messages[1]["role"] == "user", "Second message should be user"
+    last_answer: ToolCall | None = None
+    last_cancel: ToolCall | None = None
+    assert messages[0].role == "system", "First message should be system"
+    assert messages[1].role == "user", "Second message should be user"
     for message in messages[2:]:
-        if message["role"] == "user" and message != messages[-1]:
-            # reset stuff after intermediate user feedback
+        if message.role == "feedback":
+            # reset stuff after intermediate feedback
             last_answer = None
             last_cancel = None
             last_message = None
 
-        if message["role"] != "assistant":
+        if isinstance(message.content, str):
+            # not assistant message
             continue
 
-        if "content" in message:
-            last_message = message["content"]
+        last_message = message.content.message
 
-        if "tool_calls" not in message:
-            continue
-
-        for tool_call in message["tool_calls"]:
-            if tool_call["type"] != "function":
-                continue
-
-            tool_call = tool_call["function"]
-            name = tool_call["name"]
-            try:
-                args = json.loads(tool_call["arguments"])
-            except json.JSONDecodeError:
-                continue
-
-            if name == "answer":
-                last_answer = args
+        for tool_call in message.content.tool_calls:
+            if tool_call.name == "answer":
+                last_answer = tool_call
                 # reset last cancel
                 last_cancel = None
 
-            elif tool_call["name"] == "cancel":
-                last_cancel = args
+            elif tool_call.name == "cancel":
+                last_cancel = tool_call
                 # reset last answer
                 last_answer = None
 
@@ -152,18 +140,18 @@ def get_answer_or_cancel(messages: list[dict]) -> tuple[dict | None, dict | None
     if last_answer is None and last_cancel is None:
         last_cancel = get_cancel_from_message(last_message)
 
-    # try to parse SPARQL from last message if both are still None
-    if last_answer is None and last_cancel is None:
-        last_answer = get_sparql_from_message(last_message)
-
     # try last message for general QA
     if last_answer is None and last_cancel is None and last_message is not None:
-        last_answer = {"answer": last_message}
+        last_answer = ToolCall(
+            id="dummy",
+            name="answer",
+            args={"answer": last_message},
+        )
 
     return last_answer, last_cancel  # type: ignore
 
 
-def output(messages: list[dict]) -> dict | None:
+def output(messages: list[Message]) -> dict | None:
     answer, cancel = get_answer_or_cancel(messages)
     if answer is None and cancel is None:
         return None
@@ -171,12 +159,12 @@ def output(messages: list[dict]) -> dict | None:
     elif answer is not None:
         return {
             "type": "answer",
-            "answer": answer["answer"],
+            "answer": answer.args["answer"],
         }
 
     else:
         assert cancel is not None
         return {
             "type": "cancel",
-            "explanation": cancel["explanation"],
+            "explanation": cancel.args["explanation"],
         }

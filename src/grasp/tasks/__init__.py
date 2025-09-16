@@ -4,6 +4,7 @@ from typing import Any
 from grasp.configs import Config
 from grasp.functions import TaskFunctions
 from grasp.manager import KgManager
+from grasp.model import Message
 from grasp.tasks.cea import functions as cea_functions
 from grasp.tasks.cea import input_and_state as cea_input_and_state
 from grasp.tasks.cea import output as cea_output
@@ -106,7 +107,7 @@ def default_input_field(task: str) -> str | None:
 
 def task_output(
     task: str,
-    messages: list[dict],
+    messages: list[Message],
     managers: list[KgManager],
     config: Config,
     task_state: Any = None,

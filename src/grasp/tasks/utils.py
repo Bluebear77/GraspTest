@@ -1,9 +1,11 @@
 import re
+from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
 
 from grasp.functions import execute_sparql, find_manager, update_known_from_selections
 from grasp.manager import KgManager
+from grasp.model import ToolCall
 from grasp.sparql.item import get_sparql_items, selections_from_items
 
 
@@ -37,7 +39,7 @@ class CancelCallModel(BaseModel):
     arguments: CancelModel
 
 
-def get_tool_call_from_message(message: str) -> str | None:
+def get_raw_tool_call_from_message(message: str) -> str | None:
     # sometimes the model fails to call the answer function, but
     # provides the output in one of the following formats:
     # 1) within <tool_call>...</tool_call> tags:
@@ -66,50 +68,63 @@ def get_tool_call_from_message(message: str) -> str | None:
         return tool_call_match.group(1).strip()
 
 
-def get_answer_from_message(task: str, message: str | None) -> dict | None:
+def get_answer_from_message(task: str, message: str | None) -> ToolCall | None:
     if message is None:
         return None
 
-    tool_call = get_tool_call_from_message(message)
+    tool_call = get_raw_tool_call_from_message(message)
     if tool_call is None:
         return None
 
     try:
-        return AnswerCallModel.model_validate_json(tool_call).arguments.model_dump()
+        answer_call = AnswerCallModel.model_validate_json(tool_call)
+        return ToolCall(
+            id=uuid4().hex,
+            name=answer_call.name,
+            args=answer_call.arguments.model_dump(),
+        )
     except ValidationError:
         pass
 
     try:
         if task == "sparql-qa":
-            return SparqlQaAnswerModel.model_validate_json(tool_call).model_dump()
+            args = SparqlQaAnswerModel.model_validate_json(tool_call).model_dump()
         elif task == "general-qa":
-            return GeneralQaAnswerModel.model_validate_json(tool_call).model_dump()
+            args = GeneralQaAnswerModel.model_validate_json(tool_call).model_dump()
         else:
             raise ValueError(f"Unknown task: {task}")
+
+        return ToolCall(id=uuid4().hex, name="answer", args=args)
     finally:
         return None
 
 
-def get_cancel_from_message(message: str | None) -> dict | None:
+def get_cancel_from_message(message: str | None) -> ToolCall | None:
     if message is None:
         return None
 
-    tool_call = get_tool_call_from_message(message)
+    tool_call = get_raw_tool_call_from_message(message)
     if tool_call is None:
         return None
 
     try:
-        return CancelCallModel.model_validate_json(tool_call).arguments.model_dump()
+        cancel_call = CancelCallModel.model_validate_json(tool_call)
+        return ToolCall(
+            id=uuid4().hex,
+            name=cancel_call.name,
+            args=cancel_call.arguments.model_dump(),
+        )
     except ValidationError:
         pass
 
     try:
-        return CancelModel.model_validate_json(tool_call).model_dump()
+        args = CancelModel.model_validate_json(tool_call).model_dump()
+        return ToolCall(id=uuid4().hex, name="cancel", args=args)
     finally:
         return None
 
 
-def get_sparql_from_message(message: str | None) -> dict | None:
+def get_sparql_from_message(message: str | None) -> ToolCall | None:
     if message is None:
         return None
 
@@ -121,7 +136,11 @@ def get_sparql_from_message(message: str | None) -> dict | None:
     )
     if sparql_match:
         sparql_query = sparql_match.group(1).strip()
-        return {"kg": None, "sparql": sparql_query, "answer": message}
+        return ToolCall(
+            id=uuid4().hex,
+            name="answer",
+            args={"kg": None, "sparql": sparql_query, "answer": message},
+        )
 
     return None
 

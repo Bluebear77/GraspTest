@@ -4,6 +4,7 @@ from typing import Any
 from uuid import uuid4
 
 from grasp.manager import KgManager
+from grasp.model import Message, Response, ToolCall
 from grasp.tasks.examples import ExampleIndex, Sample
 from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
 
@@ -203,7 +204,7 @@ def find_examples(
     known: set[str],
     max_rows: int,
     max_cols: int,
-) -> list[dict]:
+) -> Message:
     if random_examples:
         tool_result = find_random_examples(
             managers,
@@ -234,24 +235,17 @@ def find_examples(
         content = "Let's start by looking at some similar examples."
 
     tool_call_id = uuid4().hex
-    return [
-        {
-            "role": "assistant",
-            "content": content,
-            "tool_calls": [
-                {
-                    "id": tool_call_id,
-                    "type": "function",
-                    "function": {
-                        "name": fn_name,
-                        "arguments": json.dumps(fn_args, indent=2),
-                    },
-                }
+    return Message(
+        role="assistant",
+        content=Response(
+            message=content,
+            tool_calls=[
+                ToolCall(
+                    id=tool_call_id,
+                    name=fn_name,
+                    args=fn_args,
+                    result=tool_result,
+                )
             ],
-        },
-        {
-            "role": "tool",
-            "content": tool_result,
-            "tool_call_id": tool_call_id,
-        },
-    ]
+        ),
+    )

@@ -1,9 +1,11 @@
 import json
 import os
-from typing import Any, Iterable
+from typing import Iterable
 
 from pydantic import BaseModel
 from termcolor import colored
+
+from grasp.model import Message, Response, ToolCall
 
 
 def get_index_dir(kg: str | None = None) -> str:
@@ -47,32 +49,50 @@ def format_model(model: BaseModel | None) -> str:
     return model.model_dump_json(indent=2)
 
 
-def format_message(message: dict) -> str:
-    role = message["role"].upper()
+def format_error(reason: str, content: str) -> str:
+    header = colored(f"ERROR (reason={reason})", "red", attrs=["bold", "underline"])
+    return f"{header}\n{content}"
+
+
+def format_message(message: Message) -> str:
+    if isinstance(message.content, str):
+        header = colored(f"{message.role.upper()}", "magenta")
+        content = (
+            json.dumps(message.content, indent=2)
+            if isinstance(message.content, dict)
+            else message.content
+        )
+        return f"{header}\n{content}"
+    else:
+        return format_response(message.content)
+
+
+def format_response(response: Response) -> str:
+    header = colored(f"MODEL (usage={response.usage})", "blue")
 
     content = ""
+    if response.reasoning is not None:
+        content += f"Reasoning:\n{response.reasoning}\n\n"
 
-    if message.get("reasoning_content"):
-        content += f"Reasoning:\n{message['reasoning_content'].strip()}\n\n"
+    if response.message is not None:
+        if response.reasoning is not None:
+            content += "Content:\n"
 
-    if message.get("content"):
-        content += f"Content:\n{message['content'].strip()}\n\n"
+        content += f"{response.message}\n\n"
 
-    for tool_call in message.get("tool_calls", []):
-        call = tool_call["function"]
+    for tool_call in response.tool_calls:
+        content += format_tool_call(tool_call) + "\n\n"
 
-        fn_name = call["name"]
-        fn_args = json.loads(call["arguments"])
-        content += format_function_call(fn_name, fn_args) + "\n"
-
-    header = colored(role, "blue")
     return f"{header}\n{content.strip()}"
 
 
-def format_function_call(fn_name: str, fn_args: dict) -> str:
-    fn_name = colored(fn_name, "green")
-    fn_args_str = colored(json.dumps(fn_args, indent=2), "yellow")
-    return f"{fn_name}({fn_args_str})"
+def format_tool_call(tool_call: ToolCall) -> str:
+    name = colored(tool_call.name, "green")
+    fn_args_str = colored(json.dumps(tool_call.args, indent=2), "yellow")
+    content = f"{name}({fn_args_str})"
+    if tool_call.result is not None:
+        content += f":\n{tool_call.result}"
+    return content
 
 
 def is_server_error(message: str | None) -> bool:

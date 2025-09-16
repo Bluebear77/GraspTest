@@ -1,4 +1,3 @@
-import json
 from logging import Logger
 from typing import Any
 
@@ -7,7 +6,7 @@ from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
 from grasp.manager import KgManager
-from grasp.model import call_model
+from grasp.model import Message, call_model
 from grasp.tasks.cea import (
     feedback_instructions as cea_feedback_instructions,
 )
@@ -20,7 +19,7 @@ from grasp.tasks.sparql_qa import (
 from grasp.tasks.sparql_qa import (
     feedback_system_message as sparql_qa_feedback_system_instructions,
 )
-from grasp.utils import format_message
+from grasp.utils import format_message, format_response
 
 
 def format_feedback(feedback: dict) -> str:
@@ -99,36 +98,33 @@ def generate_feedback(
     output: dict,
     logger: Logger = get_logger("GRASP FEEDBACK"),
 ) -> dict | None:
-    api_messages: list[dict] = [
-        {
-            "role": "system",
-            "content": system_instructions(task, managers, kg_notes, notes),
-        },
-        {
-            "role": "user",
-            "content": feedback_instructions(task, inputs, output),
-        },
+    messages: list[Message] = [
+        Message(
+            role="system",
+            content=system_instructions(task, managers, kg_notes, notes),
+        ),
+        Message(
+            role="user",
+            content=feedback_instructions(task, inputs, output),
+        ),
     ]
-    for msg in api_messages:
+
+    for msg in messages:
         logger.debug(format_message(msg))
 
     try:
-        response = call_model(api_messages, functions(), config)
+        response = call_model(messages, functions(), config)
     except litellm.exceptions.Timeout:
         logger.error("LLM API timed out during feedback generation")
         return None
 
-    choice = response.choices[0]  # type: ignore
-    msg = choice.message.model_dump(exclude_none=True)  # type: ignore
-    logger.debug(format_message(msg))
+    logger.debug(format_response(response))
 
     try:
-        assert len(choice.message.tool_calls) == 1, "No tool call found"  # type: ignore
-        tool_call = choice.message.tool_calls[0]  # type: ignore
-        assert tool_call.type == "function", "Tool call is not a function call"
-        fn_name = tool_call.function.name
-        assert fn_name == "give_feedback", "Feedback function not called"
-        return json.loads(tool_call.function.arguments)
+        assert len(response.tool_calls) == 1, "No tool call found"  # type: ignore
+        tool_call = response.tool_calls[0]  # type: ignore
+        assert tool_call.name == "give_feedback", "Feedback function not called"
+        return tool_call.args
     except Exception as e:
         logger.debug(f"Failed to parse feedback:\n{e}")
         return None

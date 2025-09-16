@@ -42,11 +42,14 @@ class Config(BaseModel):
     temperature: float | None = 1.0
     top_p: float | None = 1.0
     reasoning_effort: str | None = None
+    reasoning_summary: str | None = None
+    # one of completions, responses
+    api: str = "completions"
 
     # completion parameters
     max_completion_tokens: int = 8192  # 8k, leaves enough space for reasoning models
     completion_timeout: float = 120.0
-    max_messages: int = 200
+    max_steps: int = 100
 
     # example parameters
     num_examples: int = 3
@@ -90,3 +93,5 @@ class Adapt(Config):
     adapt_temperature: float | None = None
     adapt_top_p: float | None = None
     adapt_reasoning_effort: str | None = None
+    adapt_reasoning_summary: str | None = None
+    adapt_api: str = "completions"
