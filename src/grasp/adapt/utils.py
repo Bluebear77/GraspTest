@@ -1,10 +1,6 @@
 import json
 import os
 
-from grasp.functions import execute_sparql, find_manager
-from grasp.manager import KgManager
-from grasp.sparql.item import get_sparql_items, selections_from_items
-
 
 def format_arguments(args, depth: int = 0) -> str:
     if isinstance(args, list):

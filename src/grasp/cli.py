@@ -21,7 +21,7 @@ from grasp.build.data import merge_kgs
 from grasp.configs import Adapt, Config
 from grasp.core import generate, load_task_notes, setup
 from grasp.evaluate import evaluate
-from grasp.examples import ExampleIndex, load_example_indices
+from grasp.tasks.examples import ExampleIndex, load_example_indices
 from grasp.manager import find_embedding_model
 from grasp.tasks import Task, default_input_field
 from grasp.utils import is_invalid_model_output, parse_parameters
@@ -377,7 +377,7 @@ def run_grasp(args: argparse.Namespace) -> None:
     managers = setup(config)
 
     model = find_embedding_model(managers)
-    example_indices = load_example_indices(config, model=model)
+    example_indices = load_example_indices(args.task, config, model=model)
 
     notes, kg_notes = load_task_notes(args.task, config)
 
@@ -542,14 +542,21 @@ def serve_grasp(args: argparse.Namespace) -> None:
     kgs = [manager.kg for manager in managers]
 
     model = find_embedding_model(managers)
-    example_indices = load_example_indices(config, model=model)
 
     notes = {}
     kg_notes = {}
+    example_indices = {}
     for task in Task:
         general_notes, kg_specific_notes = load_task_notes(task.value, config)
         notes[task.value] = general_notes
         kg_notes[task.value] = kg_specific_notes
+
+        if task != Task.SPARQL_QA:
+            example_indices[task.value] = {}
+        else:
+            # example indices only available for sparql-qa task
+            task_indices = load_example_indices(task.value, config, model=model)
+            example_indices[task.value] = task_indices
 
     @app.get("/knowledge_graphs")
     async def _knowledge_graphs():
@@ -640,7 +647,7 @@ def serve_grasp(args: argparse.Namespace) -> None:
                     sel_managers,
                     kg_notes[request.task],
                     notes[request.task],
-                    example_indices,
+                    example_indices[request.task],
                     past_inputs,
                     past_messages,
                     past_known,

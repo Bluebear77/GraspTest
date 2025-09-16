@@ -1,16 +1,23 @@
 import os
 import time
-from typing import Any
+from typing import Any, Type
 
+from pydantic import BaseModel
 from search_index import IndexData, SimilarityIndex
 from universal_ml_utils.io import dump_jsonl, load_jsonl
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
-from grasp.utils import Sample
+
+
+class Sample(BaseModel):
+    def inputs(self) -> list[str]:
+        raise NotImplementedError
 
 
 class ExampleIndex:
+    sample_cls: Type[Sample]
+
     def __init__(
         self,
         data: IndexData,
@@ -29,15 +36,19 @@ class ExampleIndex:
         question: str,
         k: int = 3,
         **kwargs: Any,
-    ) -> list[Sample]:
+    ) -> list:
         """
         Find the top-k matching samples for a given question.
         """
         matches = self.index.find_matches(question, k, **kwargs)
         return [self.samples[id] for id, _ in matches]
 
-    @staticmethod
-    def load(dir: str, load_kwargs: dict[str, Any] | None = None) -> "ExampleIndex":
+    @classmethod
+    def load(
+        cls,
+        dir: str,
+        load_kwargs: dict[str, Any] | None = None,
+    ) -> "ExampleIndex":
         data = IndexData.load(
             os.path.join(dir, "data.tsv"),
             os.path.join(dir, "offsets.bin"),
@@ -52,13 +63,14 @@ class ExampleIndex:
         )
 
         samples = [
-            Sample(**sample)
+            cls.sample_cls(**sample)
             for sample in load_jsonl(os.path.join(dir, "samples.jsonl"))
         ]
         return ExampleIndex(data, index, samples)
 
-    @staticmethod
+    @classmethod
     def build(
+        cls,
         examples_file: str,
         output_dir: str,
         batch_size: int = 256,
@@ -67,7 +79,7 @@ class ExampleIndex:
     ) -> None:
         logger = get_logger("EXAMPLE INDEX BUILD", log_level)
 
-        samples = [Sample(**sample) for sample in load_jsonl(examples_file)]
+        samples = [cls.sample_cls(**sample) for sample in load_jsonl(examples_file)]
 
         if os.path.exists(output_dir) and not overwrite:
             logger.info(f"Index directory {output_dir} already exists, skipping build")
@@ -88,12 +100,12 @@ class ExampleIndex:
 
         with open(data_file, "w") as of:
             # write header
-            of.write("id\tquestions\n")
+            of.write("id\tinputs\n")
             for i, sample in enumerate(samples):
-                questions = [sample.question] + sample.paraphrases
-                if not questions:
+                inputs = sample.inputs()
+                if not inputs:
                     continue
-                of.write(f"{i}\t" + "\t".join(questions) + "\n")
+                of.write(f"{i}\t" + "\t".join(inputs) + "\n")
 
         IndexData.build(data_file, offsets_file)
         data = IndexData.load(data_file, offsets_file)
@@ -108,11 +120,27 @@ class ExampleIndex:
         logger.info(f"Example index built in {end - start:.2f} seconds")
 
 
-def load_example_indices(config: Config, **kwargs: Any) -> dict[str, ExampleIndex]:
+def task_to_index(task: str) -> Type[ExampleIndex]:
+    if task == "sparql-qa":
+        from grasp.tasks.sparql_qa.examples import SparqlQaExampleIndex
+
+        return SparqlQaExampleIndex
+
+    else:
+        raise ValueError(f"Unknown task {task}")
+
+
+def load_example_indices(
+    task: str,
+    config: Config,
+    **kwargs: Any,
+) -> dict[str, ExampleIndex]:
+    index_cls = task_to_index(task)
+
     indices = {}
     for kg in config.knowledge_graphs:
         if kg.example_index is None:
             continue
 
-        indices[kg] = ExampleIndex.load(kg.example_index, **kwargs)
+        indices[kg] = index_cls.load(kg.example_index, **kwargs)
     return indices

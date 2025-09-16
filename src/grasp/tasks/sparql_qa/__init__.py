@@ -3,12 +3,9 @@ from typing import Any
 
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
-from grasp.tasks.sparql_qa_examples import (
+from grasp.tasks.sparql_qa.examples import (
     find_random_examples,
     find_similar_examples,
-)
-from grasp.tasks.sparql_qa_examples import (
-    functions as example_functions,
 )
 from grasp.tasks.utils import (
     format_sparql_result,

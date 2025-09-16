@@ -5,7 +5,6 @@ from logging import Logger
 from search_index import PrefixIndex, SimilarityIndex
 from universal_ml_utils.logging import get_logger
 
-from grasp.configs import KgConfig
 from grasp.manager.utils import load_data_and_mapping
 from grasp.utils import get_index_dir
 

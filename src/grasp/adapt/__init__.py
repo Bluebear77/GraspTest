@@ -5,13 +5,13 @@ import yaml
 from tqdm import tqdm, trange
 from universal_ml_utils.io import dump_json, load_jsonl
 from universal_ml_utils.logging import get_logger
-from universal_ml_utils.ops import partition_by
 
 from grasp.adapt.note_taking import take_notes
 from grasp.adapt.utils import link
 from grasp.configs import Adapt
-from grasp.core import generate, setup
-from grasp.utils import Sample
+from grasp.core import generate, load_task_notes, setup
+from grasp.functions import find_manager
+from grasp.tasks.sparql_qa.examples import SparqlQaSample
 
 
 def adapt(
@@ -21,22 +21,26 @@ def adapt(
     overwrite: bool = False,
     log_level: str | int | None = None,
 ) -> None:
-    if os.path.exists(out_dir) and not overwrite:
-        raise FileExistsError(f"Output directory {out_dir} already exists")
-
+    assert task == "sparql-qa", "Only sparql-qa task is supported for adaptation"
     assert config.method == "iterative_note_taking", (
         "Only iterative_note_taking method is supported for adaptation"
     )
 
+    if os.path.exists(out_dir) and not overwrite:
+        raise FileExistsError(f"Output directory {out_dir} already exists")
+
     logger = get_logger("GRASP ADAPTATION", log_level)
 
-    managers, notes = setup(config)
+    managers = setup(config)
+    notes, kg_notes = load_task_notes(task, config)
 
     assert config.seed is not None, "Seed must be set for adaptation"
 
-    inputs: list[tuple[str, Sample]] = []
+    inputs: list[tuple[str, SparqlQaSample]] = []
     for ipt in config.input:
-        samples = [(ipt.kg, Sample(**sample)) for sample in load_jsonl(ipt.file)]
+        samples = [
+            (ipt.kg, SparqlQaSample(**sample)) for sample in load_jsonl(ipt.file)
+        ]
         if config.samples_per_file is not None:
             random.seed(config.seed)
             random.shuffle(samples)
@@ -60,20 +64,24 @@ def adapt(
 
         outputs = []
         for kg, sample in tqdm(samples, desc=f"Round {r + 1} samples", leave=False):
-            sel_managers, _ = partition_by(managers, lambda m: m.kg == kg)
-            assert len(sel_managers) == 1, (
-                f"Expected exactly one manager for kg {kg}, got {len(sel_managers)}"
-            )
+            manager, _ = find_manager(managers, kg)
 
-            *_, output = generate(task, sample.question, config, sel_managers, notes)
+            *_, output = generate(
+                task,
+                sample.question,
+                config,
+                [manager],
+                kg_notes,
+                notes,
+            )
             outputs.append(output)
 
-        take_notes(samples, outputs, managers, notes, config, logger)
+        take_notes(samples, outputs, managers, kg_notes, notes, config, logger)
 
-        for manager in managers:
-            out_file = os.path.join(out_dir, f"notes.{manager.kg}.round_{r}.json")
-            dump_json(manager.notes, out_file, indent=2)
-            link(out_file, os.path.join(out_dir, f"notes.{manager.kg}.json"))
+        for kg, kg_specific_notes in kg_notes.items():
+            out_file = os.path.join(out_dir, f"notes.{kg}.round_{r}.json")
+            dump_json(kg_specific_notes, out_file, indent=2)
+            link(out_file, os.path.join(out_dir, f"notes.{kg}.json"))
 
         out_file = os.path.join(out_dir, f"notes.general.round_{r}.json")
         dump_json(notes, out_file, indent=2)

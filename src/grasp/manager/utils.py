@@ -249,7 +249,7 @@ def is_sim_index(index: SearchIndex) -> bool:
 
 def describe_index(index_type: str) -> tuple[str, str]:
     if index_type == "prefix":
-        title = "Prefix-keyword index"
+        title = "Prefix index"
         desc = "Retrieves items by overlap between query keywords \
 and item words. The query keywords can match item words exactly or \
 as prefixes."

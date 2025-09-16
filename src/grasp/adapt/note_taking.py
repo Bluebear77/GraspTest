@@ -13,9 +13,10 @@ from grasp.adapt.notes import (
 from grasp.adapt.utils import format_output
 from grasp.configs import Adapt, Config
 from grasp.core import call_model
-from grasp.manager import KgManager, format_kgs
+from grasp.manager import KgManager
+from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import prepare_sparql_result
-from grasp.utils import Sample, format_list, format_message, format_notes
+from grasp.utils import format_list, format_message, format_notes
 
 MAX_MESSAGES = 50
 
@@ -55,15 +56,16 @@ Examples of potentially useful types of notes include:
 - strategies when encountering certain types of questions or errors
 - tips for when and how to use certain functions
 
-Additional rules:
+Additional rules to follow:
 {format_list(rules())}"""
 
 
 def note_taking_instructions(
     managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
     notes: list[str],
     config: Config,
-    inputs: list[tuple[str, Sample]],
+    inputs: list[tuple[str, SparqlQaSample]],
     outputs: list[dict],
 ) -> str:
     formatted = []
@@ -93,24 +95,29 @@ Ground truth:
         formatted.append(content)
 
     outputs_formatted = "\n\n".join(formatted)
+    kg_specific_notes = format_list(
+        f"{kg}: {format_notes(kg_specific_notes, indent=2)}"
+        for kg, kg_specific_notes in sorted(kg_notes.items())
+    )
 
     return f"""\
 Add to, delete from, or update the following notes \
 based on the provided questions and outputs below.
 
 Knowledge graph specific notes:
-{format_kgs(managers)}
+{kg_specific_notes}
 
-Notes across all knowledge graphs:
+General notes across knowledge graphs:
 {format_notes(notes)}
 
 {outputs_formatted}"""
 
 
 def take_notes(
-    inputs: list[tuple[str, Sample]],
+    inputs: list[tuple[str, SparqlQaSample]],
     outputs: list[dict],
     managers: list[KgManager],
+    kg_notes: dict[str, list[str]],
     notes: list[str],
     config: Adapt,
     logger: Logger,
@@ -120,7 +127,12 @@ def take_notes(
         {
             "role": "user",
             "content": note_taking_instructions(
-                managers, notes, config, inputs, outputs
+                managers,
+                kg_notes,
+                notes,
+                config,
+                inputs,
+                outputs,
             ),
         },
     ]
@@ -159,7 +171,7 @@ def take_notes(
             fn_args = json.loads(tool_call.function.arguments)
 
             try:
-                result = call_function(managers, notes, fn_name, fn_args)
+                result = call_function(kg_notes, notes, fn_name, fn_args)
             except Exception as e:
                 result = f"Call to function {fn_name} returned an error:\n{e}"
 

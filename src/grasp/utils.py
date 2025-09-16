@@ -75,14 +75,6 @@ def format_function_call(fn_name: str, fn_args: dict) -> str:
     return f"{fn_name}({fn_args_str})"
 
 
-class Sample(BaseModel):
-    id: str | None = None
-    question: str
-    sparql: str
-    paraphrases: list[str] = []
-    info: dict[str, Any] = {}
-
-
 def is_server_error(message: str | None) -> bool:
     if message is None:
         return False

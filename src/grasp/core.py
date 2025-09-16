@@ -9,13 +9,12 @@ from search_index.similarity import EmbeddingModel
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
-from grasp.examples import ExampleIndex
 from grasp.functions import (
     call_function,
     kg_functions,
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
-from grasp.manager.utils import load_general_notes, load_kg_notes, describe_index
+from grasp.manager.utils import describe_index, load_general_notes, load_kg_notes
 from grasp.model import call_model
 from grasp.tasks import (
     rules as general_rules,
@@ -28,9 +27,10 @@ from grasp.tasks import (
     task_setup,
     task_system_information,
 )
+from grasp.tasks.examples import ExampleIndex
 from grasp.tasks.feedback import format_feedback, generate_feedback
-from grasp.tasks.sparql_qa_examples import find_examples
-from grasp.tasks.sparql_qa_examples import functions as example_functions
+from grasp.tasks.sparql_qa.examples import find_examples
+from grasp.tasks.sparql_qa.examples import functions as example_functions
 from grasp.utils import (
     format_list,
     format_message,

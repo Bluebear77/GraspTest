@@ -225,7 +225,7 @@ search_property_of_entity(kg="wikidata", entity="wd:Q937", query="birth")""",
                     "description": """\
 Search for objects (entities or literals) for a given property in the knowledge graph. \
 This function uses the index type for entities of the \
-given knowledge graph and a temporary prefix-keyword index for literals internally.
+given knowledge graph and a temporary prefix index for literals internally.
 
 For example, to search for football jobs in Wikidata, do the following:
 search_object_of_property(kg="wikidata", property="wdt:P106", query="football")""",

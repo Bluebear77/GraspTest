@@ -5,7 +5,8 @@ from universal_ml_utils.io import dump_json, load_json, load_jsonl
 from universal_ml_utils.logging import get_logger
 
 from grasp.sparql.metrics import f1_score, get_result_or_error, get_result_size
-from grasp.utils import Sample, is_invalid_evaluation, is_invalid_model_output
+from grasp.tasks.sparql_qa.examples import SparqlQaSample
+from grasp.utils import is_invalid_evaluation, is_invalid_model_output
 
 
 def evaluate(
@@ -34,9 +35,9 @@ def evaluate(
 
     predictions = load_jsonl(prediction_file)
 
-    inputs: dict[str, Sample] = {}
+    inputs: dict[str, SparqlQaSample] = {}
     for sample in load_jsonl(input_file):
-        sample = Sample(**sample)
+        sample = SparqlQaSample(**sample)
         assert sample.id not in inputs, f"Duplicate id {sample.id}"
         assert sample.id is not None, "Sample id must not be None"
         inputs[sample.id] = sample

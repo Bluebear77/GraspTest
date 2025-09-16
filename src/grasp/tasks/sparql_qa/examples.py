@@ -1,11 +1,27 @@
 import json
 import random
+from typing import Any
 from uuid import uuid4
 
-from grasp.examples import ExampleIndex
 from grasp.manager import KgManager
+from grasp.tasks.examples import ExampleIndex, Sample
 from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
-from grasp.utils import Sample
+
+
+class SparqlQaSample(Sample):
+    id: str | None = None
+    question: str
+    sparql: str
+    paraphrases: list[str] = []
+    info: dict[str, Any] = {}
+
+    def inputs(self) -> list[str]:
+        return [self.question] + self.paraphrases
+
+
+class SparqlQaExampleIndex(ExampleIndex):
+    sample_cls = SparqlQaSample
+
 
 # similar examples should be at least have this cos sim
 MIN_EXAMPLE_SCORE = 0.5
@@ -89,7 +105,7 @@ Currently, examples are available for the following knowledge graphs:
 def format_examples(
     kg: str,
     managers: list[KgManager],
-    examples: list[Sample],
+    examples: list[SparqlQaSample],
     known: set[str],
     max_rows: int,
     max_cols: int,
@@ -120,7 +136,7 @@ def format_examples(
 
 def find_random_examples(
     managers: list[KgManager],
-    example_indices: dict[str, ExampleIndex],
+    example_indices: dict[str, SparqlQaExampleIndex],
     kg: str,
     num_examples: int,
     known: set[str],
@@ -148,7 +164,7 @@ def find_random_examples(
 
 def find_similar_examples(
     managers: list[KgManager],
-    example_indices: dict[str, ExampleIndex],
+    example_indices: dict[str, SparqlQaExampleIndex],
     kg: str,
     question: str,
     num_examples: int,
@@ -179,7 +195,7 @@ def find_similar_examples(
 
 def find_examples(
     managers: list[KgManager],
-    example_indices: dict[str, ExampleIndex],
+    example_indices: dict[str, SparqlQaExampleIndex],
     kg: str,
     question: str,
     num_examples: int,
