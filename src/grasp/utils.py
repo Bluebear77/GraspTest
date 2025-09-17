@@ -166,7 +166,7 @@ def parse_parameters(headers: list[str]) -> dict[str, str]:
     return header_dict
 
 
-def clip(s: str, max_len: int = 128, respect_word_boundaries: bool = True) -> str:
+def clip(s: str, max_len: int = 64, respect_word_boundaries: bool = True) -> str:
     if len(s) <= max_len:
         return s
 

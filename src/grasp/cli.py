@@ -81,6 +81,24 @@ def parse_args() -> argparse.Namespace:
         help="Port to run the GRASP server on",
     )
     server_parser.add_argument(
+        "--max-connections",
+        type=int,
+        default=16,
+        help="Maximum number of concurrent connections",
+    )
+    server_parser.add_argument(
+        "--max-idle-time",
+        type=int,
+        default=300,
+        help="Maximum idle time for a connection in seconds (after which the connection is closed)",
+    )
+    server_parser.add_argument(
+        "--max-generation-time",
+        type=int,
+        default=300,
+        help="Maximum time for a single generation in seconds (after which the generation is cancelled)",
+    )
+    server_parser.add_argument(
         "--log-outputs",
         type=str,
         help="File to log all inputs and outputs to (in JSONL format)",
@@ -489,11 +507,6 @@ def run_grasp(args: argparse.Namespace) -> None:
 
 # keep track of connections and limit to 10 concurrent connections
 active_connections = 0
-MAX_CONNECTIONS = 16
-# maximum time for a query in seconds
-MAX_QUERY_TIME = 300.0
-# maximum idle time for a connection in seconds
-MAX_IDLE_TIME = 300.0
 
 
 class Past(BaseModel):
@@ -574,10 +587,10 @@ def serve_grasp(args: argparse.Namespace) -> None:
         await websocket.accept()
 
         # Check if we've reached the maximum number of connections
-        if active_connections >= MAX_CONNECTIONS:
+        if active_connections >= args.max_connections:
             logger.warning(
                 f"Connection from {client} immediately closed: "
-                f"maximum of {MAX_CONNECTIONS:,} active connections reached"
+                f"maximum of {args.max_connections:,} active connections reached"
             )
             await websocket.close(code=1013, reason="Server too busy, try again later")
             return
@@ -589,12 +602,12 @@ def serve_grasp(args: argparse.Namespace) -> None:
         async def idle_checker():
             nonlocal last_active
             while True:
-                await asyncio.sleep(min(5, MAX_IDLE_TIME))
+                await asyncio.sleep(min(5, args.max_idle_time))
 
-                if time.perf_counter() - last_active <= MAX_IDLE_TIME:
+                if time.perf_counter() - last_active <= args.max_idle_time:
                     continue
 
-                msg = f"Connection closed due to inactivity after {MAX_IDLE_TIME:,} seconds"
+                msg = f"Connection closed due to inactivity after {args.max_idle_time:,} seconds"
                 logger.info(f"{client}: {msg}")
                 await websocket.close(code=1013, reason=msg)  # Try Again Later
                 break
@@ -658,9 +671,9 @@ def serve_grasp(args: argparse.Namespace) -> None:
                 for output in generator:
                     # Check if we've exceeded the time limit
                     current_time = time.perf_counter()
-                    if current_time - start_time > MAX_QUERY_TIME:
+                    if current_time - start_time > args.max_generation_time:
                         # Send timeout message to client
-                        msg = f"Operation with {client} timed out after {MAX_QUERY_TIME:,} seconds"
+                        msg = f"Generation hit time limit of {args.max_generation_time:,} seconds"
                         logger.warning(msg)
                         await websocket.send_json({"error": msg})
                         break
