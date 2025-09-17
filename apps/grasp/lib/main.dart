@@ -552,10 +552,14 @@ class _GRASPState extends State<GRASP> {
   }
 
   Widget buildUnknownItem(dynamic item) {
-    return buildCard(
+    return buildCardWithTitle(
       item["type"],
       markdown("```json\n${prettyJson(item)}\n```"),
     );
+  }
+
+  Widget buildNullOutputItem() {
+    return buildCardWithTitle("Output", markdown("No output generated."));
   }
 
   String fnToMarkdown(dynamic fn) {
@@ -815,7 +819,9 @@ $result
       case "output":
         final task = item["task"];
         final output = item["output"];
-        if (task == Task.sparqlQa.identifier) {
+        if (output == null) {
+          return buildNullOutputItem();
+        } else if (task == Task.sparqlQa.identifier) {
           return buildSparqlQaOutputItem(
             output["type"] == "answer"
                 ? output["answer"]
