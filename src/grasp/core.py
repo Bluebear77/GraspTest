@@ -237,13 +237,14 @@ def generate(
     for msg in messages:
         logger.debug(format_message(msg))
 
+    num_messages = len(messages)
     error: dict | None = None
 
     # keep track of last serialized message to detect loops
     # if model emits the same message twice, we are stuck
     last_resp_hash: str | None = None
     retries = 0
-    while len(messages) < config.max_steps:
+    while len(messages) - num_messages < config.max_steps:
         try:
             response = call_model(messages, fns, config)
         except Timeout:

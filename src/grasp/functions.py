@@ -87,8 +87,7 @@ execute(kg="wikidata", sparql="SELECT ?job WHERE { wd:Q937 wdt:P106 ?job }")""",
             "name": "list",
             "description": """\
 List triples from the knowledge graph satisfying the given subject, property, \
-and object constraints. At most two of subject, property, and object should be \
-constrained at once. 
+and object constraints.
 
 For example, to find triples with Albert Einstein as the subject in Wikidata, \
 do the following:
@@ -107,15 +106,15 @@ list(kg="wikidata", property="wdt:P19")""",
                     },
                     "subject": {
                         "type": "string",
-                        "description": "Optional IRI for constraining the subject",
+                        "description": "IRI for constraining the subject, omit if not constrained",
                     },
                     "property": {
                         "type": "string",
-                        "description": "Optional IRI for constraining the property",
+                        "description": "IRI for constraining the property, omit if not constrained",
                     },
                     "object": {
                         "type": "string",
-                        "description": "Optional IRI or literal for constraining the object",
+                        "description": "IRI or literal for constraining the object, omit if not constrained",
                     },
                 },
                 "required": ["kg"],
@@ -771,11 +770,6 @@ def list_triples(
     known: set[str],
 ) -> str:
     manager, _ = find_manager(managers, kg)
-
-    if subject is not None and property is not None and obj is not None:
-        raise FunctionCallException(
-            "Only two of subject, property, or object should be provided."
-        )
 
     triple = []
     bindings = []

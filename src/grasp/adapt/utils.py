@@ -1,6 +1,8 @@
 import json
 import os
 
+from grasp.model import Message, Response
+
 
 def format_arguments(args, depth: int = 0) -> str:
     if isinstance(args, list):
@@ -19,24 +21,27 @@ def format_arguments(args, depth: int = 0) -> str:
         return str(args)
 
 
-def format_output(output: dict) -> str:
-    tool_call_results = {
-        message["tool_call_id"]: message["content"]
-        for message in output["messages"]
-        if message["role"] == "tool"
-    }
+def format_output(messages: list[Message]) -> str:
     fmt = []
     step = 1
-    for message in output["messages"][2:]:
-        if message["role"] == "tool":
-            continue
-        elif message["role"] == "user":
-            fmt.append(f"Feedback:\n{message['content']}")
+    for message in messages[2:]:
+        if message.role == "feedback":
+            fmt.append(f"Feedback:\n{message.content}")
             continue
 
-        assert message["role"] == "assistant"
+        elif message.role == "user":
+            fmt.append(f"User:\n{message.content}")
+            continue
+
+        assert isinstance(message.content, Response)
 
         content = f"System step {step}:"
+
+        assistant = message.content
+        if assistant.has_content:
+            content += f"\n{assistant.get_content().strip()}"
+
+        i
         if message.get("reasoning_content"):
             content += f"\n{message['reasoning_content'].strip()}"
         if message.get("content"):

@@ -1,4 +1,3 @@
-import json
 from copy import deepcopy
 from logging import Logger
 
@@ -14,11 +13,12 @@ from grasp.adapt.utils import format_output
 from grasp.configs import Adapt, Config
 from grasp.core import call_model
 from grasp.manager import KgManager
+from grasp.model import Message
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import prepare_sparql_result
-from grasp.utils import format_list, format_message, format_notes
+from grasp.utils import format_list, format_message, format_notes, format_response
 
-MAX_MESSAGES = 50
+MAX_STEPS = 50
 
 
 def rules() -> list[str]:
@@ -122,11 +122,14 @@ def take_notes(
     config: Adapt,
     logger: Logger,
 ) -> None:
-    api_messages = [
-        {"role": "system", "content": system_instructions()},
-        {
-            "role": "user",
-            "content": note_taking_instructions(
+    messages = [
+        Message(
+            role="system",
+            content=system_instructions(),
+        ),
+        Message(
+            role="user",
+            content=note_taking_instructions(
                 managers,
                 kg_notes,
                 notes,
@@ -134,15 +137,15 @@ def take_notes(
                 inputs,
                 outputs,
             ),
-        },
+        ),
     ]
 
-    for msg in api_messages:
+    for msg in messages:
         logger.debug(format_message(msg))
 
     functions = note_functions(managers)
 
-    num_messages = len(api_messages)
+    num_messages = len(messages)
 
     # copy config to avoid modifying the original
     config = deepcopy(config)
@@ -151,33 +154,36 @@ def take_notes(
     config.temperature = config.adapt_temperature or config.temperature
     config.top_p = config.adapt_top_p or config.top_p
     config.reasoning_effort = config.adapt_reasoning_effort or config.reasoning_effort
+    config.api = config.adapt_api or config.api
 
-    while len(api_messages) - num_messages < MAX_MESSAGES:
+    while len(messages) - num_messages < MAX_STEPS:
         try:
-            response = call_model(api_messages, functions, config)
+            response = call_model(messages, functions, config)
         except Timeout:
+            logger.error("LLM API timed out during note taking")
             return
 
-        choice = response.choices[0]  # type: ignore
-        msg = choice.message.model_dump(exclude_none=True)  # type: ignore
-        api_messages.append(msg)
-        logger.debug(format_message(msg))
-
-        if not choice.message.tool_calls:  # type: ignore
+        if response.is_empty:
+            logger.error("LLM API returned empty response during note taking")
             return
 
-        for tool_call in choice.message.tool_calls or []:  # type: ignore
-            fn_name: str = tool_call.function.name  # type: ignore
-            fn_args = json.loads(tool_call.function.arguments)
+        messages.append(Message(role="assistant", content=response))
 
+        for tool_call in response.tool_calls:
             try:
-                result = call_function(kg_notes, notes, fn_name, fn_args)
+                result = call_function(
+                    kg_notes,
+                    notes,
+                    tool_call.name,
+                    tool_call.args,
+                )
             except Exception as e:
-                result = f"Call to function {fn_name} returned an error:\n{e}"
+                result = f"Call to function {tool_call.name} returned an error:\n{e}"
 
-            tool_msg = {"role": "tool", "content": result, "tool_call_id": tool_call.id}
-            api_messages.append(tool_msg)
-            logger.debug(format_message(tool_msg))
+            tool_call.result = result
 
-            if fn_name == "stop":
+            if tool_call.name == "stop":
                 return
+
+        # only log now once tool call results are set
+        logger.debug(format_response(response))

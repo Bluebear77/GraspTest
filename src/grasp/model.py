@@ -1,8 +1,17 @@
 import json
 from typing import Any
+from uuid import uuid4
 
-from litellm import Choices, ResponsesAPIResponse, completion, responses
+from litellm import (
+    Choices,
+    ResponseFunctionToolCall,
+    ResponsesAPIResponse,
+    completion,
+    responses,
+)
 from litellm.types.utils import ModelResponse
+from openai.types.responses.response_output_message import ResponseOutputMessage
+from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 from pydantic import BaseModel
 
 from grasp.configs import Config
@@ -32,26 +41,40 @@ class ToolCall(BaseModel):
         }
 
 
+class Reasoning(BaseModel):
+    id: str
+    content: str | None = None
+    summary: str | None = None
+    encrypted_content: str | None = None
+
+
 class Response(BaseModel):
+    id: str
     message: str | None
-    reasoning: str | None = None
+    reasoning: Reasoning | None = None
     tool_calls: list[ToolCall]
     usage: dict | None = None
 
-    state: Any | None = None
-
     @property
     def has_content(self) -> bool:
-        return self.message is not None or self.reasoning is not None
+        return self.message is not None or self.has_reasoning_content
+
+    @property
+    def has_reasoning_content(self) -> bool:
+        return self.reasoning is not None and (
+            self.reasoning.content is not None or self.reasoning.summary is not None
+        )
 
     def get_content(self) -> str:
         content = ""
-        if self.reasoning is not None:
-            content += f"**Reasoning**\n{self.reasoning}\n\n"
+
+        if self.has_reasoning_content:
+            reasoning = self.reasoning.content or self.reasoning.summary  # type: ignore
+            content += f"{reasoning}\n\n"
 
         if self.message is not None:
-            if self.reasoning is not None:
-                content += "---\n\n**Content**\n"
+            if self.has_reasoning_content:
+                content += "---\n\n"
 
             content += self.message
 
@@ -60,7 +83,7 @@ class Response(BaseModel):
     @staticmethod
     def from_completions_api(response: ModelResponse) -> "Response":
         if not response.choices:
-            return Response(message=None, tool_calls=[])
+            return Response(id=uuid4().hex, message=None, tool_calls=[])
 
         choice: Choices = response.choices[0]  # type: ignore
         if choice.finish_reason not in ["tool_calls", "stop", "length"]:
@@ -69,7 +92,10 @@ class Response(BaseModel):
         message = choice.message.content
         reasoning = None
         if hasattr(choice.message, "reasoning_content"):
-            reasoning = choice.message.reasoning_content
+            reasoning = Reasoning(
+                id=uuid4().hex,
+                content=choice.message.reasoning_content,
+            )
 
         tool_calls = []
         for tool_call in choice.message.tool_calls or []:
@@ -95,28 +121,55 @@ class Response(BaseModel):
 
     @staticmethod
     def from_responses_api(response: ResponsesAPIResponse) -> "Response":
+        id = None
         message = None
         reasoning = None
         tool_calls = []
 
         for output in response.output:
-            pass
+            if isinstance(output, ResponseOutputMessage):
+                id = output.id
 
-        usage = response.usage.model_dump(exclude_defaults=True)  # type: ignore
+                # assistant
+                if output.content:
+                    message = output.content[0].text  # type: ignore
+
+            elif isinstance(output, ResponseReasoningItem):
+                # reasoning
+                reasoning = Reasoning(id=output.id)
+                if output.summary:
+                    reasoning.summary = output.summary[0].text
+
+                if output.content:
+                    reasoning.content = output.content[0].text
+
+                if output.encrypted_content:
+                    reasoning.encrypted_content = output.encrypted_content
+
+            elif isinstance(output, ResponseFunctionToolCall):
+                # tool call
+                tool_calls.append(
+                    ToolCall(
+                        id=output.call_id,
+                        name=output.name,
+                        args=json.loads(output.arguments),
+                    )
+                )
+
+            else:
+                raise ValueError(f"Unknown output type {type(output)}")
+
         return Response(
+            id=id or uuid4().hex,
             message=message,
             reasoning=reasoning,
             tool_calls=tool_calls,
-            usage=usage,
+            usage=response.usage.model_dump(exclude_defaults=True),  # type: ignore
         )
 
     @property
     def is_empty(self) -> bool:
-        return (
-            self.message is None
-            and self.reasoning is None
-            and not len(self.tool_calls) == 0
-        )
+        return self.message is None and self.reasoning is None and not self.tool_calls
 
     def hash(self) -> str:
         msg: dict[str, Any] = {
@@ -173,8 +226,10 @@ def completions_api_messages(messages: list[Message]) -> list[dict[str, Any]]:
         msg = {
             "role": message.role,
             "content": assistant.message,
-            "reasoning_content": assistant.reasoning,
         }
+        if assistant.reasoning is not None:
+            msg["reasoning_content"] = assistant.reasoning.content
+
         if tool_calls:
             msg["tool_calls"] = tool_calls
 
@@ -182,6 +237,72 @@ def completions_api_messages(messages: list[Message]) -> list[dict[str, Any]]:
 
         if tool_call_results:
             msgs.extend(tool_call_results)
+
+    return msgs
+
+
+def responses_api_messages(messages: list[Message]) -> list[dict[str, Any]]:
+    msgs = []
+
+    for message in messages:
+        if isinstance(message.content, str):
+            # feedback is treated as coming from user
+            role = message.role if message.role != "feedback" else "user"
+            msgs.append(
+                {
+                    "type": "message",
+                    "role": role,
+                    "content": message.content,
+                }
+            )
+            continue
+
+        # response content
+        assistant = message.content
+
+        reasoning = assistant.reasoning
+        if reasoning is not None:
+            msgs.append(
+                {
+                    "id": reasoning.id,
+                    "type": "reasoning",
+                    "content": [{"text": reasoning.content, "type": "reasoning_text"}]
+                    if reasoning.content is not None
+                    else [],
+                    "summary": [{"text": reasoning.summary, "type": "summary_text"}]
+                    if reasoning.summary is not None
+                    else [],
+                    "encrypted_content": reasoning.encrypted_content,
+                }
+            )
+
+        if assistant.message is not None:
+            msgs.append(
+                {
+                    "id": assistant.id,
+                    "type": "message",
+                    "role": message.role,
+                    "content": assistant.message,
+                }
+            )
+
+        for tool_call in assistant.tool_calls:
+            msgs.append(
+                {
+                    "type": "custom_tool_call",
+                    "call_id": tool_call.id,
+                    "name": tool_call.name,
+                    "input": json.dumps(tool_call.args),
+                }
+            )
+            assert tool_call.result is not None, "Expected tool call result"
+            msgs.append(
+                {
+                    "type": "custom_tool_call_output",
+                    "call_id": tool_call.id,
+                    "output": tool_call.result,
+                }
+            )
 
     return msgs
 
@@ -198,6 +319,7 @@ def call_model(
             messages=completions_api_messages(messages),
             tools=[{"type": "function", "function": fn} for fn in functions],
             tool_choice="auto",
+            parallel_tool_calls=False,
             # decoding parameters
             temperature=config.temperature,
             top_p=config.top_p,
@@ -217,10 +339,11 @@ def call_model(
         # use responses API
         responses_resp: ResponsesAPIResponse = responses(
             model=config.model,
-            input=messages,  # type: ignore
+            input=responses_api_messages(messages),  # type: ignore
             include=["reasoning.encrypted_content"],
             tools=[{"type": "function", **fn} for fn in functions],  # type: ignore
             tool_choice="auto",
+            parallel_tool_calls=False,
             # decoding parameters
             temperature=config.temperature,
             top_p=config.top_p,
