@@ -63,14 +63,13 @@ class GRASP extends StatefulWidget {
 }
 
 class Past {
-  final List<dynamic> inputs;
   final List<dynamic> messages;
   final List<dynamic> known;
 
-  Past(this.inputs, this.messages, this.known);
+  Past(this.messages, this.known);
 
   Map<String, dynamic> toJson() {
-    return {"inputs": inputs, "messages": messages, "known": known};
+    return {"messages": messages, "known": known};
   }
 }
 
@@ -131,12 +130,11 @@ class _GRASPState extends State<GRASP> {
               inputController.text = "";
               cancelling = false;
               running = false;
-              past = Past(json["inputs"], json["messages"], json["known"]);
+              past = Past(json["messages"], json["known"]);
               final prefs = await SharedPreferences.getInstance();
               await prefs.setString(
                 "lastOutput",
                 jsonEncode({
-                  "pastInputs": past!.inputs,
                   "pastMessages": past!.messages,
                   "pastKnown": past!.known,
                   "histories": histories,
@@ -178,11 +176,7 @@ class _GRASPState extends State<GRASP> {
         // check past history on initial load
         final lastOutput = prefs.getString("lastOutput");
         final lastData = jsonDecode(lastOutput!);
-        past = Past(
-          lastData["pastInputs"],
-          lastData["pastMessages"],
-          lastData["pastKnown"],
-        );
+        past = Past(lastData["pastMessages"], lastData["pastKnown"]);
         histories = lastData["histories"].cast<List<dynamic>>();
       }
 
