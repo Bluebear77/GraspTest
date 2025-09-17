@@ -32,6 +32,9 @@ def rules() -> list[str]:
 and function call.",
         "Do not just use or make up entity or property identifiers \
 without verifying their existence in the knowledge graphs first.",
+        "Do not ask the user for clarifications without first \
+attempting to complete the task. If the input is incomplete or \
+ambiguous, try to make reasonable assumptions and document them.",
         'Do not use "SERVICE wikibase:label { bd:serviceParam wikibase:language ..." \
 in SPARQL queries. It is not SPARQL standard and unsupported by the used QLever \
 SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.',

@@ -52,20 +52,17 @@ class Response(BaseModel):
             self.reasoning.content is not None or self.reasoning.summary is not None
         )
 
-    def get_content(self) -> str:
-        content = ""
+    def get_content(self) -> dict[str, str]:
+        content = {}
 
         if self.has_reasoning_content:
-            reasoning = self.reasoning.content or self.reasoning.summary  # type: ignore
-            content += f"{reasoning}\n\n"
+            reasoning: str = self.reasoning.content or self.reasoning.summary  # type: ignore
+            content["reasoning"] = reasoning.strip()
 
         if self.message is not None:
-            if self.has_reasoning_content:
-                content += "---\n\n"
+            content["content"] = self.message.strip()
 
-            content += self.message
-
-        return content.strip()
+        return content
 
     @staticmethod
     def from_completions_api(response: ModelResponse) -> "Response":

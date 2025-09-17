@@ -217,7 +217,7 @@ def generate(
             # yield to user
             assert isinstance(example_message.content, Response)
             content = example_message.content
-            yield {"type": "model", "content": content.get_content()}
+            yield {"type": "model", **content.get_content()}
 
             tool_call = content.tool_calls[0]
             yield {
@@ -285,7 +285,7 @@ def generate(
 
         # yield message if there is content
         if response.has_content:
-            yield {"type": "model", "content": response.get_content()}
+            yield {"type": "model", **response.get_content()}
 
         # no tool calls mean we should stop
         should_stop = not response.tool_calls
