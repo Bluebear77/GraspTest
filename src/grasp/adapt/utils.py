@@ -1,4 +1,3 @@
-import json
 import os
 
 from grasp.model import Message, Response
@@ -41,22 +40,12 @@ def format_output(messages: list[Message]) -> str:
         if assistant.has_content:
             content += f"\n{assistant.get_content().strip()}"
 
-        i
-        if message.get("reasoning_content"):
-            content += f"\n{message['reasoning_content'].strip()}"
-        if message.get("content"):
-            content += f"\n{message['content'].strip()}"
-
         tool_calls = []
-        for tool_call in message.get("tool_calls", []):
-            if tool_call["type"] != "function":
-                continue
-
-            tool_call_fn = tool_call["function"]
+        for tool_call in assistant.tool_calls:
             tool_calls.append(
-                f'Call of "{tool_call_fn["name"]}" function '
-                f"with {format_arguments(json.loads(tool_call_fn['arguments']))}:\n"
-                f"{tool_call_results[tool_call['id']]}"
+                f'Call of "{tool_call.name}" function '
+                f"with {format_arguments(tool_call.args)}:\n"
+                f"{tool_call.result}"
             )
 
         content += "\n" + "\n".join(tool_calls)

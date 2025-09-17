@@ -70,9 +70,9 @@ def note_taking_instructions(
 ) -> str:
     formatted = []
     for i, ((kg, sample), output) in enumerate(zip(inputs, outputs)):
-        messages = output["messages"]
-        assert messages[1]["role"] == "user"
-        question = messages[1]["content"]
+        messages = [Message(**msg) for msg in output["messages"]]
+        assert messages[1].role == "user"
+        question = messages[1].content
 
         gt = prepare_sparql_result(
             sample.sparql,
@@ -87,7 +87,7 @@ Question {i + 1} over {kg} knowledge graph:
 {question}
 
 System output:
-{format_output(output)}
+{format_output(messages)}
 
 Ground truth:
 {gt}"""

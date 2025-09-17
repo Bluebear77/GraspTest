@@ -71,11 +71,20 @@ def format_response(response: Response) -> str:
     header = colored(f"MODEL (usage={response.usage})", "blue")
 
     content = ""
-    if response.reasoning is not None:
-        content += f"Reasoning:\n{response.reasoning}\n\n"
+    reasoning = response.reasoning
+    if reasoning is not None:
+        if reasoning.content is not None:
+            content += f"Reasoning:\n{reasoning.content}\n\n"
+        if reasoning.summary is not None:
+            content += f"Reasoning summary:\n{reasoning.summary}\n\n"
+        if reasoning.encrypted_content is not None:
+            enc = reasoning.encrypted_content
+            if len(enc) > 64:
+                enc = enc[:64] + "..."
+            content += f"Encrypted reasoning content:\n{enc}\n\n"
 
     if response.message is not None:
-        if response.reasoning is not None:
+        if response.has_reasoning_content:
             content += "Content:\n"
 
         content += f"{response.message}\n\n"

@@ -15,7 +15,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                 "type": "object",
                 "properties": {
                     "kg": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "enum": kgs,
                         "description": "The knowledge graph for which to add the note, omit for general notes",
                     },
@@ -24,9 +24,10 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                         "description": "The note to add",
                     },
                 },
-                "required": ["note"],
+                "required": ["kg", "note"],
                 "additionalProperties": False,
             },
+            "strict": True,
         },
         {
             "name": "delete_note",
@@ -35,7 +36,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                 "type": "object",
                 "properties": {
                     "kg": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "enum": kgs,
                         "description": "The knowledge graph for which to delete the note, omit for general notes",
                     },
@@ -44,9 +45,10 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                         "description": "The number of the note to delete",
                     },
                 },
-                "required": ["num"],
+                "required": ["kg", "num"],
                 "additionalProperties": False,
             },
+            "strict": True,
         },
         {
             "name": "update_note",
@@ -55,7 +57,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                 "type": "object",
                 "properties": {
                     "kg": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "enum": kgs,
                         "description": "The knowledge graph for which to update the note, omit for general notes",
                     },
@@ -68,9 +70,10 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                         "description": "The new note replacing the old one",
                     },
                 },
-                "required": ["num", "note"],
+                "required": ["kg", "num", "note"],
                 "additionalProperties": False,
             },
+            "strict": True,
         },
         {
             "name": "show_notes",
@@ -79,18 +82,20 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                 "type": "object",
                 "properties": {
                     "kg": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "enum": kgs,
                         "description": "The knowledge graph for which to show the notes, omit for general notes",
                     },
                 },
-                "required": [],
+                "required": ["kg"],
                 "additionalProperties": False,
             },
+            "strict": True,
         },
         {
             "name": "stop",
             "description": "Stop the process.",
+            "strict": True,
         },
     ]
 

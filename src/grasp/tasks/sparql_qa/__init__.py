@@ -101,7 +101,7 @@ stop the generation process.""",
 could not find a satisfactory SPARQL query",
                     },
                     "best_attempt": {
-                        "type": "object",
+                        "type": ["object", "null"],
                         "description": "Your best attempt at a SPARQL query so far, \
 can be omitted if there is none",
                         "properties": {
@@ -120,9 +120,10 @@ the SPARQL query needs to be executed",
                         "additionalProperties": False,
                     },
                 },
-                "required": ["explanation"],
+                "required": ["explanation", "best_attempt"],
                 "additionalProperties": False,
             },
+            "strict": True,
         },
     ]
     return fns, call_function

@@ -57,8 +57,8 @@ and provide suggestions for improving the output if applicable.""",
                 },
                 "required": ["status", "feedback"],
                 "additionalProperties": False,
-                "strict": True,
             },
+            "strict": True,
         }
     ]
 

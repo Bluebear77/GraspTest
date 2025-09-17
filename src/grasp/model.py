@@ -9,6 +9,10 @@ from litellm import (
     completion,
     responses,
 )
+from litellm.types.responses.main import (
+    GenericResponseOutputItem,
+    OutputFunctionToolCall,
+)
 from litellm.types.utils import ModelResponse
 from openai.types.responses.response_output_message import ResponseOutputMessage
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
@@ -22,23 +26,6 @@ class ToolCall(BaseModel):
     name: str
     args: dict[str, Any]
     result: str | None = None
-
-    @staticmethod
-    def from_dict(data: dict[str, Any]) -> "ToolCall":
-        return ToolCall(
-            id=data["id"],
-            name=data["name"],
-            args=data["args"],
-            result=data.get("result"),
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "name": self.name,
-            "args": self.args,
-            "result": self.result,
-        }
 
 
 class Reasoning(BaseModel):
@@ -82,8 +69,9 @@ class Response(BaseModel):
 
     @staticmethod
     def from_completions_api(response: ModelResponse) -> "Response":
+        id = uuid4().hex
         if not response.choices:
-            return Response(id=uuid4().hex, message=None, tool_calls=[])
+            return Response(id=id, message=None, tool_calls=[])
 
         choice: Choices = response.choices[0]  # type: ignore
         if choice.finish_reason not in ["tool_calls", "stop", "length"]:
@@ -113,6 +101,7 @@ class Response(BaseModel):
             )
 
         return Response(
+            id=id,
             message=message,
             reasoning=reasoning,
             tool_calls=tool_calls,
@@ -127,7 +116,14 @@ class Response(BaseModel):
         tool_calls = []
 
         for output in response.output:
-            if isinstance(output, ResponseOutputMessage):
+            if isinstance(output, (GenericResponseOutputItem, OutputFunctionToolCall)):
+                # vLLM responses API
+                raise NotImplementedError(
+                    "You are most likely using the vLLM respones API, "
+                    "which is not supported yet, switch to completions API instead."
+                )
+
+            elif isinstance(output, ResponseOutputMessage):
                 id = output.id
 
                 # assistant
@@ -174,7 +170,7 @@ class Response(BaseModel):
     def hash(self) -> str:
         msg: dict[str, Any] = {
             "msg": self.message,
-            "reasoning": self.reasoning,
+            "reasoning": self.reasoning.model_dump() if self.reasoning else None,
             "tool_calls": sorted((tc.name, tc.args) for tc in self.tool_calls),
         }
         return json.dumps(msg, sort_keys=True)
@@ -312,14 +308,19 @@ def call_model(
     functions: list[dict],
     config: Config,
 ) -> Response:
-    if config.api == "completions":
+    if config.api is None:
+        api = "responses" if config.model.startswith("openai") else "completions"
+    else:
+        api = config.api
+
+    if api == "completions":
         # use old chat completions API
         completions_resp: ModelResponse = completion(
             model=config.model,
             messages=completions_api_messages(messages),
             tools=[{"type": "function", "function": fn} for fn in functions],
             tool_choice="auto",
-            parallel_tool_calls=False,
+            parallel_tool_calls=config.parallel_tool_calls,
             # decoding parameters
             temperature=config.temperature,
             top_p=config.top_p,
@@ -335,7 +336,7 @@ def call_model(
         )
         return Response.from_completions_api(completions_resp)
 
-    elif config.api == "responses":
+    elif api == "responses":
         # use responses API
         responses_resp: ResponsesAPIResponse = responses(
             model=config.model,
@@ -343,7 +344,7 @@ def call_model(
             include=["reasoning.encrypted_content"],
             tools=[{"type": "function", **fn} for fn in functions],  # type: ignore
             tool_choice="auto",
-            parallel_tool_calls=False,
+            parallel_tool_calls=config.parallel_tool_calls,
             # decoding parameters
             temperature=config.temperature,
             top_p=config.top_p,
@@ -365,4 +366,4 @@ def call_model(
         return Response.from_responses_api(responses_resp)
 
     else:
-        raise ValueError(f"Unknown API {config.api}")
+        raise ValueError(f"Unknown API {api}")

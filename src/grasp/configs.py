@@ -43,8 +43,9 @@ class Config(BaseModel):
     top_p: float | None = 1.0
     reasoning_effort: str | None = None
     reasoning_summary: str | None = None
-    # one of completions, responses
-    api: str = "completions"
+    # one of completions, responses, or None (for auto)
+    api: str | None = None
+    parallel_tool_calls: bool = False
 
     # completion parameters
     max_completion_tokens: int = 8192  # 8k, leaves enough space for reasoning models

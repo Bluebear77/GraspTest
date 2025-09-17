@@ -135,7 +135,11 @@ def load_example_indices(
     config: Config,
     **kwargs: Any,
 ) -> dict[str, ExampleIndex]:
-    index_cls = task_to_index(task)
+    try:
+        index_cls = task_to_index(task)
+    except ValueError:
+        # unsupported task
+        return {}
 
     indices = {}
     for kg in config.knowledge_graphs:

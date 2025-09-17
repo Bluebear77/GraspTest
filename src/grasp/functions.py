@@ -105,21 +105,22 @@ list(kg="wikidata", property="wdt:P19")""",
                         "description": "The knowledge graph to use",
                     },
                     "subject": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "description": "IRI for constraining the subject, omit if not constrained",
                     },
                     "property": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "description": "IRI for constraining the property, omit if not constrained",
                     },
                     "object": {
-                        "type": "string",
+                        "type": ["string", "null"],
                         "description": "IRI or literal for constraining the object, omit if not constrained",
                     },
                 },
-                "required": ["kg"],
+                "required": ["kg", "subject", "property", "object"],
                 "additionalProperties": False,
             },
+            "strict": True,
         },
     )
 

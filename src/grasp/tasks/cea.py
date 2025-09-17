@@ -213,22 +213,12 @@ Clear the annotation of a cell in the table.""",
             "name": "show",
             "description": """\
 Show the current annotations in the table.""",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False,
-            },
             "strict": True,
         },
         {
             "name": "stop",
             "description": """\
 Finalize your annotations and stop the annotation process.""",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False,
-            },
             "strict": True,
         },
     ]
