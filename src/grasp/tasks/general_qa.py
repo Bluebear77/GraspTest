@@ -109,7 +109,7 @@ def get_answer_or_cancel(
     assert messages[0].role == "system", "First message should be system"
     assert messages[1].role == "user", "Second message should be user"
     for message in messages[2:]:
-        if message.role == "feedback":
+        if message.role == "feedback" and message != messages[-1]:
             # reset stuff after intermediate feedback
             last_answer = None
             last_cancel = None
