@@ -626,8 +626,18 @@ ${prettyJson(fn["parameters"])}
     );
   }
 
-  Widget buildReasoningItem(String content) {
-    return buildCardWithTitle("Reasoning", markdown(content), color: uniBlue);
+  Widget buildReasoningItem(String? content, String? reasoning) {
+    String message = "";
+    if (reasoning != null) {
+      message += reasoning;
+    }
+    if (content != null) {
+      if (message.isNotEmpty) {
+        message += "\n\n---\n\n";
+      }
+      message += content;
+    }
+    return buildCardWithTitle("Reasoning", markdown(message), color: uniBlue);
   }
 
   Widget buildChip(String key, dynamic value, {Color? color}) {
@@ -809,7 +819,7 @@ $result
       case "feedback":
         return buildFeedbackItem(item["status"], item["feedback"]);
       case "model":
-        return buildReasoningItem(item["content"]);
+        return buildReasoningItem(item["content"], item["reasoning"]);
       case "tool":
         return buildFunctionCallItem(
           item["name"],
