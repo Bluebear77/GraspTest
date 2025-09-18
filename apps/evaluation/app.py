@@ -865,7 +865,6 @@ def show_predictions_view(available_data):
 
                 return
             except Exception:
-                print("Falling back to old message format")
                 pass
 
         # fallback to old message format
