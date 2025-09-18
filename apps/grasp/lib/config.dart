@@ -39,11 +39,7 @@ extension TaskExtension on Task {
   }
 }
 
-enum Clear {
-  full,
-  last,
-  none,
-}
+enum Clear { full, last, none }
 
 const wsPath = "/live";
 const configPath = "/config";
@@ -67,5 +63,7 @@ const uniPink = Color.fromRGBO(163, 83, 148, 1);
 
 const chair = "https://ad.cs.uni-freiburg.de";
 const repo = "https://github.com/ad-freiburg/grasp";
-const paper =
+const methodPaper =
     "https://ad-publications.cs.uni-freiburg.de/ISWC_grasp_WB_2025.pdf";
+const systemPaper =
+    "https://ad-publications.cs.uni-freiburg.de/ISWC_grasp_demo_WB_2025.pdf";
