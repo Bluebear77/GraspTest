@@ -150,11 +150,34 @@ def is_invalid_model_output(model_output: dict | None) -> bool:
         return True
 
     has_error = model_output.get("error") is not None
+    if has_error:
+        return True
 
-    return has_error or any(
-        is_tool_fail(message) or is_error(message)
-        for message in model_output.get("messages", [])
-    )
+    if "messages" not in model_output:
+        return False
+
+    for message in model_output["messages"]:
+        try:
+            # new format
+            msg = Message(**message)
+            if not isinstance(msg.content, Response):
+                continue
+
+            if any(
+                is_server_error(tool_call.result)
+                for tool_call in msg.content.tool_calls
+            ):
+                return True
+
+            continue
+        except Exception:
+            pass
+
+        # old format
+        if is_tool_fail(message) or is_error(message):
+            return True
+
+    return False
 
 
 def parse_parameters(headers: list[str]) -> dict[str, str]:

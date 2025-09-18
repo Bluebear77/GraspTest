@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import sys
@@ -11,6 +12,7 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 from universal_ml_utils.io import load_json, load_jsonl
 
+from grasp.model import Message
 from grasp.sparql.utils import load_sparql_parser, prettify
 from grasp.utils import is_invalid_evaluation, is_invalid_model_output
 
@@ -713,219 +715,217 @@ def show_predictions_view(available_data):
     # Extract the ID from the selected option
     selected_id = selected_option.split(" - ")[0] if selected_option else None
 
-    if selected_id:
-        # Display the selected example
-        output = filtered_outputs[selected_id]
+    if not selected_id:
+        return
 
-        # Find corresponding ground truth
-        gt_example = next(
-            (ex for ex in ground_truth if ex.get("id") == selected_id), None
-        )
+    # Display the selected example
+    output = filtered_outputs[selected_id]
 
-        # Main container for the example
-        with st.container():
-            # Display question from ground truth and ID
-            st.subheader("Question")
-            question = id_to_question.get(selected_id, "No question found")
-            st.write(question)
-            st.write(f"ID: {selected_id}")
+    # Find corresponding ground truth
+    gt_example = next((ex for ex in ground_truth if ex.get("id") == selected_id), None)
 
-            # Display ground truth if available
-            if gt_example:
-                st.subheader("Ground Truth SPARQL")
-                st.code(
-                    prettify_sparql(gt_example.get("sparql", "")), language="sparql"
-                )
+    # Main container for the example
+    with st.container():
+        # Display question from ground truth and ID
+        st.subheader("Question")
+        question = id_to_question.get(selected_id, "No question found")
+        st.write(question)
+        st.write(f"ID: {selected_id}")
 
-            # Display model output
-            st.subheader("Model Output")
+        # Display ground truth if available
+        if gt_example:
+            st.subheader("Ground Truth SPARQL")
+            st.code(prettify_sparql(gt_example.get("sparql", "")), language="sparql")
 
-            if "output" in output:
-                # new format
-                output = output["output"] or {}
+        # Display model output
+        st.subheader("Model Output")
 
-            sparql_query = output.get("sparql", "No SPARQL query found")
-            st.code(prettify_sparql(sparql_query), language="sparql")
+        if "output" in output:
+            # new format
+            output = output["output"] or {}
 
-            # Display evaluation if available
-            if selected_id in evaluations:
-                eval_data = evaluations[selected_id]
-                st.subheader("Evaluation")
+        sparql_query = output.get("sparql", "No SPARQL query found")
+        st.code(prettify_sparql(sparql_query), language="sparql")
 
-                # Create columns for evaluation metrics (use more columns for better spacing)
-                eval_cols = st.columns([1, 1, 1.5])
-                with eval_cols[0]:
-                    if "prediction" in eval_data and "score" in eval_data["prediction"]:
-                        f1_score = eval_data["prediction"]["score"]
-                        st.metric("F1", f"{f1_score:.2f}")
-                    else:
-                        st.metric("F1", "N/A")
+        # Display evaluation if available
+        if selected_id in evaluations:
+            eval_data = evaluations[selected_id]
+            st.subheader("Evaluation")
 
-                with eval_cols[1]:
-                    if (
-                        "prediction" in eval_data
-                        and "elapsed" in eval_data["prediction"]
-                    ):
-                        elapsed = eval_data["prediction"]["elapsed"]
-                        st.metric("Time (s)", f"{elapsed:.3f}")
-                    else:
-                        st.metric("Time (s)", "N/A")
-
-                with eval_cols[2]:
-                    if is_invalid_evaluation(eval_data, empty_target_valid):
-                        # Check if invalid due to empty ground truth
-                        if (
-                            not empty_target_valid
-                            and "target" in eval_data
-                            and eval_data["target"].get("size", None) == 0
-                            and eval_data["target"].get("err", None) is None
-                        ):
-                            st.metric("Status", "❌ Empty Ground Truth")
-                        else:
-                            st.metric("Status", "❌ Invalid")
-                    elif (
-                        "prediction" in eval_data
-                        and eval_data["prediction"].get("score", 0) == 1.0
-                    ):
-                        st.metric("Status", "✅ Exact Match")
-                    else:
-                        st.metric("Status", "⚠️ Partial Match")
-
-                # Show any error message
-                if "error" in eval_data:
-                    st.error(f"Error: {eval_data['error']}")
-
-                # Show ground truth errors if available
-                if (
-                    "target" in eval_data
-                    and eval_data["target"] is not None
-                    and "err" in eval_data["target"]
-                    and eval_data["target"]["err"] is not None
-                ):
-                    st.error(f"Ground Truth Error: {eval_data['target']['err']}")
-
-                # Show prediction errors if available
-                if (
-                    "prediction" in eval_data
-                    and eval_data["prediction"] is not None
-                    and "err" in eval_data["prediction"]
-                    and eval_data["prediction"]["err"] is not None
-                ):
-                    st.error(f"Prediction Error: {eval_data['prediction']['err']}")
-
-            # Display model configuration if available
-            if config_data:
-                with st.expander("Model Configuration"):
-                    st.json(config_data)
-
-            # Helper functions for message display
-            def format_tool_args(args):
-                """Format tool arguments as pretty JSON."""
-                if isinstance(args, str):
-                    try:
-                        import json
-
-                        return json.dumps(json.loads(args), indent=2)
-                    except Exception:
-                        # If parsing fails, keep as is
-                        return args
-                return args
-
-            def display_tool_call(call, tool_responses):
-                """Display a single tool call and its response."""
-                tool_call_id = call.get("id")
-                tool_name = call.get("function", {}).get("name", "unknown")
-                tool_args = call.get("function", {}).get("arguments", "{}")
-
-                # Format arguments
-                formatted_args = format_tool_args(tool_args)
-
-                # Show tool call
-                st.markdown(f"**Tool: {tool_name}**")
-                st.code(formatted_args, language="json")
-
-                # Show corresponding tool response if available
-                if tool_call_id in tool_responses:
-                    tool_response = tool_responses[tool_call_id]
-                    tool_content = tool_response.get("content", "")
-                    st.markdown("**Response:**")
-                    st.code(tool_content)
-
-            def display_message_content(role, content):
-                """Display message content based on role."""
-                if not content:
-                    return
-
-                if role in ["function", "tool"]:
-                    st.code(content)
-                elif role == "error":
-                    st.error(content)
+            # Create columns for evaluation metrics (use more columns for better spacing)
+            eval_cols = st.columns([1, 1, 1.5])
+            with eval_cols[0]:
+                if "prediction" in eval_data and "score" in eval_data["prediction"]:
+                    f1_score = eval_data["prediction"]["score"]
+                    st.metric("F1", f"{f1_score:.2f}")
                 else:
-                    st.write(content)
+                    st.metric("F1", "N/A")
 
-            # Display full generation process (messages)
-            if "messages" in output:
-                st.subheader("Generation Process")
-                messages = output.get("messages", [])
+            with eval_cols[1]:
+                if "prediction" in eval_data and "elapsed" in eval_data["prediction"]:
+                    elapsed = eval_data["prediction"]["elapsed"]
+                    st.metric("Time (s)", f"{elapsed:.3f}")
+                else:
+                    st.metric("Time (s)", "N/A")
 
-                # First, build a lookup map for tool responses by tool_call_id
-                tool_responses = {}
-                for msg in messages:
-                    if msg.get("role") == "tool":
-                        tool_id = msg.get("tool_call_id")
-                        if tool_id:
-                            tool_responses[tool_id] = msg
-
-                # Now process messages with tool calls integrated
-                for i, message in enumerate(messages):
-                    role = message.get("role", "unknown")
-                    content = message.get("content", "")
-
-                    # Skip tool messages as we'll show them with their calls
-                    if role == "tool":
-                        continue
-
-                    # Never skip system messages, user queries, or error messages
-                    if role in ["system", "user", "error"]:
-                        # Always show these roles, even if empty
-                        pass
+            with eval_cols[2]:
+                if is_invalid_evaluation(eval_data, empty_target_valid):
+                    # Check if invalid due to empty ground truth
+                    if (
+                        not empty_target_valid
+                        and "target" in eval_data
+                        and eval_data["target"].get("size", None) == 0
+                        and eval_data["target"].get("err", None) is None
+                    ):
+                        st.metric("Status", "❌ Empty Ground Truth")
                     else:
-                        # For other roles, check if there's any content to show (message or tool calls)
-                        has_content = content or (
-                            role == "assistant"
-                            and "tool_calls" in message
-                            and message.get("tool_calls")
-                        )
-                        if not has_content:
-                            continue  # Skip empty messages
+                        st.metric("Status", "❌ Invalid")
+                elif (
+                    "prediction" in eval_data
+                    and eval_data["prediction"].get("score", 0) == 1.0
+                ):
+                    st.metric("Status", "✅ Exact Match")
+                else:
+                    st.metric("Status", "⚠️ Partial Match")
 
-                    # Display role header with appropriate emoji
-                    if role == "system":
-                        st.markdown("**🖥️ System:**")
-                    elif role == "user":
-                        st.markdown("**👤 User:**")
-                    elif role == "assistant":
-                        st.markdown("**🤖 Assistant:**")
-                    elif role == "function":
-                        name = message.get("name", "unknown")
-                        st.markdown(f"**⚙️ Function ({name}):**")
-                    elif role == "error":
-                        st.markdown("**⚠️ Error:**")
-                    else:
-                        st.markdown(f"**{role}:**")
+            # Show any error message
+            if "error" in eval_data:
+                st.error(f"Error: {eval_data['error']}")
 
-                    # Show message content
-                    display_message_content(role, content)
+            # Show ground truth errors if available
+            if (
+                "target" in eval_data
+                and eval_data["target"] is not None
+                and "err" in eval_data["target"]
+                and eval_data["target"]["err"] is not None
+            ):
+                st.error(f"Ground Truth Error: {eval_data['target']['err']}")
 
-                    # Handle tool calls in assistant messages
-                    if role == "assistant" and "tool_calls" in message:
-                        tool_calls = message.get("tool_calls", [])
-                        for call in tool_calls:
-                            display_tool_call(call, tool_responses)
+            # Show prediction errors if available
+            if (
+                "prediction" in eval_data
+                and eval_data["prediction"] is not None
+                and "err" in eval_data["prediction"]
+                and eval_data["prediction"]["err"] is not None
+            ):
+                st.error(f"Prediction Error: {eval_data['prediction']['err']}")
 
-                    # Add separator between messages
-                    if i < len(messages) - 1:
-                        st.markdown("---")
+        # Display model configuration if available
+        if config_data:
+            with st.expander("Model Configuration"):
+                st.json(config_data)
+
+        # Display full generation process (messages)
+        if "messages" not in output:
+            st.info("No generation process (messages) available for this output.")
+            return
+
+        st.subheader("Generation Process")
+
+        # try new message format first
+        try:
+            messages = [Message(**msg) for msg in output["messages"]]
+            for i, message in enumerate(messages):
+                st.markdown(f"**{message.role.capitalize()}:**")
+
+                if isinstance(message.content, str):
+                    st.markdown(message.content)
+                else:
+                    content = message.content.get_content()
+                    if "reasoning" in content:
+                        st.markdown("**Reasoning:**")
+                        st.write(content["reasoning"])
+                    if "content" in content:
+                        st.markdown("**Content:**")
+                        st.write(content["content"])
+
+                    for tool_call in message.content.tool_calls:
+                        st.markdown(f"**Tool: {tool_call.name}**")
+                        st.code(json.dumps(tool_call.args, indent=2), language="json")
+                        st.markdown("**Result:**")
+                        st.markdown(tool_call.result)
+
+                if i < len(messages) - 1:
+                    st.markdown("---")
+
+            return
+        except Exception:
+            pass
+
+        # fallback to old message format
+        def display_tool_call(call, tool_responses):
+            """Display a single tool call and its response."""
+            tool_call_id = call.get("id")
+            tool_name = call.get("function", {}).get("name", "unknown")
+            tool_args = call.get("function", {}).get("arguments", "{}")
+
+            # Format arguments
+            formatted_args = json.dumps(json.loads(tool_args), indent=2)
+
+            # Show tool call
+            st.markdown(f"**Tool: {tool_name}**")
+            st.code(formatted_args, language="json")
+
+            # Show corresponding tool response if available
+            if tool_call_id in tool_responses:
+                tool_response = tool_responses[tool_call_id]
+                tool_content = tool_response.get("content", "")
+                st.markdown("**Response:**")
+                st.markdown(tool_content)
+
+        def display_message_content(role, content):
+            """Display message content based on role."""
+            if not content:
+                return
+
+            if role in ["function", "tool"]:
+                st.code(content)
+            elif role == "error":
+                st.error(content)
+            else:
+                st.markdown(content)
+
+        # First, build a lookup map for tool responses by tool_call_id
+        tool_responses = {}
+        for msg in output["messages"]:
+            if msg.get("role") == "tool":
+                tool_id = msg.get("tool_call_id")
+                if tool_id:
+                    tool_responses[tool_id] = msg
+
+        # Now process messages with tool calls integrated
+        for i, message in enumerate(output["messages"]):
+            role = message.get("role", "unknown")
+
+            # Skip tool messages as we'll show them with their calls
+            if role == "tool":
+                continue
+
+            content = message.get("content", "")
+            # For other roles, check if there's any content to show (message or tool calls)
+            has_content = content or (
+                role == "assistant"
+                and "tool_calls" in message
+                and message.get("tool_calls")
+            )
+            if not has_content:
+                continue  # Skip empty messages
+
+            # Display role header with appropriate emoji
+            st.markdown(f"**{role.capitalize()}:**")
+
+            # Show message content
+            display_message_content(role, content)
+
+            # Handle tool calls in assistant messages
+            if role == "assistant" and "tool_calls" in message:
+                tool_calls = message.get("tool_calls", [])
+                for call in tool_calls:
+                    display_tool_call(call, tool_responses)
+
+            # Add separator between messages
+            if i < len(output["messages"]) - 1:
+                st.markdown("---")
 
 
 def show_comprehensive_view(available_data):
