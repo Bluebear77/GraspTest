@@ -168,7 +168,9 @@ class Response(BaseModel):
         msg: dict[str, Any] = {
             "msg": self.message,
             "reasoning": self.reasoning.model_dump() if self.reasoning else None,
-            "tool_calls": sorted((tc.name, tc.args) for tc in self.tool_calls),
+            "tool_calls": sorted(
+                (tc.name, json.dumps(tc.args, sort_keys=True)) for tc in self.tool_calls
+            ),
         }
         return json.dumps(msg, sort_keys=True)
 
