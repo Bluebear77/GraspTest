@@ -740,11 +740,14 @@ def show_predictions_view(available_data):
         # Display model output
         st.subheader("Model Output")
 
-        if "output" in output:
-            # new format
-            output = output["output"] or {}
+        new_format = "output" in output
+        if new_format:
+            sparql_query = (output["output"] or {}).get(
+                "sparql", "No SPARQL query found"
+            )
+        else:
+            sparql_query = output.get("sparql", "No SPARQL query found")
 
-        sparql_query = output.get("sparql", "No SPARQL query found")
         st.code(prettify_sparql(sparql_query), language="sparql")
 
         # Display evaluation if available
@@ -822,35 +825,48 @@ def show_predictions_view(available_data):
 
         st.subheader("Generation Process")
 
-        # try new message format first
-        try:
-            messages = [Message(**msg) for msg in output["messages"]]
-            for i, message in enumerate(messages):
-                st.markdown(f"**{message.role.capitalize()}:**")
+        if new_format:
+            # try new message format first
+            try:
+                messages = [Message(**msg) for msg in output["messages"]]
+                for i, message in enumerate(messages):
+                    role = message.role.capitalize()
+                    if isinstance(message.content, str):
+                        if not message.content:
+                            continue  # Skip empty messages
 
-                if isinstance(message.content, str):
-                    st.markdown(message.content)
-                else:
-                    content = message.content.get_content()
-                    if "reasoning" in content:
-                        st.markdown("**Reasoning:**")
-                        st.write(content["reasoning"])
-                    if "content" in content:
-                        st.markdown("**Content:**")
-                        st.write(content["content"])
+                        st.markdown(f"**{role}:**")
+                        st.markdown(message.content)
 
-                    for tool_call in message.content.tool_calls:
-                        st.markdown(f"**Tool: {tool_call.name}**")
-                        st.code(json.dumps(tool_call.args, indent=2), language="json")
-                        st.markdown("**Result:**")
-                        st.markdown(tool_call.result)
+                    else:
+                        content = message.content.get_content()
+                        if not content and not message.content.tool_calls:
+                            continue  # Skip empty messages
 
-                if i < len(messages) - 1:
-                    st.markdown("---")
+                        if "reasoning" in content:
+                            st.markdown("**Reasoning:**")
+                            st.markdown(content["reasoning"])
 
-            return
-        except Exception:
-            pass
+                        if "content" in content:
+                            if "reasoning" in content:
+                                st.markdown("**Content:**")
+                            st.markdown(content["content"])
+
+                        for tool_call in message.content.tool_calls:
+                            st.markdown(f"**Tool: {tool_call.name}**")
+                            st.code(
+                                json.dumps(tool_call.args, indent=2), language="json"
+                            )
+                            st.markdown("**Result:**")
+                            st.markdown(tool_call.result)
+
+                    if i < len(messages) - 1:
+                        st.markdown("---")
+
+                return
+            except Exception:
+                print("Falling back to old message format")
+                pass
 
         # fallback to old message format
         def display_tool_call(call, tool_responses):
@@ -870,28 +886,14 @@ def show_predictions_view(available_data):
             if tool_call_id in tool_responses:
                 tool_response = tool_responses[tool_call_id]
                 tool_content = tool_response.get("content", "")
-                st.markdown("**Response:**")
+                st.markdown("**Result:**")
                 st.markdown(tool_content)
-
-        def display_message_content(role, content):
-            """Display message content based on role."""
-            if not content:
-                return
-
-            if role in ["function", "tool"]:
-                st.code(content)
-            elif role == "error":
-                st.error(content)
-            else:
-                st.markdown(content)
 
         # First, build a lookup map for tool responses by tool_call_id
         tool_responses = {}
         for msg in output["messages"]:
-            if msg.get("role") == "tool":
-                tool_id = msg.get("tool_call_id")
-                if tool_id:
-                    tool_responses[tool_id] = msg
+            if msg["role"] == "tool":
+                tool_responses[msg["tool_call_id"]] = msg
 
         # Now process messages with tool calls integrated
         for i, message in enumerate(output["messages"]):
@@ -901,27 +903,29 @@ def show_predictions_view(available_data):
             if role == "tool":
                 continue
 
-            content = message.get("content", "")
-            # For other roles, check if there's any content to show (message or tool calls)
-            has_content = content or (
-                role == "assistant"
-                and "tool_calls" in message
-                and message.get("tool_calls")
-            )
-            if not has_content:
+            reasoning_content = message.get("reasoning_content", "").strip()
+            content = message.get("content", "").strip()
+            tool_calls = message.get("tool_calls", [])
+            if not reasoning_content and not content and not tool_calls:
                 continue  # Skip empty messages
 
-            # Display role header with appropriate emoji
+            # Display role header
             st.markdown(f"**{role.capitalize()}:**")
 
+            # Show reasoning content if available
+            if reasoning_content:
+                st.markdown("**Reasoning:**")
+                st.markdown(reasoning_content)
+
             # Show message content
-            display_message_content(role, content)
+            if content:
+                if reasoning_content:
+                    st.markdown("**Content:**")
+                st.markdown(content)
 
             # Handle tool calls in assistant messages
-            if role == "assistant" and "tool_calls" in message:
-                tool_calls = message.get("tool_calls", [])
-                for call in tool_calls:
-                    display_tool_call(call, tool_responses)
+            for call in tool_calls:
+                display_tool_call(call, tool_responses)
 
             # Add separator between messages
             if i < len(output["messages"]) - 1:
