@@ -2,17 +2,12 @@ import os
 import time
 from typing import Any, Type
 
-from pydantic import BaseModel
 from search_index import IndexData, SimilarityIndex
 from universal_ml_utils.io import dump_jsonl, load_jsonl
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
-
-
-class Sample(BaseModel):
-    def inputs(self) -> list[str]:
-        raise NotImplementedError
+from grasp.tasks.utils import Sample
 
 
 class ExampleIndex:

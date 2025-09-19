@@ -252,11 +252,13 @@ def output(
         output["answer"] = answer.args["answer"].strip()
         output["sparql"] = answer.args["sparql"]
         output["kg"] = answer.args["kg"]
+        output["formatted"] = output["answer"]
 
     else:
         assert cancel is not None
         output["type"] = "cancel"
         output["explanation"] = cancel.args["explanation"].strip()
+        output["formatted"] = output["explanation"]
 
         best_attempt = cancel.args.get("best_attempt")
         if best_attempt:
@@ -280,6 +282,11 @@ def output(
         output["selections"] = selections
         output["result"] = result
         output["endpoint"] = manager.endpoint
+
+        output["formatted"] += "\n\n"
+        output["formatted"] += format_sparql_result(
+            sparql, selections, result, output["kg"]
+        )
 
     return output
 
@@ -356,7 +363,7 @@ Explanation:
         selections = output["selections"]
         result = output["result"]
 
-        prompt += f"\n\n{format_sparql_result(sparql, kg, selections, result)}"
+        prompt += f"\n\n{format_sparql_result(sparql, selections, result, kg)}"
 
     else:
         prompt += "\n\nNo SPARQL query found"

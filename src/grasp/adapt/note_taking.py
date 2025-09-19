@@ -14,8 +14,9 @@ from grasp.configs import Adapt, Config
 from grasp.core import call_model
 from grasp.manager import KgManager
 from grasp.model import Message
+from grasp.tasks.cea import Annotation, AnnotationState, CeaSample
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
-from grasp.tasks.utils import prepare_sparql_result
+from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
 from grasp.utils import format_list, format_message, format_notes, format_response
 
 MAX_STEPS = 50
@@ -35,16 +36,16 @@ notes that can be useful across knowledge graphs to the general section.",
 def system_instructions() -> str:
     return f"""\
 You are a note-taking assistant. Your task is to \
-inspect the traces of a knowledge graph question answering system and \
-take notes about the system's outputs as well as the used knowledge \
+inspect the traces of a knowledge graph agent performing a certain task, and to \
+take notes about the agent's outputs as well as the used knowledge \
 graphs and functions. Before calling a note-taking function, \
 provide reasoning for what you are doing and why.
 
-Your notes should help the system to better understand and \
+Your notes should help the agent to better understand and \
 navigate the task and knowledge graphs in the future. For a specific knowledge \
-graph, they should generalize across questions, rather than being specific to \
-a single question or output. You can also take general notes that might be \
-useful across knowledge graphs. \
+graph, they should generalize across samples, rather than being specific to \
+a single sample or output. You can also take general notes that might be \
+useful across knowledge graphs or for the task in general. \
 You are only allowed {MAX_NOTES} notes at max per knowledge graph and for the \
 general notes, such that you are forced to prioritize and to keep them as widely \
 applicable as possible. Notes are limited to {MAX_NOTE_LENGTH} characters to \
@@ -60,12 +61,42 @@ Additional rules to follow:
 {format_list(rules())}"""
 
 
+def prepare_groundtruth(
+    sample: Sample,
+    kg: str,
+    managers: list[KgManager],
+    config: Config,
+) -> str:
+    if isinstance(sample, SparqlQaSample):
+        sparql, selections, result = prepare_sparql_result(
+            sample.sparql,
+            kg,
+            managers,
+            config.result_max_rows,
+            config.result_max_columns,
+        )
+        return format_sparql_result(sparql, selections, result, kg)
+
+    elif isinstance(sample, CeaSample):
+        annots = AnnotationState(sample.table)
+        for annot in sample.annotations:
+            annots.annotate(
+                annot.row,
+                annot.column,
+                Annotation(**annot.model_dump()),
+            )
+        return annots.format(with_labels=True)
+
+    else:
+        raise ValueError(f"Unsupported or unknown sample type {type(sample)}")
+
+
 def note_taking_instructions(
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
     notes: list[str],
     config: Config,
-    inputs: list[tuple[str, SparqlQaSample]],
+    inputs: list[tuple[str, Sample]],
     outputs: list[dict],
 ) -> str:
     formatted = []
@@ -74,13 +105,7 @@ def note_taking_instructions(
         assert messages[1].role == "user"
         question = messages[1].content
 
-        gt = prepare_sparql_result(
-            sample.sparql,
-            kg,
-            managers,
-            config.result_max_rows,
-            config.result_max_columns,
-        )
+        gt = prepare_groundtruth(sample, kg, managers, config)
 
         content = f"""\
 Question {i + 1} over {kg} knowledge graph:
@@ -114,7 +139,7 @@ General notes across knowledge graphs:
 
 
 def take_notes(
-    inputs: list[tuple[str, SparqlQaSample]],
+    inputs: list[tuple[str, Sample]],
     outputs: list[dict],
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],

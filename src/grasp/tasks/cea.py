@@ -1,5 +1,4 @@
 import sys
-from dataclasses import dataclass
 from typing import Any, Iterator
 
 from pydantic import BaseModel
@@ -8,21 +7,14 @@ from universal_ml_utils.table import generate_table
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.sparql.utils import parse_into_binding
+from grasp.tasks.examples import Sample
 from grasp.utils import FunctionCallException, format_list, format_notes
 
 
-@dataclass
-class Annotation:
+class Annotation(BaseModel):
     identifier: str
     entity: str
     label: str | None = None
-
-    def to_dict(self) -> dict:
-        return {
-            "identifier": self.identifier,
-            "entity": self.entity,
-            "label": self.label,
-        }
 
     def format(self, with_label: bool = False) -> str:
         s = self.entity
@@ -31,36 +23,69 @@ class Annotation:
         return s
 
 
+class CellAnnotation(Annotation):
+    row: int
+    column: int
+
+
+class Table(BaseModel):
+    header: list[str]
+    data: list[list[str]]
+    annotate_rows: list[int] | None = None
+    annotate_columns: list[int] | None = None
+
+    @property
+    def width(self) -> int:
+        return len(self.header)
+
+    @property
+    def height(self) -> int:
+        return len(self.data)
+
+
+class CeaSample(Sample):
+    table: Table
+    annotations: list[CellAnnotation]
+
+    def input(self) -> str:
+        annots = AnnotationState(self.table)
+        instructions = input_instructions(annots)
+        return instructions
+
+    def inputs(self) -> list[str]:
+        return [self.input()]
+
+
 def clean(s: str) -> str:
     return " ".join(s.strip().split())
 
 
-class Annotations:
+class AnnotationState:
     def __init__(
         self,
-        header: list[str],
-        data: list[list[str]],
-        annotate_rows: list[int] | None = None,
-        annotate_columns: list[int] | None = None,
+        table: Table,
     ) -> None:
-        assert len(header) > 0, "Header must not be empty"
-        assert all(len(row) == len(header) for row in data), (
+        assert len(table.header) > 0, "Header must not be empty"
+        assert all(len(row) == len(table.header) for row in table.data), (
             "All rows must have the same length as the header"
         )
-        self.width = len(header)
-        self.height = len(data)
-        self.header = [clean(h) for h in header]
-        self.data = [[clean(cell) for cell in row] for row in data]
+        self.table = table
+        self.header = [clean(h) for h in table.header]
+        self.data = [[clean(cell) for cell in row] for row in table.data]
 
-        self.rows = set(annotate_rows) if annotate_rows is not None else None
-        self.cols = set(annotate_columns) if annotate_columns is not None else None
+        self.rows = (
+            set(table.annotate_rows) if table.annotate_rows is not None else None
+        )
+        self.cols = (
+            set(table.annotate_columns) if table.annotate_columns is not None else None
+        )
 
         # map from cell (row, column) to annoation
         self.annotations: dict[tuple[int, int], Annotation] = {}
 
     def iter(self) -> Iterator[list[Annotation | None]]:
-        for r in range(self.height):
-            yield [self.get(r, c) for c in range(self.width)]
+        for r in range(self.table.height):
+            yield [self.get(r, c) for c in range(self.table.width)]
 
     def annotate(
         self,
@@ -68,13 +93,13 @@ class Annotations:
         column: int,
         annotation: Annotation | None,
     ) -> Annotation | None:
-        if row < 0 or row >= self.height:
+        if row < 0 or row >= self.table.height:
             raise ValueError(f"Row {row} out of bounds")
 
         if self.rows is not None and row not in self.rows:
             raise ValueError(f"Row {row} must not be annotated")
 
-        if column < 0 or column >= self.width:
+        if column < 0 or column >= self.table.width:
             raise ValueError(f"Column {column} out of bounds")
 
         if self.cols is not None and column not in self.cols:
@@ -92,11 +117,11 @@ class Annotations:
         return {
             "formatted": self.format(with_labels),
             "annotations": [
-                {
-                    "row": row,
-                    "column": column,
-                    **annot.to_dict(),
-                }
+                CellAnnotation(
+                    row=row,
+                    column=column,
+                    **annot.model_dump(),
+                ).model_dump()
                 for (row, column), annot in self.annotations.items()
             ],
         }
@@ -240,7 +265,7 @@ def prepare_annotation(manager: KgManager, entity: str) -> Annotation:
         id = map[norm[0]]
         label = manager.entity_index.get_name(id)
 
-    return Annotation(identifier, entity, label)
+    return Annotation(identifier=identifier, entity=entity, label=label)
 
 
 def annotate(
@@ -249,7 +274,7 @@ def annotate(
     row: int,
     column: int,
     entity: str,
-    state: Annotations,
+    state: AnnotationState,
     known: set[str],
     know_before_use: bool = False,
 ) -> str:
@@ -275,7 +300,7 @@ def annotate(
         return f"Updated annotation of cell ({row}, {column}) from {current.entity} to {entity}"
 
 
-def clear(row: int, column: int, state: Annotations) -> str:
+def clear(row: int, column: int, state: AnnotationState) -> str:
     try:
         current = state.annotate(row, column, None)
     except ValueError as e:
@@ -287,52 +312,41 @@ def clear(row: int, column: int, state: Annotations) -> str:
     return f"Cleared annotation {current.entity} from cell ({row}, {column})"
 
 
-class CEAInput(BaseModel):
-    header: list[str]
-    data: list[list[str]]
-    annotate_rows: list[int] | None = None
-    annotate_columns: list[int] | None = None
-
-
-def input_instructions(annotations: Annotations) -> str:
+def input_instructions(state: AnnotationState) -> str:
     instructions = """\
-Annotate the following table. If there already are annotations \
-for some cells, they are shown in parentheses after the cell value.
+Annotate the following table with entities from the available knowledge graphs. \
+If there already are annotations for some cells, they are shown in parentheses \
+after the cell value.
 
 """
 
-    if annotations.rows is not None and len(annotations.rows) != annotations.height:
-        rows_to_annotate = ", ".join(str(r) for r in sorted(annotations.rows))
-        sfx = "s" if len(annotations.rows) != 1 else ""
+    if state.rows is not None and len(state.rows) != state.table.height:
+        rows_to_annotate = ", ".join(str(r) for r in sorted(state.rows))
+        sfx = "s" if len(state.rows) != 1 else ""
         instructions += f"Only annotate row{sfx} {rows_to_annotate}.\n\n"
     else:
         instructions += "Annotate all rows.\n\n"
 
-    if annotations.cols is not None and len(annotations.cols) != annotations.width:
-        cols_to_annotate = ", ".join(str(c) for c in sorted(annotations.cols))
-        sfx = "s" if len(annotations.cols) != 1 else ""
+    if state.cols is not None and len(state.cols) != state.table.width:
+        cols_to_annotate = ", ".join(str(c) for c in sorted(state.cols))
+        sfx = "s" if len(state.cols) != 1 else ""
         instructions += f"Only annotate column{sfx} {cols_to_annotate}.\n\n"
     else:
         instructions += "Annotate all columns.\n\n"
 
-    instructions += annotations.format()
+    instructions += state.format()
     return instructions
 
 
-def input_and_state(input: Any) -> tuple[str, Annotations]:
+def input_and_state(input: Any) -> tuple[str, AnnotationState]:
     try:
-        cea_input = CEAInput(**input)
+        table = Table(**input)
     except Exception as e:
         raise ValueError(
             "CEA task input must be a dict with 'header' and 'data' fields"
         ) from e
 
-    annots = Annotations(
-        cea_input.header,
-        cea_input.data,
-        cea_input.annotate_rows,
-        cea_input.annotate_columns,
-    )
+    annots = AnnotationState(table)
     instructions = input_instructions(annots)
     return instructions, annots
 
@@ -342,10 +356,10 @@ def call_function(
     fn_name: str,
     fn_args: dict,
     known: set[str],
-    state: Annotations | None = None,
+    state: AnnotationState | None = None,
     **kwargs: Any,
 ) -> str:
-    assert isinstance(state, Annotations), (
+    assert isinstance(state, AnnotationState), (
         "Annotations must be provided as state for CEA task"
     )
 
@@ -374,7 +388,7 @@ def call_function(
         raise ValueError(f"Unknown function {fn_name}")
 
 
-def output(state: Annotations) -> dict:
+def output(state: AnnotationState) -> dict:
     return state.to_dict(with_labels=True)
 
 

@@ -1,6 +1,7 @@
 import os
 
 from grasp.model import Message, Response
+from grasp.utils import format_list
 
 
 def format_arguments(args, depth: int = 0) -> str:
@@ -34,23 +35,25 @@ def format_output(messages: list[Message]) -> str:
 
         assert isinstance(message.content, Response)
 
-        content = f"System step {step}:"
-
         assistant = message.content
-        if assistant.has_content:
-            content += f"\n{assistant.get_content().strip()}"
+        ass_content = assistant.get_content()
 
-        tool_calls = []
+        contents = []
+        if "reasoning" in ass_content:
+            contents.append(f"Reasoning: {ass_content['reasoning']}")
+
+        if "content" in ass_content:
+            contents.append(f"Output: {ass_content['content']}")
+
         for tool_call in assistant.tool_calls:
-            tool_calls.append(
+            contents.append(
                 f'Call of "{tool_call.name}" function '
                 f"with {format_arguments(tool_call.args)}:\n"
                 f"{tool_call.result}"
             )
 
-        content += "\n" + "\n".join(tool_calls)
-
-        fmt.append(content.strip())
+        content = f"System step {step}:\n{format_list(contents)}"
+        fmt.append(content)
         step += 1
 
     return "\n\n".join(fmt)

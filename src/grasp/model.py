@@ -43,6 +43,10 @@ class Response(BaseModel):
     usage: dict | None = None
 
     @property
+    def is_empty(self) -> bool:
+        return self.message is None and self.reasoning is None and not self.tool_calls
+
+    @property
     def has_content(self) -> bool:
         return self.message is not None or self.has_reasoning_content
 
@@ -159,10 +163,6 @@ class Response(BaseModel):
             tool_calls=tool_calls,
             usage=response.usage.model_dump(exclude_defaults=True),  # type: ignore
         )
-
-    @property
-    def is_empty(self) -> bool:
-        return self.message is None and self.reasoning is None and not self.tool_calls
 
     def hash(self) -> str:
         msg: dict[str, Any] = {

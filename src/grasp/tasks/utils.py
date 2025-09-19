@@ -9,6 +9,16 @@ from grasp.model import ToolCall
 from grasp.sparql.item import get_sparql_items, selections_from_items
 
 
+class Sample(BaseModel):
+    id: str | None = None
+
+    def input(self) -> str:
+        raise NotImplementedError
+
+    def inputs(self) -> list[str]:
+        raise NotImplementedError
+
+
 class SparqlQaAnswerModel(BaseModel):
     kg: str
     sparql: str
@@ -183,9 +193,9 @@ def prepare_sparql_result(
 
 def format_sparql_result(
     sparql: str,
-    kg: str,
     selections: str,
     result: str,
+    kg: str,
 ) -> str:
     fmt = f"SPARQL query over {kg}:\n{sparql.strip()}"
 

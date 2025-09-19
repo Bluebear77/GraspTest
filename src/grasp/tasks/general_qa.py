@@ -160,6 +160,7 @@ def output(messages: list[Message]) -> dict | None:
         return {
             "type": "answer",
             "answer": answer.args["answer"],
+            "formatted": answer.args["answer"],
         }
 
     else:
@@ -167,4 +168,5 @@ def output(messages: list[Message]) -> dict | None:
         return {
             "type": "cancel",
             "explanation": cancel.args["explanation"],
+            "formatted": cancel.args["explanation"],
         }

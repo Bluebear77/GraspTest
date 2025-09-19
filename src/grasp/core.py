@@ -389,7 +389,10 @@ def generate(
 
     output = task_output(task, messages, managers, config, task_state)
 
-    out_msg = Message(role="output", content=json.dumps(output, indent=2))
+    out_msg = Message(
+        role="output",
+        content="No output" if output is None else output["formatted"],
+    )
     logger.info(format_message(out_msg))
 
     end = time.perf_counter()

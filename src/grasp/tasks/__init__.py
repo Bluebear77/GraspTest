@@ -1,15 +1,17 @@
 from enum import StrEnum
-from typing import Any
+from typing import Any, Type
 
 from grasp.configs import Config
 from grasp.functions import TaskFunctions
 from grasp.manager import KgManager
 from grasp.model import Message
+from grasp.tasks.cea import CeaSample
 from grasp.tasks.cea import functions as cea_functions
 from grasp.tasks.cea import input_and_state as cea_input_and_state
 from grasp.tasks.cea import output as cea_output
 from grasp.tasks.cea import rules as cea_rules
 from grasp.tasks.cea import system_information as cea_system_information
+from grasp.tasks.examples import Sample
 from grasp.tasks.general_qa import functions as general_qa_functions
 from grasp.tasks.general_qa import output as general_qa_output
 from grasp.tasks.general_qa import rules as general_qa_rules
@@ -18,6 +20,7 @@ from grasp.tasks.sparql_qa import functions as sparql_qa_functions
 from grasp.tasks.sparql_qa import output as sparql_qa_output
 from grasp.tasks.sparql_qa import rules as sparql_qa_rules
 from grasp.tasks.sparql_qa import system_information as sparql_qa_system_information
+from grasp.tasks.sparql_qa.examples import SparqlQaSample
 
 
 class Task(StrEnum):
@@ -128,3 +131,13 @@ def task_output(
         return cea_output(task_state)
 
     raise ValueError(f"Unknown task {task}")
+
+
+def task_to_sample(task: str) -> Type[Sample]:
+    if task == "sparql-qa":
+        return SparqlQaSample
+
+    elif task == "cea":
+        return CeaSample
+
+    raise ValueError(f"Unsupported or unknown task {task}")

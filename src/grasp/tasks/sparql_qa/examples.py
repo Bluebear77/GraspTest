@@ -1,20 +1,21 @@
-import json
 import random
 from typing import Any
 from uuid import uuid4
 
 from grasp.manager import KgManager
 from grasp.model import Message, Response, ToolCall
-from grasp.tasks.examples import ExampleIndex, Sample
-from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
+from grasp.tasks.examples import ExampleIndex
+from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
 
 
 class SparqlQaSample(Sample):
-    id: str | None = None
     question: str
     sparql: str
     paraphrases: list[str] = []
     info: dict[str, Any] = {}
+
+    def input(self) -> str:
+        return self.question
 
     def inputs(self) -> list[str]:
         return [self.question] + self.paraphrases
