@@ -17,7 +17,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                     "kg": {
                         "type": ["string", "null"],
                         "enum": kgs,
-                        "description": "The knowledge graph for which to add the note, omit for general notes",
+                        "description": "The knowledge graph for which to add the note (null for general notes)",
                     },
                     "note": {
                         "type": "string",
@@ -38,7 +38,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                     "kg": {
                         "type": ["string", "null"],
                         "enum": kgs,
-                        "description": "The knowledge graph for which to delete the note, omit for general notes",
+                        "description": "The knowledge graph for which to delete the note (null for general notes)",
                     },
                     "num": {
                         "type": "number",
@@ -59,7 +59,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
                     "kg": {
                         "type": ["string", "null"],
                         "enum": kgs,
-                        "description": "The knowledge graph for which to update the note, omit for general notes",
+                        "description": "The knowledge graph for which to update the note (null for general notes)",
                     },
                     "num": {
                         "type": "number",
@@ -77,14 +77,14 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
         },
         {
             "name": "show_notes",
-            "description": "Show general or knowledge graph specific notes.",
+            "description": "Show current general or knowledge graph specific notes.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "kg": {
                         "type": ["string", "null"],
                         "enum": kgs,
-                        "description": "The knowledge graph for which to show the notes, omit for general notes",
+                        "description": "The knowledge graph for which to show the notes (null for general notes)",
                     },
                 },
                 "required": ["kg"],
@@ -94,7 +94,13 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
         },
         {
             "name": "stop",
-            "description": "Stop the process.",
+            "description": "Stop the annotation process.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
             "strict": True,
         },
     ]
@@ -120,7 +126,7 @@ def add_note(notes: list[str], note: str) -> str:
     check_note(note)
 
     notes.append(note)
-    return f"Added note:\n{format_list(notes)}"
+    return f"Added note {len(notes)}: {notes[-1]}"
 
 
 def delete_note(notes: list[str], num: int | float) -> str:
@@ -129,8 +135,8 @@ def delete_note(notes: list[str], num: int | float) -> str:
         raise FunctionCallException("Note number out of range")
 
     num -= 1
-    _ = notes.pop(num)
-    return f"Deleted note:\n{format_list(notes)}"
+    note = notes.pop(num)
+    return f"Deleted note {num + 1}: {note}"
 
 
 def update_note(notes: list[str], num: int | float, note: str) -> str:
@@ -142,7 +148,7 @@ def update_note(notes: list[str], num: int | float, note: str) -> str:
 
     num -= 1
     notes[num] = note
-    return f"Updated note:\n{format_list(notes)}"
+    return f"Updated note {num + 1}: {note}"
 
 
 def call_function(

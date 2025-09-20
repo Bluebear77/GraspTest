@@ -47,13 +47,13 @@ class CeaSample(Sample):
     table: Table
     annotations: list[CellAnnotation]
 
-    def input(self) -> str:
-        annots = AnnotationState(self.table)
-        instructions = input_instructions(annots)
-        return instructions
+    def input(self) -> Any:
+        return self.table.model_dump()
 
     def inputs(self) -> list[str]:
-        return [self.input()]
+        annots = AnnotationState(self.table)
+        instructions = input_instructions(annots)
+        return [instructions]
 
 
 def clean(s: str) -> str:
@@ -238,12 +238,24 @@ Clear the annotation of a cell in the table.""",
             "name": "show",
             "description": """\
 Show the current annotations in the table.""",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
             "strict": True,
         },
         {
             "name": "stop",
             "description": """\
 Finalize your annotations and stop the annotation process.""",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
             "strict": True,
         },
     ]

@@ -39,7 +39,8 @@ You are a note-taking assistant. Your task is to \
 inspect the traces of a knowledge graph agent performing a certain task, and to \
 take notes about the agent's outputs as well as the used knowledge \
 graphs and functions. Before calling a note-taking function, \
-provide reasoning for what you are doing and why.
+provide reasoning for what you are doing and why. Stop the annotation process \
+by calling the stop function once you are done.
 
 Your notes should help the agent to better understand and \
 navigate the task and knowledge graphs in the future. For a specific knowledge \

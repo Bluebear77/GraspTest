@@ -710,7 +710,7 @@ def serve_grasp(args: argparse.Namespace) -> None:
 
 def adapt_grasp(args: argparse.Namespace) -> None:
     config = Adapt(**load_config(args.config))
-    adapt(args.task, config, args.adapt, args.overwrite, args.log_level)
+    adapt(args.task, config, args.output_dir, args.overwrite, args.log_level)
 
 
 def get_grasp_data(args: argparse.Namespace) -> None:

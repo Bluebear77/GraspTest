@@ -1,4 +1,5 @@
 import re
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
@@ -12,7 +13,7 @@ from grasp.sparql.item import get_sparql_items, selections_from_items
 class Sample(BaseModel):
     id: str | None = None
 
-    def input(self) -> str:
+    def input(self) -> Any:
         raise NotImplementedError
 
     def inputs(self) -> list[str]:
