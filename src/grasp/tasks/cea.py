@@ -58,10 +58,7 @@ def clean(s: str) -> str:
 
 
 class AnnotationState:
-    def __init__(
-        self,
-        table: Table,
-    ) -> None:
+    def __init__(self, table: Table) -> None:
         assert len(table.header) > 0, "Header must not be empty"
         assert all(len(row) == len(table.header) for row in table.data), (
             "All rows must have the same length as the header"

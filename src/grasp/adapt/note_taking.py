@@ -10,9 +10,10 @@ from grasp.adapt.notes import (
 from grasp.adapt.utils import format_output
 from grasp.configs import Adapt, Config
 from grasp.core import call_model
+from grasp.functions import find_manager
 from grasp.manager import KgManager
 from grasp.model import Message
-from grasp.tasks.cea import Annotation, AnnotationState, CeaSample
+from grasp.tasks.cea import Annotation, AnnotationState, CeaSample, prepare_annotation
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
 from grasp.utils import (
@@ -80,13 +81,13 @@ def prepare_groundtruth(
         return format_sparql_result(sparql, selections, result, kg)
 
     elif isinstance(sample, CeaSample):
+        manager, _ = find_manager(managers, kg)
+
         annots = AnnotationState(sample.table)
         for annot in sample.annotations:
-            annots.annotate(
-                annot.row,
-                annot.column,
-                Annotation(**annot.model_dump()),
-            )
+            full_annot = prepare_annotation(manager, annot.entity)
+            annots.annotate(annot.row, annot.column, full_annot)
+
         return annots.format()
 
     else:
@@ -197,6 +198,9 @@ def take_notes(
             response = call_model(messages, functions, config)
         except Timeout:
             logger.error("LLM API timed out during note taking")
+            return
+        except Exception as e:
+            logger.error(f"LLM API returned error during note taking: {e}")
             return
 
         if response.is_empty:

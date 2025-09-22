@@ -46,6 +46,7 @@ def kg_functions(managers: list[KgManager], fn_set: str) -> list[dict]:
         "search_extended",
         "search_autocomplete",
         "search_constrained",
+        "all",
     ], f"Unknown function set {fn_set}"
     kgs = [manager.kg for manager in managers]
 
@@ -124,7 +125,7 @@ list(kg="wikidata", property="wdt:P19")""",
         },
     )
 
-    if fn_set in ["search", "search_extended"]:
+    if fn_set in ["search", "search_extended", "all"]:
         fns.extend(
             [
                 {
@@ -185,7 +186,7 @@ search_property(kg="wikidata", query="birth")""",
             ]
         )
 
-    if fn_set == "search_extended":
+    if fn_set in ["search_extended", "all"]:
         fns.extend(
             [
                 {
@@ -254,10 +255,12 @@ search_object_of_property(kg="wikidata", property="wdt:P106", query="football")"
             ]
         )
 
-    if fn_set == "search_autocomplete":
+    if fn_set in ["search_autocomplete", "all"]:
         fns.append(
             {
-                "name": "search",
+                "name": "search"
+                if fn_set == "search_autocomplete"
+                else "search_autocomplete",
                 "description": """\
 Search for knowledge graph items in a context-sensitive way by specifying a constraining \
 SPARQL query together with a search query. The SPARQL query must be a SELECT query \
@@ -298,10 +301,12 @@ search(kg="wikidata", sparql="SELECT * WHERE { wd:Q937 ?search ?o }", query="bir
             }
         )
 
-    if fn_set == "search_constrained":
+    if fn_set in ["search_constrained", "all"]:
         fns.append(
             {
-                "name": "search",
+                "name": "search"
+                if fn_set == "search_constrained"
+                else "search_constrained",
                 "description": """\
 Search for knowledge graph items at a particular position (subject, property, or object) \
 with optional constraints. If constraints are provided, they are used to limit the search \
@@ -453,7 +458,9 @@ def call_function(
             min_score=MIN_SCORE,
         )
 
-    elif fn_name == "search" and fn_set == "search_constrained":
+    elif (
+        fn_name == "search" and fn_set == "search_constrained"
+    ) or fn_name == "search_constrained":
         return search_constrained(
             managers,
             fn_args["kg"],
@@ -465,7 +472,9 @@ def call_function(
             min_score=MIN_SCORE,
         )
 
-    elif fn_name == "search" and fn_set == "search_autocomplete":
+    elif (
+        fn_name == "search" and fn_set == "search_autocomplete"
+    ) or fn_name == "search_autocomplete":
         return search_autocomplete(
             managers,
             fn_args["kg"],

@@ -41,10 +41,10 @@ def format_output(output: Any | None, messages: list[Message]) -> str:
 
         contents = []
         if "reasoning" in ass_content:
-            contents.append(f"Reasoning: {ass_content['reasoning']}")
+            contents.append(f"Reasoning:\n{ass_content['reasoning']}")
 
         if "content" in ass_content:
-            contents.append(f"Output: {ass_content['content']}")
+            contents.append(f"Output:\n{ass_content['content']}")
 
         for tool_call in assistant.tool_calls:
             contents.append(

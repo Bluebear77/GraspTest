@@ -35,6 +35,17 @@ class Reasoning(BaseModel):
     encrypted_content: str | None = None
 
 
+def strip_none(s: str | None) -> str | None:
+    if s is None:
+        return None
+
+    s = s.strip()
+    if not s:
+        return None
+
+    return s
+
+
 class Response(BaseModel):
     id: str
     message: str | None
@@ -61,10 +72,10 @@ class Response(BaseModel):
 
         if self.has_reasoning_content:
             reasoning: str = self.reasoning.content or self.reasoning.summary  # type: ignore
-            content["reasoning"] = reasoning.strip()
+            content["reasoning"] = reasoning
 
         if self.message is not None:
-            content["content"] = self.message.strip()
+            content["content"] = self.message
 
         return content
 
@@ -78,12 +89,12 @@ class Response(BaseModel):
         if choice.finish_reason not in ["tool_calls", "stop", "length"]:
             raise ValueError(f"Unexpected finish reason {choice.finish_reason}")
 
-        message = choice.message.content
+        message = strip_none(choice.message.content)
         reasoning = None
         if hasattr(choice.message, "reasoning_content"):
             reasoning = Reasoning(
                 id=uuid4().hex,
-                content=choice.message.reasoning_content,
+                content=strip_none(choice.message.reasoning_content),
             )
 
         tool_calls = []
@@ -129,18 +140,18 @@ class Response(BaseModel):
 
                 # assistant
                 if output.content:
-                    message = output.content[0].text  # type: ignore
+                    message = strip_none(output.content[0].text)  # type: ignore
 
             elif isinstance(output, ResponseReasoningItem):
                 # reasoning
                 reasoning = Reasoning(id=output.id)
                 if output.summary:
-                    reasoning.summary = output.summary[0].text
+                    reasoning.summary = strip_none(output.summary[0].text)
 
                 if output.content:
-                    reasoning.content = output.content[0].text
+                    reasoning.content = strip_none(output.content[0].text)
 
-                if output.encrypted_content:
+                if output.encrypted_content is not None:
                     reasoning.encrypted_content = output.encrypted_content
 
             elif isinstance(output, ResponseFunctionToolCall):
@@ -167,7 +178,9 @@ class Response(BaseModel):
     def hash(self) -> str:
         msg: dict[str, Any] = {
             "msg": self.message,
-            "reasoning": self.reasoning.model_dump() if self.reasoning else None,
+            "reasoning": self.reasoning.model_dump(exclude={"id"})
+            if self.reasoning
+            else None,
             "tool_calls": sorted(
                 (tc.name, json.dumps(tc.args, sort_keys=True)) for tc in self.tool_calls
             ),

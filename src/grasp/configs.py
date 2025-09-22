@@ -38,7 +38,7 @@ class Config(BaseModel):
     know_before_use: bool = False
 
     # model inference parameters
-    model_kwargs: dict[str, Any] | None = None
+    model_kwargs: dict[str, Any] = {}
     temperature: float | None = 1.0
     top_p: float | None = 1.0
     reasoning_effort: str | None = None
