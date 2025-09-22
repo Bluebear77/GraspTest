@@ -95,4 +95,4 @@ class Adapt(Config):
     adapt_top_p: float | None = None
     adapt_reasoning_effort: str | None = None
     adapt_reasoning_summary: str | None = None
-    adapt_api: str = "completions"
+    adapt_api: str | None = None
