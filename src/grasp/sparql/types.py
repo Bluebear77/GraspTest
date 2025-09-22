@@ -224,18 +224,22 @@ class Alternative:
         s = self.get_label() or self.get_identifier()
 
         variants = self.variants if include_variants is None else include_variants
+        parts = []
         if self.has_label() and not variants:
-            s += f" ({self.get_identifier()}"
+            parts.append(f"{self.get_identifier()}")
         elif not self.has_label() and variants:
-            s += f" (as {'/'.join(variants)}"
+            parts.append(f"as {'/'.join(variants)}")
         elif self.has_label() and variants:
-            s += f" ({self.get_identifier()} as {'/'.join(variants)}"
+            parts.append(f"{self.get_identifier()} as {'/'.join(variants)}")
 
         if self.aliases and self.matched_alias is not None:
             alias = clip(self.aliases[self.matched_alias])
-            s += f", matched via {alias}"
+            parts.append(f"matched via {alias}")
 
-        s += ")"
+        if parts:
+            s += " ("
+            s += ", ".join(parts)
+            s += ")"
 
         if add_infos and self.aliases and max_aliases > 0:
             show_aliases = [clip(a) for a in self.aliases[:max_aliases]]

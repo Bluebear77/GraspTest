@@ -1,12 +1,10 @@
 from grasp.manager import KgManager
-from grasp.utils import FunctionCallException, format_list
-
-MAX_NOTES = 16
-MAX_NOTE_LENGTH = 256
+from grasp.utils import FunctionCallException, format_enumerate
 
 
 def note_functions(managers: list[KgManager]) -> list[dict]:
-    kgs = [manager.kg for manager in managers]
+    kgs: list[str | None] = [manager.kg for manager in managers]
+    kgs.append(None)
     return [
         {
             "name": "add_note",
@@ -106,24 +104,24 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
     ]
 
 
-def check_note(note: str) -> None:
-    if len(note) > MAX_NOTE_LENGTH:
+def check_note(note: str, max_note_length: int) -> None:
+    if len(note) > max_note_length:
         raise FunctionCallException(
-            f"Note exceeds maximum length of {MAX_NOTE_LENGTH} characters"
+            f"Note exceeds maximum length of {max_note_length} characters"
         )
 
 
 def show_notes(notes: list[str]) -> str:
     if not notes:
         return "No notes available"
-    return format_list(notes)
+    return format_enumerate(notes)
 
 
-def add_note(notes: list[str], note: str) -> str:
-    if len(notes) >= MAX_NOTES:
-        raise FunctionCallException(f"Cannot add more than {MAX_NOTES} notes")
+def add_note(notes: list[str], note: str, max_notes: int, max_note_length: int) -> str:
+    if len(notes) >= max_notes:
+        raise FunctionCallException(f"Cannot add more than {max_notes} notes")
 
-    check_note(note)
+    check_note(note, max_note_length)
 
     notes.append(note)
     return f"Added note {len(notes)}: {notes[-1]}"
@@ -139,12 +137,17 @@ def delete_note(notes: list[str], num: int | float) -> str:
     return f"Deleted note {num + 1}: {note}"
 
 
-def update_note(notes: list[str], num: int | float, note: str) -> str:
+def update_note(
+    notes: list[str],
+    num: int | float,
+    note: str,
+    max_note_length: int,
+) -> str:
     num = int(num)
     if num < 1 or num > len(notes):
         raise FunctionCallException("Note number out of range")
 
-    check_note(note)
+    check_note(note, max_note_length)
 
     num -= 1
     notes[num] = note
@@ -156,6 +159,8 @@ def call_function(
     notes: list[str],
     fn_name: str,
     fn_args: dict,
+    max_notes: int,
+    max_note_length: int,
 ) -> str:
     if fn_name == "stop":
         return "Stopped process"
@@ -168,11 +173,13 @@ def call_function(
         notes_to_use = kg_notes[kg]
 
     if fn_name == "add_note":
-        return add_note(notes_to_use, fn_args["note"])
+        return add_note(notes_to_use, fn_args["note"], max_notes, max_note_length)
     elif fn_name == "delete_note":
         return delete_note(notes_to_use, fn_args["num"])
     elif fn_name == "update_note":
-        return update_note(notes_to_use, fn_args["num"], fn_args["note"])
+        return update_note(
+            notes_to_use, fn_args["num"], fn_args["note"], max_note_length
+        )
     elif fn_name == "show_notes":
         return show_notes(notes_to_use)
     else:

@@ -30,6 +30,7 @@ def adapt(
         raise FileExistsError(f"Output directory {out_dir} already exists")
 
     logger = get_logger("GRASP ADAPTATION", log_level)
+    agent_logger = get_logger("GRASP AGENT", log_level)
 
     managers = setup(config)
     notes, kg_notes = load_task_notes(task, config)
@@ -74,6 +75,7 @@ def adapt(
                 [manager],
                 kg_notes,
                 notes,
+                logger=agent_logger,
             )
             outputs.append(output)
 

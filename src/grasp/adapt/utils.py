@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from grasp.model import Message, Response
 from grasp.utils import format_list
@@ -21,7 +22,7 @@ def format_arguments(args, depth: int = 0) -> str:
         return str(args)
 
 
-def format_output(messages: list[Message]) -> str:
+def format_output(output: Any | None, messages: list[Message]) -> str:
     fmt = []
     step = 1
     for message in messages[2:]:
@@ -52,9 +53,12 @@ def format_output(messages: list[Message]) -> str:
                 f"{tool_call.result}"
             )
 
-        content = f"System step {step}:\n{format_list(contents)}"
+        content = f"Step {step}:\n{format_list(contents)}"
         fmt.append(content)
         step += 1
+
+    if output is not None and "formatted" in output:
+        fmt.append(f"Output after {step} steps:\n{output['formatted']}")
 
     return "\n\n".join(fmt)
 

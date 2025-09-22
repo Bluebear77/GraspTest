@@ -8,6 +8,7 @@ from grasp.functions import execute_sparql, find_manager, update_known_from_sele
 from grasp.manager import KgManager
 from grasp.model import ToolCall
 from grasp.sparql.item import get_sparql_items, selections_from_items
+from grasp.sparql.types import ObjType, group_selections
 
 
 class Sample(BaseModel):

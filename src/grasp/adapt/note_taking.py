@@ -4,8 +4,6 @@ from logging import Logger
 from litellm.exceptions import Timeout
 
 from grasp.adapt.notes import (
-    MAX_NOTE_LENGTH,
-    MAX_NOTES,
     call_function,
     note_functions,
 )
@@ -17,9 +15,12 @@ from grasp.model import Message
 from grasp.tasks.cea import Annotation, AnnotationState, CeaSample
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
-from grasp.utils import format_list, format_message, format_notes, format_response
-
-MAX_STEPS = 50
+from grasp.utils import (
+    format_enumerate,
+    format_list,
+    format_message,
+    format_response,
+)
 
 
 def rules() -> list[str]:
@@ -33,7 +34,7 @@ notes that can be useful across knowledge graphs to the general section.",
     ]
 
 
-def system_instructions() -> str:
+def system_instructions(max_notes: int, max_note_length: int) -> str:
     return f"""\
 You are a note-taking assistant. Your task is to \
 inspect the traces of a knowledge graph agent performing a certain task, and to \
@@ -47,9 +48,9 @@ navigate the task and knowledge graphs in the future. For a specific knowledge \
 graph, they should generalize across samples, rather than being specific to \
 a single sample or output. You can also take general notes that might be \
 useful across knowledge graphs or for the task in general. \
-You are only allowed {MAX_NOTES} notes at max per knowledge graph and for the \
+You are only allowed {max_notes} notes at max per knowledge graph and for the \
 general notes, such that you are forced to prioritize and to keep them as widely \
-applicable as possible. Notes are limited to {MAX_NOTE_LENGTH} characters to \
+applicable as possible. Notes are limited to {max_note_length} characters to \
 ensure they are concise and to the point.
 
 Examples of potentially useful types of notes include:
@@ -86,7 +87,7 @@ def prepare_groundtruth(
                 annot.column,
                 Annotation(**annot.model_dump()),
             )
-        return annots.format(with_labels=True)
+        return annots.format()
 
     else:
         raise ValueError(f"Unsupported or unknown sample type {type(sample)}")
@@ -103,40 +104,45 @@ def note_taking_instructions(
     formatted = []
     for i, ((kg, sample), output) in enumerate(zip(inputs, outputs)):
         messages = [Message(**msg) for msg in output["messages"]]
+        if i == 0:
+            assert messages[0].role == "system"
+            formatted.append(f"Task instructions for the agent:\n{messages[0].content}")
+
         assert messages[1].role == "user"
-        question = messages[1].content
+        input = messages[1].content
 
         gt = prepare_groundtruth(sample, kg, managers, config)
 
         content = f"""\
-Question {i + 1} over {kg} knowledge graph:
-{question}
+Input {i + 1} over {kg} knowledge graph:
+{input}
 
-System output:
-{format_output(messages)}
+Agent trace:
+{format_output(output["output"], messages)}
 
 Ground truth:
 {gt}"""
 
         formatted.append(content)
 
-    outputs_formatted = "\n\n".join(formatted)
+    fmt = "\n\n".join(formatted)
     kg_specific_notes = format_list(
-        f"{kg}: {format_notes(kg_specific_notes, indent=2)}"
+        f"{kg}:\n{format_enumerate(kg_specific_notes, indent=2)}"
         for kg, kg_specific_notes in sorted(kg_notes.items())
     )
 
     return f"""\
-Add to, delete from, or update the following notes \
-based on the provided questions and outputs below.
+Add to, delete from, or update the following notes (which might \
+be the same notes provided to the agent) based on the given agent traces \
+below.
 
 Knowledge graph specific notes:
 {kg_specific_notes}
 
 General notes across knowledge graphs:
-{format_notes(notes)}
+{format_enumerate(notes)}
 
-{outputs_formatted}"""
+{fmt}"""
 
 
 def take_notes(
@@ -148,10 +154,14 @@ def take_notes(
     config: Adapt,
     logger: Logger,
 ) -> None:
+    # get note taking parameters
+    max_notes = config.method_kwargs.get("max_notes", 16)
+    max_note_length = config.method_kwargs.get("max_note_length", 512)
+
     messages = [
         Message(
             role="system",
-            content=system_instructions(),
+            content=system_instructions(max_notes, max_note_length),
         ),
         Message(
             role="user",
@@ -182,7 +192,7 @@ def take_notes(
     config.reasoning_effort = config.adapt_reasoning_effort or config.reasoning_effort
     config.api = config.adapt_api or config.api
 
-    while len(messages) - num_messages < MAX_STEPS:
+    while len(messages) - num_messages < config.adapt_max_steps:
         try:
             response = call_model(messages, functions, config)
         except Timeout:
@@ -202,6 +212,8 @@ def take_notes(
                     notes,
                     tool_call.name,
                     tool_call.args,
+                    max_notes,
+                    max_note_length,
                 )
             except Exception as e:
                 result = f"Call to function {tool_call.name} returned an error:\n{e}"

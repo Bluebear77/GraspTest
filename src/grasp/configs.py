@@ -23,7 +23,7 @@ class Config(BaseModel):
     knowledge_graphs: list[KgConfig] = [KgConfig(kg="wikidata")]
 
     # optional task specific parameters
-    task: dict[str, Any] | None = None
+    task_kwargs: dict[str, Any] = {}
 
     # kg function parameters
     search_top_k: int = 10
@@ -76,6 +76,8 @@ class Adapt(Config):
     # iterative_note_taking + questions/pairs => run question
     # answering with some examples
     method: str = "iterative_note_taking"
+    # optional method specific parameters
+    method_kwargs: dict[str, Any] = {}
 
     # if method = iterative_note_taking
     num_rounds: int = 5
@@ -90,6 +92,8 @@ class Adapt(Config):
     # adapt model can be different from the main model
     adapt_model: str | None = None
     adapt_model_endpoint: str | None = None
+    adapt_max_steps: int = 50
+
     # and have different decoding parameters
     adapt_temperature: float | None = None
     adapt_top_p: float | None = None

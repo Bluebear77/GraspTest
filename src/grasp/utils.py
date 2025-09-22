@@ -43,6 +43,11 @@ def format_list(items: Iterable[str], indent: int = 0) -> str:
     return "\n".join(f"{indent_str}- {item}" for item in items)
 
 
+def format_enumerate(items: Iterable[str], indent: int = 0) -> str:
+    indent_str = " " * indent
+    return "\n".join(f"{indent_str}{i + 1}. {item}" for i, item in enumerate(items))
+
+
 def format_model(model: BaseModel | None) -> str:
     if model is None:
         return "None"

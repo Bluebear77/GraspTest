@@ -180,8 +180,7 @@ def _get_item(
             identifier,
             label,
             synonyms,
-            [],  # leave empty for now
-            {variant} if variant else None,
+            variants={variant} if variant else None,
         )
 
         return Item(
@@ -277,7 +276,7 @@ def get_sparql_items(
     )
 
     # by occurence position in the query
-    return sparql, sorted(items, key=lambda item: item.item_span)
+    return sparql, sorted(items, key=lambda item: item.item_span)  # type: ignore
 
 
 def drop_sparql_items(

@@ -6,6 +6,7 @@ from universal_ml_utils.table import generate_table
 
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
+from grasp.sparql.types import Alternative
 from grasp.sparql.utils import parse_into_binding
 from grasp.tasks.examples import Sample
 from grasp.utils import FunctionCallException, format_list, format_notes
@@ -15,12 +16,8 @@ class Annotation(BaseModel):
     identifier: str
     entity: str
     label: str | None = None
-
-    def format(self, with_label: bool = False) -> str:
-        s = self.entity
-        if self.label and with_label:
-            s += f": {self.label}"
-        return s
+    synonyms: list[str] | None = None
+    infos: list[str] | None = None
 
 
 class CellAnnotation(Annotation):
@@ -113,9 +110,9 @@ class AnnotationState:
     def get(self, row: int, column: int) -> Annotation | None:
         return self.annotations.get((row, column), None)
 
-    def to_dict(self, with_labels: bool = False) -> dict:
+    def to_dict(self) -> dict:
         return {
-            "formatted": self.format(with_labels),
+            "formatted": self.format(),
             "annotations": [
                 CellAnnotation(
                     row=row,
@@ -126,23 +123,42 @@ class AnnotationState:
             ],
         }
 
-    def format(self, with_labels: bool = False) -> str:
+    def format(self) -> str:
         data = [
             [str(i)]
             + [
-                col + (f" ({annot.format(with_labels)})" if annot is not None else "")
+                col + (f" ({annot.entity})" if annot is not None else "")
                 for col, annot in zip(row, annots)
             ]
             for i, (row, annots) in enumerate(zip(self.data, self.iter()))
         ]
-
         header = ["Row"] + [f"Column {i}: {name}" for i, name in enumerate(self.header)]
-
         table = generate_table(
             data=data,
             headers=[header],
             max_column_width=sys.maxsize,
         )
+
+        entities: dict[str, Alternative] = {}
+        for annot in self.annotations.values():
+            if annot.identifier in entities:
+                continue
+
+            alternative = Alternative(
+                annot.identifier,
+                short_identifier=annot.entity,
+                label=annot.label,
+                aliases=annot.synonyms,
+                infos=annot.infos,
+            )
+            entities[annot.identifier] = alternative
+
+        if entities:
+            annotations = format_list(
+                alt.get_selection_string() for _, alt in sorted(entities.items())
+            )
+            table += f"\n\nAnnotated entities:\n{annotations}"
+
         return table
 
 
@@ -262,7 +278,11 @@ Finalize your annotations and stop the annotation process.""",
     return fns, call_function
 
 
-def prepare_annotation(manager: KgManager, entity: str) -> Annotation:
+def prepare_annotation(
+    manager: KgManager,
+    entity: str,
+    with_infos: bool = True,
+) -> Annotation:
     binding = parse_into_binding(entity, manager.iri_literal_parser, manager.prefixes)
     if binding is None or binding.typ != "uri":
         raise ValueError(f"Entity {entity} is not a valid IRI")
@@ -270,14 +290,29 @@ def prepare_annotation(manager: KgManager, entity: str) -> Annotation:
     identifier = binding.identifier()
 
     label = None
+    synonyms = None
+    infos = None
 
     map = manager.entity_mapping
     norm = map.normalize(identifier)
     if norm is not None and norm[0] in map:
         id = map[norm[0]]
-        label = manager.entity_index.get_name(id)
+        _, label, *synonyms = manager.entity_index.get_row(id)
 
-    return Annotation(identifier=identifier, entity=entity, label=label)
+    if with_infos:
+        all_infos = manager.get_infos_for_items(
+            [identifier],
+            manager.entity_info_sparql,
+        )
+        infos = all_infos.get(identifier, [])
+
+    return Annotation(
+        identifier=identifier,
+        entity=entity,
+        label=label,
+        synonyms=synonyms,
+        infos=infos,
+    )
 
 
 def annotate(
@@ -401,7 +436,7 @@ def call_function(
 
 
 def output(state: AnnotationState) -> dict:
-    return state.to_dict(with_labels=True)
+    return state.to_dict()
 
 
 def feedback_system_message(

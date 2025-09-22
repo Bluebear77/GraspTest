@@ -332,9 +332,9 @@ class KgManager:
     def build_alternative(
         self,
         identifier: str,
-        label: str,
-        synonyms: list[str],
-        infos: list[str],
+        label: str | None = None,
+        synonyms: list[str] | None = None,
+        infos: list[str] | None = None,
         variants: set[str] | None = None,
         matched_synonym: int | None = None,
     ) -> Alternative:
@@ -344,7 +344,7 @@ class KgManager:
             label=label,
             variants=variants,
             aliases=synonyms,
-            infos=sorted(infos, key=len, reverse=True),
+            infos=sorted(infos, key=len, reverse=True) if infos is not None else None,
             matched_alias=matched_synonym,
         )
 
@@ -771,15 +771,27 @@ class KgManager:
 
         return alternatives
 
-    def format_selections(
-        self,
-        selections: list[Selection],
-    ) -> str:
+    def format_selections(self, selections: list[Selection]) -> str:
         rename_obj_type = [
             (ObjType.ENTITY, "entities"),
             (ObjType.PROPERTY, "properties"),
         ]
+
         grouped = group_selections(selections)
+
+        def add_infos(alts: list[tuple[Alternative, set[str]]], sparql: str) -> None:
+            ids = [alt.identifier for alt, _ in alts if alt.infos is None]
+            infos = self.get_infos_for_items(ids, sparql)
+            for alt, _ in alts:
+                if alt.identifier in infos:
+                    alt.infos = infos[alt.identifier]
+
+        if ObjType.ENTITY in grouped:
+            add_infos(grouped[ObjType.ENTITY], self.entity_info_sparql)
+
+        if ObjType.PROPERTY in grouped:
+            add_infos(grouped[ObjType.PROPERTY], self.property_info_sparql)
+
         return "\n\n".join(
             f"Using {name}:\n"
             + "\n".join(
