@@ -319,6 +319,7 @@ def call_model(
     messages: list[Message],
     functions: list[dict],
     config: Config,
+    num_retries: int = 2,
 ) -> Response:
     if config.api is None:
         api = "responses" if config.model.startswith("openai") else "completions"
@@ -345,6 +346,7 @@ def call_model(
             extra_body=config.model_kwargs,
             # drop unsupported parameters
             drop_params=True,
+            num_retries=num_retries,
         )
         return Response.from_completions_api(completions_resp)
 
@@ -374,6 +376,7 @@ def call_model(
             # drop unsupported parameters
             drop_params=True,
             store=False,
+            num_retries=num_retries,
         )
         return Response.from_responses_api(responses_resp)
 

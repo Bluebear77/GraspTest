@@ -196,9 +196,6 @@ def take_notes(
     while len(messages) - num_messages < config.adapt_max_steps:
         try:
             response = call_model(messages, functions, config)
-        except Timeout:
-            logger.error("LLM API timed out during note taking")
-            return
         except Exception as e:
             logger.error(f"LLM API returned error during note taking: {e}")
             return
