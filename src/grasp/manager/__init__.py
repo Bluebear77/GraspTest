@@ -794,7 +794,7 @@ class KgManager:
 
         return "\n\n".join(
             f"Using {name}:\n"
-            + "\n".join(
+            + format_list(
                 alt.get_selection_string(include_variants=variants)
                 for alt, variants in grouped[obj_type]
             )
