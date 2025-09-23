@@ -27,11 +27,7 @@ from grasp.configs import Config, NoteTakingConfig
 from grasp.core import generate, load_task_notes, setup
 from grasp.evaluate import evaluate
 from grasp.manager import find_embedding_model
-from grasp.manager.utils import (
-    dump_notes,
-    has_notes,
-    load_notes,
-)
+from grasp.manager.utils import dump_notes, load_notes
 from grasp.model import Message
 from grasp.notes import take_notes
 from grasp.tasks import Task, default_input_field
@@ -219,30 +215,37 @@ def parse_args() -> argparse.Namespace:
         required=True,
     )
 
+    def add_notes_file_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "-f",
+            "--notes-file",
+            type=str,
+            help="Path to notes file (if not given, use notes in the index directory)",
+        )
+
+    def add_notes_kg_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "-kg",
+            "--knowledge-graph",
+            type=str,
+            choices=available_kgs,
+            help="Knowledge graph to consider (if not given, consider general notes)",
+        )
+
     note_ls_parser = note_subparsers.add_parser(
         "ls",
         help="List available notes for a task and an optional knowledge graph",
     )
-    note_ls_parser.add_argument(
-        "-kg",
-        "--knowledge-graph",
-        type=str,
-        choices=available_kgs,
-        help="Knowledge graph to list notes for (if not given, list general notes)",
-    )
+    add_notes_file_arg(note_ls_parser)
+    add_notes_kg_arg(note_ls_parser)
     add_task_arg(note_ls_parser)
 
     note_add_parser = note_subparsers.add_parser(
         "add",
         help="Add a note for a task and optional knowledge graph",
     )
-    note_add_parser.add_argument(
-        "-kg",
-        "--knowledge-graph",
-        type=str,
-        choices=available_kgs,
-        help="Knowledge graph to add note for (if not given, add a general note)",
-    )
+    add_notes_file_arg(note_add_parser)
+    add_notes_kg_arg(note_add_parser)
     add_task_arg(note_add_parser)
     note_add_parser.add_argument(
         "note",
@@ -254,13 +257,8 @@ def parse_args() -> argparse.Namespace:
         "delete",
         help="Delete a note for a task and optional knowledge graph",
     )
-    note_delete_parser.add_argument(
-        "-kg",
-        "--knowledge-graph",
-        type=str,
-        choices=available_kgs,
-        help="Knowledge graph to delete note for (if not given, delete a general note)",
-    )
+    add_notes_file_arg(note_delete_parser)
+    add_notes_kg_arg(note_delete_parser)
     add_task_arg(note_delete_parser)
     note_delete_parser.add_argument(
         "num",
@@ -272,13 +270,8 @@ def parse_args() -> argparse.Namespace:
         "update",
         help="Update a note for a task and optional knowledge graph",
     )
-    note_update_parser.add_argument(
-        "-kg",
-        "--knowledge-graph",
-        type=str,
-        choices=available_kgs,
-        help="Knowledge graph to update note for (if not given, update a general note)",
-    )
+    add_notes_file_arg(note_update_parser)
+    add_notes_kg_arg(note_update_parser)
     add_task_arg(note_update_parser)
     note_update_parser.add_argument(
         "num",
@@ -295,13 +288,7 @@ def parse_args() -> argparse.Namespace:
         "set",
         help="Set notes for a task and optional knowledge graph (overwrites existing notes)",
     )
-    note_set_parser.add_argument(
-        "-kg",
-        "--knowledge-graph",
-        type=str,
-        choices=available_kgs,
-        help="Knowledge graph to set notes for (if not given, set general notes)",
-    )
+    add_notes_kg_arg(note_set_parser)
     add_task_arg(note_set_parser)
     note_set_parser.add_argument(
         "notes_file",
@@ -879,48 +866,40 @@ def build_grasp_indices(args: argparse.Namespace) -> None:
 
 
 def list_grasp_notes(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph)
+    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
     print(format_enumerate(notes))
 
 
 def add_grasp_note(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph)
+    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
     notes.append(args.note)
-    dump_notes(notes, args.task, args.knowledge_graph)
+    dump_notes(notes, args.task, args.knowledge_graph, args.notes_file, overwrite=True)  # type: ignore
     print(format_enumerate(notes))
 
 
 def delete_grasp_note(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph)
+    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
     if args.num < 1 or args.num > len(notes):
         raise ValueError(f"Note number {args.num:,} out of range (1-{len(notes):,})")
 
     notes.pop(args.num - 1)
-    dump_notes(notes, args.task, args.knowledge_graph)
+    dump_notes(notes, args.task, args.knowledge_graph, args.notes_file, overwrite=True)  # type: ignore
     print(format_enumerate(notes))
 
 
 def update_grasp_note(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph)
+    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
     if args.num < 1 or args.num > len(notes):
         raise ValueError(f"Note number {args.num:,} out of range (1-{len(notes):,})")
 
     notes[args.num - 1] = args.note
-    dump_notes(notes, args.task, args.knowledge_graph)
+    dump_notes(notes, args.task, args.knowledge_graph, args.notes_file, overwrite=True)  # type: ignore
     print(format_enumerate(notes))
 
 
 def set_grasp_notes(args: argparse.Namespace) -> None:
     notes = load_json(args.notes_file)
-
-    if has_notes(args.task, args.knowledge_graph) and not args.overwrite:
-        msg = f"Notes already exist for task {args.task}"
-        if args.knowledge_graph is not None:
-            msg += f" and knowledge graph {args.knowledge_graph}"
-        msg += ", use --overwrite to overwrite"
-        raise ValueError(msg)
-
-    dump_notes(notes, args.task, args.knowledge_graph)  # type: ignore
+    dump_notes(notes, args.task, args.knowledge_graph, overwrite=args.overwrite)  # type: ignore
 
 
 def take_grasp_notes(args: argparse.Namespace) -> None:

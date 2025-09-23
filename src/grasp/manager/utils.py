@@ -170,16 +170,21 @@ def load_notes(
     return load_json(notes_path.as_posix())  # type: ignore
 
 
-def has_notes(task: str, kg: str | None = None) -> bool:
-    try:
-        load_notes(task, kg, error_if_missing=True)
-        return True
-    except FileNotFoundError:
-        return False
+def dump_notes(
+    notes: list[str],
+    task: str,
+    kg: str | None = None,
+    notes_file: str | None = None,
+    overwrite: bool = False,
+) -> None:
+    if notes_file is None:
+        notes_path = Path(get_index_dir(kg), f"notes.{task}.json")
+    else:
+        notes_path = Path(notes_file)
 
+    if os.path.exists(notes_path) and not overwrite:
+        raise FileExistsError(f"Notes file {notes_path.as_posix()} already exists")
 
-def dump_notes(notes: list[str], task: str, kg: str | None = None) -> None:
-    notes_path = Path(get_index_dir(kg), f"notes.{task}.json")
     dump_json(notes, notes_path.as_posix(), indent=2)
 
 
