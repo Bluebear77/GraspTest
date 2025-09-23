@@ -1,19 +1,25 @@
+import os
+import random
 from copy import deepcopy
 from logging import Logger
 
-from litellm.exceptions import Timeout
+import yaml
+from tqdm import tqdm, trange
+from universal_ml_utils.io import dump_json, load_jsonl
+from universal_ml_utils.logging import get_logger
 
-from grasp.adapt.notes import (
-    call_function,
-    note_functions,
-)
-from grasp.adapt.utils import format_output
-from grasp.configs import Adapt, Config
-from grasp.core import call_model
+from grasp.configs import Config, NoteTakingConfig
+from grasp.core import call_model, generate, load_task_notes, setup
 from grasp.functions import find_manager
 from grasp.manager import KgManager
 from grasp.model import Message
-from grasp.tasks.cea import Annotation, AnnotationState, CeaSample, prepare_annotation
+from grasp.notes.functions import (
+    call_function,
+    note_functions,
+)
+from grasp.notes.utils import format_output, link
+from grasp.tasks import task_to_sample
+from grasp.tasks.cea import AnnotationState, CeaSample, prepare_annotation
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
 from grasp.utils import (
@@ -22,6 +28,84 @@ from grasp.utils import (
     format_message,
     format_response,
 )
+
+
+def take_notes(
+    task: str,
+    config: NoteTakingConfig,
+    out_dir: str,
+    overwrite: bool = False,
+    log_level: str | int | None = None,
+) -> None:
+    if os.path.exists(out_dir) and not overwrite:
+        raise FileExistsError(f"Output directory {out_dir} already exists")
+
+    logger = get_logger("GRASP NOTE TAKING", log_level)
+    agent_logger = get_logger("GRASP AGENT", log_level)
+
+    managers = setup(config)
+    notes, kg_notes = load_task_notes(task, config)
+
+    sample_cls = task_to_sample(task)
+
+    assert config.seed is not None, "Seed must be set for adaptation"
+
+    inputs: list[tuple[str, Sample]] = []
+    for ipt in config.input:
+        samples = [(ipt.kg, sample_cls(**sample)) for sample in load_jsonl(ipt.file)]
+        if config.samples_per_file is not None:
+            random.seed(config.seed)
+            random.shuffle(samples)
+            samples = samples[: config.samples_per_file]
+
+        inputs.extend(samples)
+
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "config.yaml"), "w") as f:
+        yaml.dump(config.model_dump(), f)
+
+    for r in trange(config.num_rounds, desc="Adapting GRASP to KGs"):
+        random.seed(config.seed + r)
+        if inputs:
+            samples = random.sample(inputs, min(config.samples_per_round, len(inputs)))
+        else:
+            raise NotImplementedError(
+                "Adaptation without input samples is not implemented yet"
+            )
+
+        outputs = []
+        for kg, sample in tqdm(samples, desc=f"Round {r + 1} samples", leave=False):
+            manager, _ = find_manager(managers, kg)
+
+            *_, output = generate(
+                task,
+                sample.input(),
+                config,
+                [manager],
+                kg_notes,
+                notes,
+                logger=agent_logger,
+            )
+            outputs.append(output)
+
+        take_notes_on_outputs(
+            samples,
+            outputs,
+            managers,
+            kg_notes,
+            notes,
+            config,
+            logger,
+        )
+
+        for kg, kg_specific_notes in kg_notes.items():
+            out_file = os.path.join(out_dir, f"notes.{task}.{kg}.round_{r}.json")
+            dump_json(kg_specific_notes, out_file, indent=2)
+            link(out_file, os.path.join(out_dir, f"notes.{task}.{kg}.json"))
+
+        out_file = os.path.join(out_dir, f"notes.{task}.round_{r}.json")
+        dump_json(notes, out_file, indent=2)
+        link(out_file, os.path.join(out_dir, f"notes.{task}.json"))
 
 
 def rules() -> list[str]:
@@ -146,23 +230,19 @@ General notes across knowledge graphs:
 {fmt}"""
 
 
-def take_notes(
+def take_notes_on_outputs(
     inputs: list[tuple[str, Sample]],
     outputs: list[dict],
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
     notes: list[str],
-    config: Adapt,
+    config: NoteTakingConfig,
     logger: Logger,
 ) -> None:
-    # get note taking parameters
-    max_notes = config.method_kwargs.get("max_notes", 16)
-    max_note_length = config.method_kwargs.get("max_note_length", 512)
-
     messages = [
         Message(
             role="system",
-            content=system_instructions(max_notes, max_note_length),
+            content=system_instructions(config.max_notes, config.max_note_length),
         ),
         Message(
             role="user",
@@ -186,14 +266,16 @@ def take_notes(
 
     # copy config to avoid modifying the original
     config = deepcopy(config)
-    config.model = config.adapt_model or config.model
-    config.model_endpoint = config.adapt_model_endpoint or config.model_endpoint
-    config.temperature = config.adapt_temperature or config.temperature
-    config.top_p = config.adapt_top_p or config.top_p
-    config.reasoning_effort = config.adapt_reasoning_effort or config.reasoning_effort
-    config.api = config.adapt_api or config.api
+    config.model = config.note_taking_model or config.model
+    config.model_endpoint = config.note_taking_model_endpoint or config.model_endpoint
+    config.temperature = config.note_taking_temperature or config.temperature
+    config.top_p = config.note_taking_top_p or config.top_p
+    config.reasoning_effort = (
+        config.note_taking_reasoning_effort or config.reasoning_effort
+    )
+    config.api = config.note_taking_api or config.api
 
-    while len(messages) - num_messages < config.adapt_max_steps:
+    while len(messages) - num_messages < config.note_taking_max_steps:
         try:
             response = call_model(messages, functions, config)
         except Exception as e:
@@ -213,8 +295,8 @@ def take_notes(
                     notes,
                     tool_call.name,
                     tool_call.args,
-                    max_notes,
-                    max_note_length,
+                    config.max_notes,
+                    config.max_note_length,
                 )
             except Exception as e:
                 result = f"Call to function {tool_call.name} returned an error:\n{e}"

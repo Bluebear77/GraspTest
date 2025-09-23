@@ -14,7 +14,7 @@ from grasp.functions import (
     kg_functions,
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
-from grasp.manager.utils import describe_index, load_general_notes, load_kg_notes
+from grasp.manager.utils import describe_index, load_notes
 from grasp.model import Message, Response, call_model
 from grasp.tasks import (
     rules as general_rules,
@@ -112,11 +112,11 @@ def load_task_notes(
     config: Config,
 ) -> tuple[list[str], dict[str, list[str]]]:
     # load notes
-    general_notes = load_general_notes(task, config.notes_file)
+    general_notes = load_notes(task, notes_file=config.notes_file)
 
     kg_notes = {}
     for kg in config.knowledge_graphs:
-        notes = load_kg_notes(kg.kg, task, kg.notes_file)
+        notes = load_notes(task, kg.kg, kg.notes_file)
         kg_notes[kg.kg] = notes
 
     return general_notes, kg_notes

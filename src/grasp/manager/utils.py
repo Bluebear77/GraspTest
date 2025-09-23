@@ -132,26 +132,6 @@ def load_kg_prefixes(kg: str, endpoint: str | None = None) -> dict[str, str]:
     return prefixes
 
 
-def resolve_notes_path(dir: str, task: str) -> Path:
-    task_notes_file = Path(dir, f"notes.{task}.json")
-    if task_notes_file.exists():
-        return task_notes_file
-    else:
-        return task_notes_file.with_name("notes.json")
-
-
-def load_kg_notes(kg: str, task: str, notes_file: str | None = None) -> list[str]:
-    if notes_file is None:
-        notes_path = resolve_notes_path(os.path.join(get_index_dir(), kg), task)
-    else:
-        notes_path = Path(notes_file)
-
-    if not notes_path.exists():
-        return []
-
-    return load_json(notes_path.as_posix())  # type: ignore
-
-
 def load_kg_info_sparqls(kg: str) -> tuple[str | None, str | None]:
     index_dir = get_index_dir()
     ent_info_file = Path(index_dir, kg, "entities", "info.sparql")
@@ -170,16 +150,37 @@ def load_kg_info_sparqls(kg: str) -> tuple[str | None, str | None]:
     return ent_info, prop_info
 
 
-def load_general_notes(task: str, notes_file: str | None = None) -> list[str]:
+def load_notes(
+    task: str,
+    kg: str | None = None,
+    notes_file: str | None = None,
+    error_if_missing: bool = False,
+) -> list[str]:
     if notes_file is None:
-        notes_path = resolve_notes_path(get_index_dir(), task)
+        notes_path = Path(get_index_dir(kg), f"notes.{task}.json")
     else:
         notes_path = Path(notes_file)
 
     if not notes_path.exists():
-        return []
+        if error_if_missing:
+            raise FileNotFoundError(f"Notes file {notes_path.as_posix()} not found")
+        else:
+            return []
 
     return load_json(notes_path.as_posix())  # type: ignore
+
+
+def has_notes(task: str, kg: str | None = None) -> bool:
+    try:
+        load_notes(task, kg, error_if_missing=True)
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def dump_notes(notes: list[str], task: str, kg: str | None = None) -> None:
+    notes_path = Path(get_index_dir(kg), f"notes.{task}.json")
+    dump_json(notes, notes_path.as_posix(), indent=2)
 
 
 def load_kg_indices(

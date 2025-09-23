@@ -11,21 +11,37 @@ from fastapi import WebSocketDisconnect
 from pydantic import BaseModel, conlist
 from tqdm import tqdm
 from universal_ml_utils.configuration import load_config
-from universal_ml_utils.io import dump_json, dump_jsonl, load_jsonl, load_text
+from universal_ml_utils.io import (
+    dump_json,
+    dump_jsonl,
+    load_json,
+    load_jsonl,
+    load_text,
+)
 from universal_ml_utils.logging import get_logger, setup_logging
 from universal_ml_utils.ops import extract_field, partition_by
 
-from grasp.adapt import adapt
 from grasp.build import build_indices, get_data
 from grasp.build.data import merge_kgs
-from grasp.configs import Adapt, Config
+from grasp.configs import Config, NoteTakingConfig
 from grasp.core import generate, load_task_notes, setup
 from grasp.evaluate import evaluate
 from grasp.manager import find_embedding_model
+from grasp.manager.utils import (
+    dump_notes,
+    has_notes,
+    load_notes,
+)
 from grasp.model import Message
+from grasp.notes import take_notes
 from grasp.tasks import Task, default_input_field
 from grasp.tasks.examples import ExampleIndex, load_example_indices
-from grasp.utils import is_invalid_model_output, parse_parameters
+from grasp.utils import (
+    format_enumerate,
+    get_available_knowledge_graphs,
+    is_invalid_model_output,
+    parse_parameters,
+)
 
 
 def add_config_arg(parser: argparse.ArgumentParser) -> None:
@@ -43,7 +59,7 @@ def add_task_arg(parser: argparse.ArgumentParser) -> None:
         type=str,
         choices=[task.value for task in Task],
         default=Task.SPARQL_QA.value,
-        help="Task to run",
+        help="Task to run/consider",
     )
 
 
@@ -56,6 +72,8 @@ def add_overwrite_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    available_kgs = get_available_knowledge_graphs()
+
     parser = argparse.ArgumentParser(
         prog="grasp",
         description="GRASP: Generic Reasoning and SPARQL generation across Knowledge Graphs",
@@ -187,6 +205,124 @@ def parse_args() -> argparse.Namespace:
     add_task_arg(file_parser)
     add_overwrite_arg(file_parser)
 
+    # run GRASP note taking
+    note_parser = subparsers.add_parser(
+        "notes",
+        help="Take notes on interactions of GRASP with one or more knowledge graphs",
+    )
+
+    # add second level for note parser
+    note_subparsers = note_parser.add_subparsers(
+        title="note commands",
+        description="Available note commands",
+        dest="note_command",
+        required=True,
+    )
+
+    note_ls_parser = note_subparsers.add_parser(
+        "ls",
+        help="List available notes for a task and an optional knowledge graph",
+    )
+    note_ls_parser.add_argument(
+        "-kg",
+        "--knowledge-graph",
+        type=str,
+        choices=available_kgs,
+        help="Knowledge graph to list notes for (if not given, list general notes)",
+    )
+    add_task_arg(note_ls_parser)
+
+    note_add_parser = note_subparsers.add_parser(
+        "add",
+        help="Add a note for a task and optional knowledge graph",
+    )
+    note_add_parser.add_argument(
+        "-kg",
+        "--knowledge-graph",
+        type=str,
+        choices=available_kgs,
+        help="Knowledge graph to add note for (if not given, add a general note)",
+    )
+    add_task_arg(note_add_parser)
+    note_add_parser.add_argument(
+        "note",
+        type=str,
+        help="Note to add",
+    )
+
+    note_delete_parser = note_subparsers.add_parser(
+        "delete",
+        help="Delete a note for a task and optional knowledge graph",
+    )
+    note_delete_parser.add_argument(
+        "-kg",
+        "--knowledge-graph",
+        type=str,
+        choices=available_kgs,
+        help="Knowledge graph to delete note for (if not given, delete a general note)",
+    )
+    add_task_arg(note_delete_parser)
+    note_delete_parser.add_argument(
+        "num",
+        type=int,
+        help="Number of the note to delete (as listed with the 'ls' command)",
+    )
+
+    note_update_parser = note_subparsers.add_parser(
+        "update",
+        help="Update a note for a task and optional knowledge graph",
+    )
+    note_update_parser.add_argument(
+        "-kg",
+        "--knowledge-graph",
+        type=str,
+        choices=available_kgs,
+        help="Knowledge graph to update note for (if not given, update a general note)",
+    )
+    add_task_arg(note_update_parser)
+    note_update_parser.add_argument(
+        "num",
+        type=int,
+        help="Number of the note to update (as listed with the 'ls' command)",
+    )
+    note_update_parser.add_argument(
+        "note",
+        type=str,
+        help="Updated note",
+    )
+
+    note_set_parser = note_subparsers.add_parser(
+        "set",
+        help="Set notes for a task and optional knowledge graph (overwrites existing notes)",
+    )
+    note_set_parser.add_argument(
+        "-kg",
+        "--knowledge-graph",
+        type=str,
+        choices=available_kgs,
+        help="Knowledge graph to set notes for (if not given, set general notes)",
+    )
+    add_task_arg(note_set_parser)
+    note_set_parser.add_argument(
+        "notes_file",
+        type=str,
+        help="Path to file with notes in JSON format (list of strings)",
+    )
+    add_overwrite_arg(note_set_parser)
+
+    note_take_parser = note_subparsers.add_parser(
+        "take",
+        help="Take notes for a task and one or more knowledge graphs",
+    )
+    add_config_arg(note_take_parser)
+    note_take_parser.add_argument(
+        "output_dir",
+        type=str,
+        help="Save note taking results in this directory",
+    )
+    add_task_arg(note_take_parser)
+    add_overwrite_arg(note_take_parser)
+
     # evaluate GRASP output
     eval_parser = subparsers.add_parser(
         "evaluate",
@@ -227,22 +363,6 @@ def parse_args() -> argparse.Namespace:
     )
     add_task_arg(eval_parser)
     add_overwrite_arg(eval_parser)
-
-    # run GRASP adaptation
-    adapt_parser = subparsers.add_parser(
-        "adapt",
-        help="Adapt GRASP to one or more knowledge graphs",
-    )
-    add_config_arg(adapt_parser)
-    adapt_parser.add_argument(
-        "-o",
-        "--output-dir",
-        type=str,
-        required=True,
-        help="Save results in this directory",
-    )
-    add_task_arg(adapt_parser)
-    add_overwrite_arg(adapt_parser)
 
     # get data for GRASP indices
     data_parser = subparsers.add_parser(
@@ -300,6 +420,7 @@ def parse_args() -> argparse.Namespace:
         "knowledge_graphs",
         type=str,
         nargs="+",
+        choices=available_kgs,
         help="Knowledge graphs to merge",
     )
     merge_parser.add_argument(
@@ -317,7 +438,8 @@ def parse_args() -> argparse.Namespace:
     index_parser.add_argument(
         "knowledge_graph",
         type=str,
-        help="Knowledge graph to build indices for (must be defined in the config)",
+        choices=available_kgs,
+        help="Knowledge graph to build indices for",
     )
     index_parser.add_argument(
         "--entities-type",
@@ -708,11 +830,6 @@ def serve_grasp(args: argparse.Namespace) -> None:
     uvicorn.run(app, host="0.0.0.0", port=args.port)
 
 
-def adapt_grasp(args: argparse.Namespace) -> None:
-    config = Adapt(**load_config(args.config))
-    adapt(args.task, config, args.output_dir, args.overwrite, args.log_level)
-
-
 def get_grasp_data(args: argparse.Namespace) -> None:
     replace = parse_parameters(args.replace or [])
     query_params = parse_parameters(args.query_parameters or [])
@@ -761,6 +878,73 @@ def build_grasp_indices(args: argparse.Namespace) -> None:
     )
 
 
+def list_grasp_notes(args: argparse.Namespace) -> None:
+    notes = load_notes(args.task, args.knowledge_graph)
+    print(format_enumerate(notes))
+
+
+def add_grasp_note(args: argparse.Namespace) -> None:
+    notes = load_notes(args.task, args.knowledge_graph)
+    notes.append(args.note)
+    dump_notes(notes, args.task, args.knowledge_graph)
+    print(format_enumerate(notes))
+
+
+def delete_grasp_note(args: argparse.Namespace) -> None:
+    notes = load_notes(args.task, args.knowledge_graph)
+    if args.num < 1 or args.num > len(notes):
+        raise ValueError(f"Note number {args.num:,} out of range (1-{len(notes):,})")
+
+    notes.pop(args.num - 1)
+    dump_notes(notes, args.task, args.knowledge_graph)
+    print(format_enumerate(notes))
+
+
+def update_grasp_note(args: argparse.Namespace) -> None:
+    notes = load_notes(args.task, args.knowledge_graph)
+    if args.num < 1 or args.num > len(notes):
+        raise ValueError(f"Note number {args.num:,} out of range (1-{len(notes):,})")
+
+    notes[args.num - 1] = args.note
+    dump_notes(notes, args.task, args.knowledge_graph)
+    print(format_enumerate(notes))
+
+
+def set_grasp_notes(args: argparse.Namespace) -> None:
+    notes = load_json(args.notes_file)
+
+    if has_notes(args.task, args.knowledge_graph) and not args.overwrite:
+        msg = f"Notes already exist for task {args.task}"
+        if args.knowledge_graph is not None:
+            msg += f" and knowledge graph {args.knowledge_graph}"
+        msg += ", use --overwrite to overwrite"
+        raise ValueError(msg)
+
+    dump_notes(notes, args.task, args.knowledge_graph)  # type: ignore
+
+
+def take_grasp_notes(args: argparse.Namespace) -> None:
+    config = NoteTakingConfig(**load_config(args.config))
+    take_notes(args.task, config, args.output_dir, args.overwrite, args.log_level)
+
+
+def handle_grasp_notes(args: argparse.Namespace) -> None:
+    note_cmd = args.note_command
+
+    if note_cmd == "ls":
+        list_grasp_notes(args)
+    elif note_cmd == "add":
+        add_grasp_note(args)
+    elif note_cmd == "delete":
+        delete_grasp_note(args)
+    elif note_cmd == "update":
+        update_grasp_note(args)
+    elif note_cmd == "set":
+        set_grasp_notes(args)
+    elif note_cmd == "take":
+        take_grasp_notes(args)
+
+
 def evaluate_grasp(args: argparse.Namespace) -> None:
     assert args.task == "sparql-qa", (
         "Built-in evaluation only supported for 'sparql-qa' task"
@@ -788,8 +972,8 @@ def main():
         merge_grasp_kgs(args)
     elif args.command == "index":
         build_grasp_indices(args)
-    elif args.command == "adapt":
-        adapt_grasp(args)
+    elif args.command == "notes":
+        handle_grasp_notes(args)
     elif args.command == "run" or args.command == "file":
         run_grasp(args)
     elif args.command == "serve":

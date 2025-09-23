@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, conlist
 
 
 class KgConfig(BaseModel):
@@ -62,41 +62,30 @@ class Config(BaseModel):
     max_feedbacks: int = 2
 
 
-class AdaptInput(BaseModel):
+class NoteTakingInput(BaseModel):
     kg: str
     file: str
 
 
-class Adapt(Config):
-    # additional parameters specific to adaptation of GRASP
-    # to knowledge graphs
-
-    # method and input_type determine the way we adapt GRASP
-    # iterative_note_taking + None => explore knowledge graph
-    # iterative_note_taking + questions/pairs => run question
-    # answering with some examples
-    method: str = "iterative_note_taking"
-    # optional method specific parameters
-    method_kwargs: dict[str, Any] = {}
-
-    # if method = iterative_note_taking
+class NoteTakingConfig(Config):
+    # additional parameters specific to taking notes with GRASP
+    max_notes: int = 16
+    max_note_length: int = 512
     num_rounds: int = 5
 
-    # optional input files with question-sparql pairs
-    input: list[AdaptInput] = []
-
-    # if input_files is non-empty
+    # input files with input-output pairs
+    input: conlist(NoteTakingInput, min_length=1)  # type: ignore
     samples_per_round: int = 3
     samples_per_file: int | None = None
 
     # adapt model can be different from the main model
-    adapt_model: str | None = None
-    adapt_model_endpoint: str | None = None
-    adapt_max_steps: int = 50
+    note_taking_model: str | None = None
+    note_taking_model_endpoint: str | None = None
+    note_taking_max_steps: int = 50
 
     # and have different decoding parameters
-    adapt_temperature: float | None = None
-    adapt_top_p: float | None = None
-    adapt_reasoning_effort: str | None = None
-    adapt_reasoning_summary: str | None = None
-    adapt_api: str | None = None
+    note_taking_temperature: float | None = None
+    note_taking_top_p: float | None = None
+    note_taking_reasoning_effort: str | None = None
+    note_taking_reasoning_summary: str | None = None
+    note_taking_api: str | None = None
