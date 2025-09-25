@@ -92,7 +92,7 @@ def note_functions(managers: list[KgManager]) -> list[dict]:
         },
         {
             "name": "stop",
-            "description": "Stop the annotation process.",
+            "description": "Stop the note taking process.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -178,7 +178,10 @@ def call_function(
         return delete_note(notes_to_use, fn_args["num"])
     elif fn_name == "update_note":
         return update_note(
-            notes_to_use, fn_args["num"], fn_args["note"], max_note_length
+            notes_to_use,
+            fn_args["num"],
+            fn_args["note"],
+            max_note_length,
         )
     elif fn_name == "show_notes":
         return show_notes(notes_to_use)

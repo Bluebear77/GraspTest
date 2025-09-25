@@ -12,6 +12,12 @@ from grasp.tasks.cea import output as cea_output
 from grasp.tasks.cea import rules as cea_rules
 from grasp.tasks.cea import system_information as cea_system_information
 from grasp.tasks.examples import Sample
+from grasp.tasks.exploration import ExplorationState
+from grasp.tasks.exploration import functions as exploration_functions
+from grasp.tasks.exploration import input as exploration_input
+from grasp.tasks.exploration import output as exploration_output
+from grasp.tasks.exploration import rules as exploration_rules
+from grasp.tasks.exploration import system_information as exploration_system_information
 from grasp.tasks.general_qa import output as general_qa_output
 from grasp.tasks.general_qa import rules as general_qa_rules
 from grasp.tasks.general_qa import system_information as general_qa_system_information
@@ -22,6 +28,8 @@ from grasp.tasks.sparql_qa import system_information as sparql_qa_system_informa
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 
 
+# official tasks supported by GRASP, excluding exploration
+# which is a special task for note taking
 class Task(StrEnum):
     SPARQL_QA = "sparql-qa"
     GENERAL_QA = "general-qa"
@@ -35,7 +43,7 @@ and function call.",
         "Do not just use or make up entity or property identifiers \
 without verifying their existence in the knowledge graphs first.",
         "Do not ask the user for clarifications without first \
-attempting to complete the task. If the input is incomplete or \
+attempting to complete the task. If the task input is incomplete or \
 ambiguous, try to make reasonable assumptions and document them.",
         'Do not use "SERVICE wikibase:label { bd:serviceParam wikibase:language ..." \
 in SPARQL queries. It is not SPARQL standard and unsupported by the used QLever \
@@ -50,17 +58,21 @@ def task_rules(task: str) -> list[str]:
         return general_qa_rules()
     elif task == "cea":
         return cea_rules()
+    elif task == "exploration":
+        return exploration_rules()
 
     raise ValueError(f"Unknown task {task}")
 
 
-def task_system_information(task: str) -> str:
+def task_system_information(task: str, config: Config) -> str:
     if task == "sparql-qa":
         return sparql_qa_system_information()
     elif task == "general-qa":
         return general_qa_system_information()
     elif task == "cea":
         return cea_system_information()
+    elif task == "exploration":
+        return exploration_system_information(config)
 
     raise ValueError(f"Unknown task {task}")
 
@@ -79,14 +91,21 @@ def task_functions(
     elif task == "cea":
         # cea supports no examples
         return cea_functions(managers)
+    elif task == "exploration":
+        return exploration_functions(managers)
 
     raise ValueError(f"Unknown task {task}")
 
 
 def task_done(task: str, fn_name: str) -> bool:
-    if task == "sparql-qa" or task == "general-qa":
+    if task == "sparql-qa":
         return fn_name == "answer" or fn_name == "cancel"
+    elif task == "general-qa":
+        # general qa can never be stopped by a function call
+        return False
     elif task == "cea":
+        return fn_name == "stop"
+    elif task == "exploration":
         return fn_name == "stop"
 
     raise ValueError(f"Unknown task {task}")
@@ -100,6 +119,12 @@ def task_setup(task: str, input: Any) -> tuple[str, Any]:
         return input, None
     elif task == "cea":
         return cea_input_and_state(input)
+    elif task == "exploration":
+        # exploration has no setup
+        assert isinstance(input, ExplorationState), (
+            "Input for exploration must already be an ExplorationState"
+        )
+        return exploration_input(input), input
 
     raise ValueError(f"Unknown task {task}")
 
@@ -113,6 +138,8 @@ def default_input_field(task: str) -> str | None:
         # input is typically a json dict with a table field and optional
         # metadata fields
         return "table"
+    elif task == "exploration":
+        return None
 
     raise ValueError(f"Unknown task {task}")
 
@@ -135,6 +162,8 @@ def task_output(
         return general_qa_output(messages)
     elif task == "cea":
         return cea_output(task_state)
+    elif task == "exploration":
+        return exploration_output(task_state)
 
     raise ValueError(f"Unknown task {task}")
 
@@ -142,7 +171,6 @@ def task_output(
 def task_to_sample(task: str) -> Type[Sample]:
     if task == "sparql-qa":
         return SparqlQaSample
-
     elif task == "cea":
         return CeaSample
 

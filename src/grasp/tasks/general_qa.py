@@ -17,7 +17,7 @@ applicable, constrain the searches with already identified entities and properti
 identified entities and properties. You may need to refine or rethink your \
 current plan based on the query results and go back to step 2 if needed, \
 possibly multiple times.
-4. Output your final answer and stop."""
+4. Output your final answer to the question and stop."""
 
 
 def rules() -> list[str]:

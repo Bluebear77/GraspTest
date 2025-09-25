@@ -43,6 +43,7 @@ from grasp.utils import (
 
 def system_instructions(
     task: str,
+    config: Config,
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
     notes: list[str],
@@ -59,7 +60,7 @@ def system_instructions(
         title, desc = describe_index(index_type)
         index_infos.append(f"{title}: {desc}")
 
-    system_info = task_system_information(task)
+    system_info = task_system_information(task, config)
 
     instructions = f"""\
 {system_info}
@@ -160,7 +161,7 @@ def generate(
         kg_notes = {}
 
     # setup messages
-    system_instruction = system_instructions(task, managers, kg_notes, notes)
+    system_instruction = system_instructions(task, config, managers, kg_notes, notes)
     yield {
         "type": "system",
         "functions": fns,

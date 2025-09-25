@@ -13,10 +13,10 @@ from grasp.core import call_model, generate, load_notes, setup
 from grasp.functions import find_manager
 from grasp.manager import KgManager
 from grasp.model import Message
-from grasp.notes.functions import call_function, note_functions
 from grasp.notes.utils import format_output, link
 from grasp.tasks import task_to_sample
 from grasp.tasks.cea import AnnotationState, CeaSample, prepare_annotation
+from grasp.tasks.exploration.functions import call_function, note_functions
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
 from grasp.utils import (
@@ -117,14 +117,15 @@ You are a note-taking assistant. Your task is to \
 inspect the traces of a knowledge graph agent performing a certain task, and to \
 take notes about the agent's outputs as well as the used knowledge \
 graphs and functions. Before calling a note-taking function, \
-provide reasoning for what you are doing and why. Stop the annotation process \
+provide reasoning for what you are doing and why. Stop the note-taking process \
 by calling the stop function once you are done.
 
 Your notes should help the agent to better understand and \
-navigate the task and knowledge graphs in the future. For a specific knowledge \
+navigate the task and knowledge graphs. For a specific knowledge \
 graph, they should generalize across samples, rather than being specific to \
 a single sample or output. You can also take general notes that might be \
-useful across knowledge graphs or for the task in general. \
+useful across knowledge graphs or for the task in general.
+
 You are only allowed {max_notes} notes at max per knowledge graph and for the \
 general notes, such that you are forced to prioritize and to keep them as widely \
 applicable as possible. Notes are limited to {max_note_length} characters to \
