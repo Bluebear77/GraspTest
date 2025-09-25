@@ -8,15 +8,12 @@ from tqdm import tqdm, trange
 from universal_ml_utils.io import dump_json, load_jsonl
 from universal_ml_utils.logging import get_logger
 
-from grasp.configs import Config, NoteTakingConfig
-from grasp.core import call_model, generate, load_task_notes, setup
+from grasp.configs import Config, NotesFromInputsConfig
+from grasp.core import call_model, generate, load_notes, setup
 from grasp.functions import find_manager
 from grasp.manager import KgManager
 from grasp.model import Message
-from grasp.notes.functions import (
-    call_function,
-    note_functions,
-)
+from grasp.notes.functions import call_function, note_functions
 from grasp.notes.utils import format_output, link
 from grasp.tasks import task_to_sample
 from grasp.tasks.cea import AnnotationState, CeaSample, prepare_annotation
@@ -30,9 +27,9 @@ from grasp.utils import (
 )
 
 
-def take_notes(
+def take_notes_from_inputs(
     task: str,
-    config: NoteTakingConfig,
+    config: NotesFromInputsConfig,
     out_dir: str,
     overwrite: bool = False,
     log_level: str | int | None = None,
@@ -44,14 +41,14 @@ def take_notes(
     agent_logger = get_logger("GRASP AGENT", log_level)
 
     managers = setup(config)
-    notes, kg_notes = load_task_notes(task, config)
+    notes, kg_notes = load_notes(config)
 
     sample_cls = task_to_sample(task)
 
     assert config.seed is not None, "Seed must be set for adaptation"
 
     inputs: list[tuple[str, Sample]] = []
-    for ipt in config.input:
+    for ipt in config.inputs:
         samples = [(ipt.kg, sample_cls(**sample)) for sample in load_jsonl(ipt.file)]
         if config.samples_per_file is not None:
             random.seed(config.seed)
@@ -66,12 +63,7 @@ def take_notes(
 
     for r in trange(config.num_rounds, desc="Adapting GRASP to KGs"):
         random.seed(config.seed + r)
-        if inputs:
-            samples = random.sample(inputs, min(config.samples_per_round, len(inputs)))
-        else:
-            raise NotImplementedError(
-                "Adaptation without input samples is not implemented yet"
-            )
+        samples = random.sample(inputs, min(config.samples_per_round, len(inputs)))
 
         outputs = []
         for kg, sample in tqdm(samples, desc=f"Round {r + 1} samples", leave=False):
@@ -236,7 +228,7 @@ def take_notes_on_outputs(
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
     notes: list[str],
-    config: NoteTakingConfig,
+    config: NotesFromInputsConfig,
     logger: Logger,
 ) -> None:
     messages = [

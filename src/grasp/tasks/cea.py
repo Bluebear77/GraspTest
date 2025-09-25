@@ -4,6 +4,7 @@ from typing import Any, Iterator
 from pydantic import BaseModel
 from universal_ml_utils.table import generate_table
 
+from grasp.configs import Config
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.sparql.types import Alternative
@@ -396,16 +397,18 @@ def input_and_state(input: Any) -> tuple[str, AnnotationState]:
 
 
 def call_function(
+    config: Config,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,
     known: set[str],
     state: AnnotationState | None = None,
-    **kwargs: Any,
+    example_indices: dict | None = None,
 ) -> str:
     assert isinstance(state, AnnotationState), (
         "Annotations must be provided as state for CEA task"
     )
+    assert not example_indices, "Example indices are not supported for CEA task"
 
     if fn_name == "annotate":
         return annotate(
@@ -416,7 +419,7 @@ def call_function(
             fn_args["entity"],
             state,
             known,
-            kwargs["know_before_use"],
+            config.know_before_use,
         )
 
     elif fn_name == "clear":

@@ -1,19 +1,20 @@
+import re
 from typing import Any
+from uuid import uuid4
 
+from pydantic import BaseModel, ValidationError
+
+from grasp.configs import Config
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.model import Message, ToolCall
 from grasp.tasks.sparql_qa.examples import (
+    SparqlQaExampleIndex,
+    functions as example_functions,
     find_random_examples,
     find_similar_examples,
 )
-from grasp.tasks.utils import (
-    format_sparql_result,
-    get_answer_from_message,
-    get_cancel_from_message,
-    get_sparql_from_message,
-    prepare_sparql_result,
-)
+from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
 from grasp.utils import FunctionCallException, format_list, format_notes
 
 
@@ -54,7 +55,7 @@ should be an ASK query.',
     ]
 
 
-def functions(managers: list[KgManager]) -> TaskFunctions:
+def functions(managers: list[KgManager], config: Config) -> TaskFunctions:
     kgs = [manager.kg for manager in managers]
     fns = [
         {
@@ -126,16 +127,20 @@ the SPARQL query needs to be executed",
             "strict": True,
         },
     ]
+
+    fns.extend(example_functions(config))
+
     return fns, call_function
 
 
 def call_function(
+    config: Config,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,
     known: set[str],
     state: Any = None,
-    **kwargs: Any,
+    example_indices: dict[str, SparqlQaExampleIndex] | None = None,
 ) -> str:
     if fn_name == "answer":
         return "Stopping"
@@ -143,30 +148,156 @@ def call_function(
     elif fn_name == "cancel":
         return "Stopping"
 
-    elif fn_name == "find_examples":
+    elif fn_name == "find_examples" and example_indices is not None:
         return find_random_examples(
             managers,
-            kwargs["example_indices"],
+            example_indices,
             fn_args["kg"],
-            kwargs["num_examples"],
+            config.num_examples,
             known,
-            kwargs["result_max_rows"],
-            kwargs["result_max_cols"],
+            config.result_max_rows,
+            config.result_max_columns,
         )
 
-    elif fn_name == "find_similar_examples":
+    elif fn_name == "find_similar_examples" and example_indices is not None:
         return find_similar_examples(
             managers,
-            kwargs["example_indices"],
+            example_indices,
             fn_args["kg"],
             fn_args["question"],
-            kwargs["num_examples"],
+            config.num_examples,
             known,
-            kwargs["result_max_rows"],
-            kwargs["result_max_cols"],
+            config.result_max_rows,
+            config.result_max_columns,
         )
 
     raise FunctionCallException(f"Unknown function: {fn_name}")
+
+
+class AnswerModel(BaseModel):
+    kg: str
+    sparql: str
+    answer: str
+
+
+class AnswerCallModel(BaseModel):
+    name: str
+    arguments: AnswerModel
+
+
+class BestAttemptModel(BaseModel):
+    sparql: str
+    kg: str
+
+
+class CancelModel(BaseModel):
+    explanation: str
+    best_attempt: BestAttemptModel | str | None = None
+
+
+class CancelCallModel(BaseModel):
+    name: str
+    arguments: CancelModel
+
+
+def get_raw_tool_call_from_message(message: str) -> str | None:
+    # sometimes the model fails to call the answer function, but
+    # provides the output in one of the following formats:
+    # 1) within <tool_call>...</tool_call> tags:
+    #    in this case check whether the content is a valid answer JSON like
+    #    {"name": "answer", "arguments": "{...}"}
+    # 2) as JSON in ```json...``` code block:
+    #    do as in 1)
+
+    # check for tool_call tags
+    tool_call_match = re.search(
+        r"<tool_call>(.*?)</tool_call>",
+        message,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if tool_call_match is None:
+        # fall back to JSON code block
+        tool_call_match = re.search(
+            r"```json\s*(.*?)\s*```",
+            message,
+            re.IGNORECASE | re.DOTALL,
+        )
+
+    if tool_call_match is None:
+        return None
+    else:
+        return tool_call_match.group(1).strip()
+
+
+def get_answer_from_message(message: str | None) -> ToolCall | None:
+    if message is None:
+        return None
+
+    tool_call = get_raw_tool_call_from_message(message)
+    if tool_call is None:
+        return None
+
+    try:
+        answer_call = AnswerCallModel.model_validate_json(tool_call)
+        return ToolCall(
+            id=uuid4().hex,
+            name=answer_call.name,
+            args=answer_call.arguments.model_dump(),
+        )
+    except ValidationError:
+        pass
+
+    try:
+        args = AnswerModel.model_validate_json(tool_call).model_dump()
+        return ToolCall(id=uuid4().hex, name="answer", args=args)
+    finally:
+        return None
+
+
+def get_cancel_from_message(message: str | None) -> ToolCall | None:
+    if message is None:
+        return None
+
+    tool_call = get_raw_tool_call_from_message(message)
+    if tool_call is None:
+        return None
+
+    try:
+        cancel_call = CancelCallModel.model_validate_json(tool_call)
+        return ToolCall(
+            id=uuid4().hex,
+            name=cancel_call.name,
+            args=cancel_call.arguments.model_dump(),
+        )
+    except ValidationError:
+        pass
+
+    try:
+        args = CancelModel.model_validate_json(tool_call).model_dump()
+        return ToolCall(id=uuid4().hex, name="cancel", args=args)
+    finally:
+        return None
+
+
+def get_sparql_from_message(message: str | None) -> ToolCall | None:
+    if message is None:
+        return None
+
+    # Check for SPARQL code blocks
+    sparql_match = re.search(
+        r"```sparql\s*(.*?)\s*```",
+        message,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if sparql_match:
+        sparql_query = sparql_match.group(1).strip()
+        return ToolCall(
+            id=uuid4().hex,
+            name="answer",
+            args={"kg": None, "sparql": sparql_query, "answer": message},
+        )
+
+    return None
 
 
 def get_answer_or_cancel(
@@ -208,7 +339,7 @@ def get_answer_or_cancel(
 
     # try to parse answer from last message if neither are set
     if last_answer is None and last_cancel is None:
-        last_answer = get_answer_from_message("sparql-qa", last_message)
+        last_answer = get_answer_from_message(last_message)
 
     # try to parse cancel from last message if both are still None
     if last_answer is None and last_cancel is None:

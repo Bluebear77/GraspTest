@@ -75,7 +75,7 @@ def system_instructions(
     elif task == "cea":
         return cea_feedback_system_instructions(managers, kg_notes, notes)
 
-    raise ValueError(f"System message not implemented for task: {task}")
+    raise ValueError(f"Feedback system message not implemented for task: {task}")
 
 
 def feedback_instructions(task: str, inputs: list[str], output: Any) -> str:

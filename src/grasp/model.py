@@ -63,9 +63,13 @@ class Response(BaseModel):
 
     @property
     def has_reasoning_content(self) -> bool:
-        return self.reasoning is not None and (
-            self.reasoning.content is not None or self.reasoning.summary is not None
-        )
+        return self.reasoning_content is not None
+
+    @property
+    def reasoning_content(self) -> str | None:
+        if self.reasoning is None:
+            return None
+        return self.reasoning.content or self.reasoning.summary
 
     def get_content(self) -> dict[str, str]:
         content = {}

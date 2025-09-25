@@ -14,7 +14,6 @@ from universal_ml_utils.configuration import load_config
 from universal_ml_utils.io import (
     dump_json,
     dump_jsonl,
-    load_json,
     load_jsonl,
     load_text,
 )
@@ -23,17 +22,15 @@ from universal_ml_utils.ops import extract_field, partition_by
 
 from grasp.build import build_indices, get_data
 from grasp.build.data import merge_kgs
-from grasp.configs import Config, NoteTakingConfig
-from grasp.core import generate, load_task_notes, setup
+from grasp.configs import Config, NotesFromInputsConfig
+from grasp.core import generate, load_notes, setup
 from grasp.evaluate import evaluate
 from grasp.manager import find_embedding_model
-from grasp.manager.utils import dump_notes, load_notes
 from grasp.model import Message
-from grasp.notes import take_notes
+from grasp.notes import take_notes_from_inputs
 from grasp.tasks import Task, default_input_field
 from grasp.tasks.examples import ExampleIndex, load_example_indices
 from grasp.utils import (
-    format_enumerate,
     get_available_knowledge_graphs,
     is_invalid_model_output,
     parse_parameters,
@@ -215,100 +212,35 @@ def parse_args() -> argparse.Namespace:
         required=True,
     )
 
-    def add_notes_file_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "-f",
-            "--notes-file",
-            type=str,
-            help="Path to notes file (if not given, use notes in the index directory)",
-        )
-
-    def add_notes_kg_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "-kg",
-            "--knowledge-graph",
-            type=str,
-            choices=available_kgs,
-            help="Knowledge graph to consider (if not given, consider general notes)",
-        )
-
-    note_ls_parser = note_subparsers.add_parser(
-        "ls",
-        help="List available notes for a task and an optional knowledge graph",
+    note_inputs_parser = note_subparsers.add_parser(
+        "inputs",
+        help="Take notes for a task and one or more knowledge graphs "
+        "by running the task on exemplary inputs "
+        "(and optional groundtruth outputs)",
     )
-    add_notes_file_arg(note_ls_parser)
-    add_notes_kg_arg(note_ls_parser)
-    add_task_arg(note_ls_parser)
-
-    note_add_parser = note_subparsers.add_parser(
-        "add",
-        help="Add a note for a task and optional knowledge graph",
-    )
-    add_notes_file_arg(note_add_parser)
-    add_notes_kg_arg(note_add_parser)
-    add_task_arg(note_add_parser)
-    note_add_parser.add_argument(
-        "note",
-        type=str,
-        help="Note to add",
-    )
-
-    note_delete_parser = note_subparsers.add_parser(
-        "delete",
-        help="Delete a note for a task and optional knowledge graph",
-    )
-    add_notes_file_arg(note_delete_parser)
-    add_notes_kg_arg(note_delete_parser)
-    add_task_arg(note_delete_parser)
-    note_delete_parser.add_argument(
-        "num",
-        type=int,
-        help="Number of the note to delete (as listed with the 'ls' command)",
-    )
-
-    note_update_parser = note_subparsers.add_parser(
-        "update",
-        help="Update a note for a task and optional knowledge graph",
-    )
-    add_notes_file_arg(note_update_parser)
-    add_notes_kg_arg(note_update_parser)
-    add_task_arg(note_update_parser)
-    note_update_parser.add_argument(
-        "num",
-        type=int,
-        help="Number of the note to update (as listed with the 'ls' command)",
-    )
-    note_update_parser.add_argument(
-        "note",
-        type=str,
-        help="Updated note",
-    )
-
-    note_set_parser = note_subparsers.add_parser(
-        "set",
-        help="Set notes for a task and optional knowledge graph (overwrites existing notes)",
-    )
-    add_notes_kg_arg(note_set_parser)
-    add_task_arg(note_set_parser)
-    note_set_parser.add_argument(
-        "notes_file",
-        type=str,
-        help="Path to file with notes in JSON format (list of strings)",
-    )
-    add_overwrite_arg(note_set_parser)
-
-    note_take_parser = note_subparsers.add_parser(
-        "take",
-        help="Take notes for a task and one or more knowledge graphs",
-    )
-    add_config_arg(note_take_parser)
-    note_take_parser.add_argument(
+    add_config_arg(note_inputs_parser)
+    note_inputs_parser.add_argument(
         "output_dir",
         type=str,
         help="Save note taking results in this directory",
     )
-    add_task_arg(note_take_parser)
-    add_overwrite_arg(note_take_parser)
+    add_task_arg(note_inputs_parser)
+    add_overwrite_arg(note_inputs_parser)
+
+    note_explore_parser = note_subparsers.add_parser(
+        "explore",
+        help="Take notes for a task and one or more knowledge graphs "
+        "by exploring the knowledge graphs "
+        "(without any task inputs or groundtruth outputs)",
+    )
+    add_config_arg(note_explore_parser)
+    note_explore_parser.add_argument(
+        "output_dir",
+        type=str,
+        help="Save note taking results in this directory",
+    )
+    add_task_arg(note_explore_parser)
+    add_overwrite_arg(note_explore_parser)
 
     # evaluate GRASP output
     eval_parser = subparsers.add_parser(
@@ -507,7 +439,7 @@ def run_grasp(args: argparse.Namespace) -> None:
     model = find_embedding_model(managers)
     example_indices = load_example_indices(args.task, config, model=model)
 
-    notes, kg_notes = load_task_notes(args.task, config)
+    notes, kg_notes = load_notes(config)
 
     if args.input_field is None:
         input_field = default_input_field(args.task)
@@ -669,16 +601,12 @@ def serve_grasp(args: argparse.Namespace) -> None:
     kg_notes = {}
     example_indices = {}
     for task in Task:
-        general_notes, kg_specific_notes = load_task_notes(task.value, config)
+        general_notes, kg_specific_notes = load_notes(config)
         notes[task.value] = general_notes
         kg_notes[task.value] = kg_specific_notes
 
-        if task != Task.SPARQL_QA:
-            example_indices[task.value] = {}
-        else:
-            # example indices only available for sparql-qa task
-            task_indices = load_example_indices(task.value, config, model=model)
-            example_indices[task.value] = task_indices
+        task_indices = load_example_indices(task.value, config, model=model)
+        example_indices[task.value] = task_indices
 
     @app.get("/knowledge_graphs")
     async def _knowledge_graphs():
@@ -865,63 +793,28 @@ def build_grasp_indices(args: argparse.Namespace) -> None:
     )
 
 
-def list_grasp_notes(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
-    print(format_enumerate(notes))
+def take_grasp_notes_from_inputs(args: argparse.Namespace) -> None:
+    config = NotesFromInputsConfig(**load_config(args.config))
+    take_notes_from_inputs(
+        args.task,
+        config,
+        args.output_dir,
+        args.overwrite,
+        args.log_level,
+    )
 
 
-def add_grasp_note(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
-    notes.append(args.note)
-    dump_notes(notes, args.task, args.knowledge_graph, args.notes_file, overwrite=True)  # type: ignore
-    print(format_enumerate(notes))
-
-
-def delete_grasp_note(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
-    if args.num < 1 or args.num > len(notes):
-        raise ValueError(f"Note number {args.num:,} out of range (1-{len(notes):,})")
-
-    notes.pop(args.num - 1)
-    dump_notes(notes, args.task, args.knowledge_graph, args.notes_file, overwrite=True)  # type: ignore
-    print(format_enumerate(notes))
-
-
-def update_grasp_note(args: argparse.Namespace) -> None:
-    notes = load_notes(args.task, args.knowledge_graph, args.notes_file)
-    if args.num < 1 or args.num > len(notes):
-        raise ValueError(f"Note number {args.num:,} out of range (1-{len(notes):,})")
-
-    notes[args.num - 1] = args.note
-    dump_notes(notes, args.task, args.knowledge_graph, args.notes_file, overwrite=True)  # type: ignore
-    print(format_enumerate(notes))
-
-
-def set_grasp_notes(args: argparse.Namespace) -> None:
-    notes = load_json(args.notes_file)
-    dump_notes(notes, args.task, args.knowledge_graph, overwrite=args.overwrite)  # type: ignore
-
-
-def take_grasp_notes(args: argparse.Namespace) -> None:
-    config = NoteTakingConfig(**load_config(args.config))
-    take_notes(args.task, config, args.output_dir, args.overwrite, args.log_level)
+def take_grasp_notes_from_exploration(args: argparse.Namespace) -> None:
+    raise NotImplementedError("Exploration-based note taking not implemented yet")
 
 
 def handle_grasp_notes(args: argparse.Namespace) -> None:
     note_cmd = args.note_command
 
-    if note_cmd == "ls":
-        list_grasp_notes(args)
-    elif note_cmd == "add":
-        add_grasp_note(args)
-    elif note_cmd == "delete":
-        delete_grasp_note(args)
-    elif note_cmd == "update":
-        update_grasp_note(args)
-    elif note_cmd == "set":
-        set_grasp_notes(args)
-    elif note_cmd == "take":
-        take_grasp_notes(args)
+    if note_cmd == "inputs":
+        take_grasp_notes_from_inputs(args)
+    elif note_cmd == "explore":
+        take_grasp_notes_from_exploration(args)
 
 
 def evaluate_grasp(args: argparse.Namespace) -> None:

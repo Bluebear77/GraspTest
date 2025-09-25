@@ -62,21 +62,11 @@ class Config(BaseModel):
     max_feedbacks: int = 2
 
 
-class NoteTakingInput(BaseModel):
-    kg: str
-    file: str
-
-
-class NoteTakingConfig(Config):
+class NotesConfig(Config):
     # additional parameters specific to taking notes with GRASP
     max_notes: int = 16
     max_note_length: int = 512
     num_rounds: int = 5
-
-    # input files with input-output pairs
-    input: conlist(NoteTakingInput, min_length=1)  # type: ignore
-    samples_per_round: int = 3
-    samples_per_file: int | None = None
 
     # adapt model can be different from the main model
     note_taking_model: str | None = None
@@ -89,3 +79,15 @@ class NoteTakingConfig(Config):
     note_taking_reasoning_effort: str | None = None
     note_taking_reasoning_summary: str | None = None
     note_taking_api: str | None = None
+
+
+class NotesInput(BaseModel):
+    kg: str
+    file: str
+
+
+class NotesFromInputsConfig(NotesConfig):
+    # input files with input-output pairs
+    inputs: conlist(NotesInput, min_length=1)  # type: ignore
+    samples_per_round: int = 3
+    samples_per_file: int | None = None

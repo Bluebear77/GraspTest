@@ -1,13 +1,4 @@
-from typing import Any
-
-from grasp.functions import TaskFunctions
-from grasp.manager import KgManager
-from grasp.model import Message, ToolCall
-from grasp.tasks.utils import (
-    get_answer_from_message,
-    get_cancel_from_message,
-)
-from grasp.utils import FunctionCallException
+from grasp.model import Message, Response
 
 
 def system_information() -> str:
@@ -26,8 +17,7 @@ applicable, constrain the searches with already identified entities and properti
 identified entities and properties. You may need to refine or rethink your \
 current plan based on the query results and go back to step 2 if needed, \
 possibly multiple times.
-4. Use the answer or cancel function to finalize your answer and stop the \
-generation process."""
+4. Output your final answer and stop."""
 
 
 def rules() -> list[str]:
@@ -38,135 +28,18 @@ you know the answer by heart, still try to verify it with the knowledge graphs."
     ]
 
 
-def functions() -> TaskFunctions:
-    fns = [
-        {
-            "name": "answer",
-            "description": """\
-Provide your final answer to the user question. This function will stop \
-the generation process.""",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "answer": {
-                        "type": "string",
-                        "description": "The answer to the question",
-                    },
-                },
-                "required": ["answer"],
-                "additionalProperties": False,
-            },
-            "strict": True,
-        },
-        {
-            "name": "cancel",
-            "description": """\
-If you are unable to find an answer to the question, \
-you can call this function instead of the answer function. \
-This function will stop the generation process.""",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "explanation": {
-                        "type": "string",
-                        "description": "A detailed explanation of why you \
-could not find a satisfactory answer",
-                    },
-                },
-                "required": ["explanation"],
-                "additionalProperties": False,
-            },
-            "strict": True,
-        },
-    ]
-
-    return fns, call_function
-
-
-def call_function(
-    managers: list[KgManager],
-    fn_name: str,
-    fn_args: dict,
-    known: set[str],
-    state: Any = None,
-    **kwargs: Any,
-) -> str:
-    if fn_name == "answer":
-        return "Stopping"
-
-    elif fn_name == "cancel":
-        return "Stopping"
-
-    raise FunctionCallException(f"Unknown function: {fn_name}")
-
-
-def get_answer_or_cancel(
-    messages: list[Message],
-) -> tuple[ToolCall | None, ToolCall | None]:
-    last_message: str | None = None
-    last_answer: ToolCall | None = None
-    last_cancel: ToolCall | None = None
-    assert messages[0].role == "system", "First message should be system"
-    assert messages[1].role == "user", "Second message should be user"
-    for message in messages[2:]:
-        if message.role == "feedback" and message != messages[-1]:
-            # reset stuff after intermediate feedback
-            last_answer = None
-            last_cancel = None
-            last_message = None
-
-        if isinstance(message.content, str):
-            # not assistant message
-            continue
-
-        last_message = message.content.message
-
-        for tool_call in message.content.tool_calls:
-            if tool_call.name == "answer":
-                last_answer = tool_call
-                # reset last cancel
-                last_cancel = None
-
-            elif tool_call.name == "cancel":
-                last_cancel = tool_call
-                # reset last answer
-                last_answer = None
-
-    # try to parse answer from last message if neither are set
-    if last_answer is None and last_cancel is None:
-        last_answer = get_answer_from_message("general-qa", last_message)
-
-    # try to parse cancel from last message if both are still None
-    if last_answer is None and last_cancel is None:
-        last_cancel = get_cancel_from_message(last_message)
-
-    # try last message for general QA
-    if last_answer is None and last_cancel is None and last_message is not None:
-        last_answer = ToolCall(
-            id="dummy",
-            name="answer",
-            args={"answer": last_message},
-        )
-
-    return last_answer, last_cancel  # type: ignore
-
-
 def output(messages: list[Message]) -> dict | None:
-    answer, cancel = get_answer_or_cancel(messages)
-    if answer is None and cancel is None:
+    last_response: Response | None = None
+    for message in reversed(messages):
+        if isinstance(message.content, Response):
+            last_response = message.content
+            break
+
+    if last_response is None or last_response.message is None:
         return None
 
-    elif answer is not None:
-        return {
-            "type": "answer",
-            "answer": answer.args["answer"],
-            "formatted": answer.args["answer"],
-        }
-
-    else:
-        assert cancel is not None
-        return {
-            "type": "cancel",
-            "explanation": cancel.args["explanation"],
-            "formatted": cancel.args["explanation"],
-        }
+    return {
+        "type": "output",
+        "output": last_response.message,
+        "formatted": last_response.message,
+    }

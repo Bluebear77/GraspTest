@@ -2,6 +2,7 @@ import random
 from typing import Any
 from uuid import uuid4
 
+from grasp.configs import Config
 from grasp.manager import KgManager
 from grasp.model import Message, Response, ToolCall
 from grasp.tasks.examples import ExampleIndex
@@ -29,23 +30,23 @@ class SparqlQaExampleIndex(ExampleIndex):
 MIN_EXAMPLE_SCORE = 0.5
 
 
-def functions(
-    example_indices: dict[str, ExampleIndex],
-    num_examples: int = 3,
-    random_examples: bool = False,
-) -> list[dict]:
+def functions(config: Config) -> list[dict]:
+    example_indices = [
+        kg.kg for kg in config.knowledge_graphs if kg.example_index is not None
+    ]
+
     if not example_indices:
         return []
 
     example_kgs = list(example_indices)
     example_info = "\n".join(example_kgs)
 
-    if random_examples:
+    if config.random_examples:
         fn = {
             "name": "find_examples",
             "description": f"""\
 Find examples of SPARQL-question-pairs over the specified knowledge graph. \
-At most {num_examples} examples are returned. The examples may help you \
+At most {config.num_examples} examples are returned. The examples may help you \
 with generating your own SPARQL query.
 
 For example, to find examples of SPARQL-question-pairs over Wikidata, do the following:
@@ -72,7 +73,7 @@ Currently, examples are available for the following knowledge graphs:
             "name": "find_similar_examples",
             "description": f"""\
 Find SPARQL-question-pairs over the specified knowledge graph that \
-try to answer a similar question to the one provided. At most {num_examples} \
+try to answer a similar question to the one provided. At most {config.num_examples} \
 examples are returned. The examples may help you with generating \
 your own SPARQL query.
 
@@ -157,7 +158,7 @@ def find_random_examples(
     return format_examples(
         kg,
         managers,
-        examples,
+        examples,  # type: ignore
         known,
         max_rows,
         max_cols,
@@ -235,10 +236,12 @@ def find_examples(
         fn_args = {"kg": kg, "question": question}
         content = "Let's start by looking at some similar examples."
 
+    response_id = uuid4().hex
     tool_call_id = uuid4().hex
     return Message(
         role="assistant",
         content=Response(
+            id=response_id,
             message=content,
             tool_calls=[
                 ToolCall(

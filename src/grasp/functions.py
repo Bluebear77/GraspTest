@@ -5,6 +5,7 @@ from typing import Any, Callable, Iterable
 import validators
 from universal_ml_utils.ops import partition_by
 
+from grasp.configs import Config
 from grasp.manager import KgManager
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import get_common_sparql_prefixes
@@ -28,10 +29,21 @@ MAX_RESULTS = 65536
 MIN_SCORE = 0.5
 
 
-# a function gets the kg manager, function name, function arguments,
-# known entities and properties, and an optional state object;
+# a function gets the config, kg manager, function name, function arguments,
+# known entities and properties, and an optional state object and example indices;
 # it return a string observation and the updated additional state object
-TaskHandler = Callable[[list[KgManager], str, dict, set[str], Any | None], str]
+TaskHandler = Callable[
+    [
+        Config,
+        list[KgManager],
+        str,
+        dict,
+        set[str],
+        Any | None,
+        dict | None,
+    ],
+    str,
+]
 
 
 # tuple of function definitions as JSON schema, and a handler for executing the
@@ -383,24 +395,24 @@ def find_manager(
 
 
 def call_function(
+    config: Config,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,
-    fn_set: str,
     known: set[str],
     task_handler: TaskHandler | None = None,
     task_state: Any = None,
-    **kwargs: Any,
+    example_indices: dict | None = None,
 ) -> str:
     if fn_name == "execute":
         return execute_sparql(
             managers,
             fn_args["kg"],
             fn_args["sparql"],
-            kwargs["result_max_rows"],
-            kwargs["result_max_columns"],
+            config.result_max_rows,
+            config.result_max_columns,
             known,
-            know_before_use=kwargs["know_before_use"],
+            config.know_before_use,
         )  # type: ignore
 
     elif fn_name == "list":
@@ -410,7 +422,7 @@ def call_function(
             fn_args.get("subject"),
             fn_args.get("property"),
             fn_args.get("object"),
-            kwargs["list_k"],
+            config.list_k,
             known,
         )
 
@@ -419,7 +431,7 @@ def call_function(
             managers,
             fn_args["kg"],
             fn_args["query"],
-            kwargs["search_top_k"],
+            config.search_top_k,
             known,
             min_score=MIN_SCORE,
         )
@@ -429,7 +441,7 @@ def call_function(
             managers,
             fn_args["kg"],
             fn_args["query"],
-            kwargs["search_top_k"],
+            config.search_top_k,
             known,
             min_score=MIN_SCORE,
         )
@@ -441,7 +453,7 @@ def call_function(
             "property",
             fn_args["query"],
             {"subject": fn_args["entity"]},
-            kwargs["search_top_k"],
+            config.search_top_k,
             known,
             min_score=MIN_SCORE,
         )
@@ -453,13 +465,13 @@ def call_function(
             "object",
             fn_args["query"],
             {"property": fn_args["property"]},
-            kwargs["search_top_k"],
+            config.search_top_k,
             known,
             min_score=MIN_SCORE,
         )
 
     elif (
-        fn_name == "search" and fn_set == "search_constrained"
+        fn_name == "search" and config.fn_set == "search_constrained"
     ) or fn_name == "search_constrained":
         return search_constrained(
             managers,
@@ -467,32 +479,33 @@ def call_function(
             fn_args["position"],
             fn_args["query"],
             fn_args.get("constraints"),
-            kwargs["search_top_k"],
+            config.search_top_k,
             known,
             min_score=MIN_SCORE,
         )
 
     elif (
-        fn_name == "search" and fn_set == "search_autocomplete"
+        fn_name == "search" and config.fn_set == "search_autocomplete"
     ) or fn_name == "search_autocomplete":
         return search_autocomplete(
             managers,
             fn_args["kg"],
             fn_args["sparql"],
             fn_args["query"],
-            kwargs["search_top_k"],
+            config.search_top_k,
             known,
             min_score=MIN_SCORE,
         )
 
     elif task_handler is not None:
         return task_handler(
+            config,
             managers,
             fn_name,
             fn_args,
             known,
             task_state,
-            **kwargs,
+            example_indices,
         )
 
     else:

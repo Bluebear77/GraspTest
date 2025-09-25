@@ -12,7 +12,6 @@ from grasp.tasks.cea import output as cea_output
 from grasp.tasks.cea import rules as cea_rules
 from grasp.tasks.cea import system_information as cea_system_information
 from grasp.tasks.examples import Sample
-from grasp.tasks.general_qa import functions as general_qa_functions
 from grasp.tasks.general_qa import output as general_qa_output
 from grasp.tasks.general_qa import rules as general_qa_rules
 from grasp.tasks.general_qa import system_information as general_qa_system_information
@@ -66,12 +65,19 @@ def task_system_information(task: str) -> str:
     raise ValueError(f"Unknown task {task}")
 
 
-def task_functions(managers: list[KgManager], task: str) -> TaskFunctions:
+def task_functions(
+    managers: list[KgManager],
+    task: str,
+    config: Config,
+) -> TaskFunctions | None:
     if task == "sparql-qa":
-        return sparql_qa_functions(managers)
+        return sparql_qa_functions(managers, config)
     elif task == "general-qa":
-        return general_qa_functions()
+        # general qa has no additional functions
+        # and does not support examples
+        return None
     elif task == "cea":
+        # cea supports no examples
         return cea_functions(managers)
 
     raise ValueError(f"Unknown task {task}")

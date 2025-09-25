@@ -1,14 +1,10 @@
-import re
 from typing import Any
-from uuid import uuid4
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from grasp.functions import execute_sparql, find_manager, update_known_from_selections
 from grasp.manager import KgManager
-from grasp.model import ToolCall
 from grasp.sparql.item import get_sparql_items, selections_from_items
-from grasp.sparql.types import ObjType, group_selections
 
 
 class Sample(BaseModel):
@@ -19,142 +15,6 @@ class Sample(BaseModel):
 
     def inputs(self) -> list[str]:
         raise NotImplementedError
-
-
-class SparqlQaAnswerModel(BaseModel):
-    kg: str
-    sparql: str
-    answer: str
-
-
-class GeneralQaAnswerModel(BaseModel):
-    answer: str
-
-
-class AnswerCallModel(BaseModel):
-    name: str
-    arguments: SparqlQaAnswerModel | GeneralQaAnswerModel
-
-
-class SparqlQaBestAttemptModel(BaseModel):
-    sparql: str
-    kg: str
-
-
-class CancelModel(BaseModel):
-    explanation: str
-    best_attempt: SparqlQaBestAttemptModel | str | None = None
-
-
-class CancelCallModel(BaseModel):
-    name: str
-    arguments: CancelModel
-
-
-def get_raw_tool_call_from_message(message: str) -> str | None:
-    # sometimes the model fails to call the answer function, but
-    # provides the output in one of the following formats:
-    # 1) within <tool_call>...</tool_call> tags:
-    #    in this case check whether the content is a valid answer JSON like
-    #    {"name": "answer", "arguments": "{...}"}
-    # 2) as JSON in ```json...``` code block:
-    #    do as in 1)
-
-    # check for tool_call tags
-    tool_call_match = re.search(
-        r"<tool_call>(.*?)</tool_call>",
-        message,
-        re.IGNORECASE | re.DOTALL,
-    )
-    if tool_call_match is None:
-        # fall back to JSON code block
-        tool_call_match = re.search(
-            r"```json\s*(.*?)\s*```",
-            message,
-            re.IGNORECASE | re.DOTALL,
-        )
-
-    if tool_call_match is None:
-        return None
-    else:
-        return tool_call_match.group(1).strip()
-
-
-def get_answer_from_message(task: str, message: str | None) -> ToolCall | None:
-    if message is None:
-        return None
-
-    tool_call = get_raw_tool_call_from_message(message)
-    if tool_call is None:
-        return None
-
-    try:
-        answer_call = AnswerCallModel.model_validate_json(tool_call)
-        return ToolCall(
-            id=uuid4().hex,
-            name=answer_call.name,
-            args=answer_call.arguments.model_dump(),
-        )
-    except ValidationError:
-        pass
-
-    try:
-        if task == "sparql-qa":
-            args = SparqlQaAnswerModel.model_validate_json(tool_call).model_dump()
-        elif task == "general-qa":
-            args = GeneralQaAnswerModel.model_validate_json(tool_call).model_dump()
-        else:
-            raise ValueError(f"Unknown task: {task}")
-
-        return ToolCall(id=uuid4().hex, name="answer", args=args)
-    finally:
-        return None
-
-
-def get_cancel_from_message(message: str | None) -> ToolCall | None:
-    if message is None:
-        return None
-
-    tool_call = get_raw_tool_call_from_message(message)
-    if tool_call is None:
-        return None
-
-    try:
-        cancel_call = CancelCallModel.model_validate_json(tool_call)
-        return ToolCall(
-            id=uuid4().hex,
-            name=cancel_call.name,
-            args=cancel_call.arguments.model_dump(),
-        )
-    except ValidationError:
-        pass
-
-    try:
-        args = CancelModel.model_validate_json(tool_call).model_dump()
-        return ToolCall(id=uuid4().hex, name="cancel", args=args)
-    finally:
-        return None
-
-
-def get_sparql_from_message(message: str | None) -> ToolCall | None:
-    if message is None:
-        return None
-
-    # Check for SPARQL code blocks
-    sparql_match = re.search(
-        r"```sparql\s*(.*?)\s*```",
-        message,
-        re.IGNORECASE | re.DOTALL,
-    )
-    if sparql_match:
-        sparql_query = sparql_match.group(1).strip()
-        return ToolCall(
-            id=uuid4().hex,
-            name="answer",
-            args={"kg": None, "sparql": sparql_query, "answer": message},
-        )
-
-    return None
 
 
 def prepare_sparql_result(

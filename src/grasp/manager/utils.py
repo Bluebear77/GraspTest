@@ -94,7 +94,7 @@ def load_property_index_and_mapping(
 ) -> tuple[SearchIndex, Mapping]:
     index_dir = os.path.join(get_index_dir(), kg, "properties")
 
-    mapping_cls = WikidataPropertyMapping if kg == "wikidata" else None
+    mapping_cls = WikidataPropertyMapping if kg.startswith("wikidata") else None
 
     return load_index_and_mapping(
         index_dir,
@@ -148,44 +148,6 @@ def load_kg_info_sparqls(kg: str) -> tuple[str | None, str | None]:
         prop_info = None
 
     return ent_info, prop_info
-
-
-def load_notes(
-    task: str,
-    kg: str | None = None,
-    notes_file: str | None = None,
-    error_if_missing: bool = False,
-) -> list[str]:
-    if notes_file is None:
-        notes_path = Path(get_index_dir(kg), f"notes.{task}.json")
-    else:
-        notes_path = Path(notes_file)
-
-    if not notes_path.exists():
-        if error_if_missing:
-            raise FileNotFoundError(f"Notes file {notes_path.as_posix()} not found")
-        else:
-            return []
-
-    return load_json(notes_path.as_posix())  # type: ignore
-
-
-def dump_notes(
-    notes: list[str],
-    task: str,
-    kg: str | None = None,
-    notes_file: str | None = None,
-    overwrite: bool = False,
-) -> None:
-    if notes_file is None:
-        notes_path = Path(get_index_dir(kg), f"notes.{task}.json")
-    else:
-        notes_path = Path(notes_file)
-
-    if os.path.exists(notes_path) and not overwrite:
-        raise FileExistsError(f"Notes file {notes_path.as_posix()} already exists")
-
-    dump_json(notes, notes_path.as_posix(), indent=2)
 
 
 def load_kg_indices(

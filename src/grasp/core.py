@@ -6,6 +6,7 @@ from typing import Any, Iterator
 
 from litellm.exceptions import Timeout
 from search_index.similarity import EmbeddingModel
+from universal_ml_utils.io import load_json
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import Config
@@ -14,7 +15,7 @@ from grasp.functions import (
     kg_functions,
 )
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
-from grasp.manager.utils import describe_index, load_notes
+from grasp.manager.utils import describe_index
 from grasp.model import Message, Response, call_model
 from grasp.tasks import (
     rules as general_rules,
@@ -30,7 +31,6 @@ from grasp.tasks import (
 from grasp.tasks.examples import ExampleIndex
 from grasp.tasks.feedback import format_feedback, generate_feedback
 from grasp.tasks.sparql_qa.examples import find_examples
-from grasp.tasks.sparql_qa.examples import functions as example_functions
 from grasp.utils import (
     format_error,
     format_list,
@@ -107,19 +107,21 @@ def setup(config: Config) -> list[KgManager]:
     return managers
 
 
-def load_task_notes(
-    task: str,
-    config: Config,
-) -> tuple[list[str], dict[str, list[str]]]:
+def load_notes(config: Config) -> tuple[list[str], dict[str, list[str]]]:
     # load notes
-    general_notes = load_notes(task, notes_file=config.notes_file)
+    if config.notes_file is None:
+        general_notes = []
+    else:
+        general_notes = load_json(config.notes_file)
 
     kg_notes = {}
     for kg in config.knowledge_graphs:
-        notes = load_notes(task, kg.kg, kg.notes_file)
-        kg_notes[kg.kg] = notes
+        if kg.notes_file is None:
+            continue
 
-    return general_notes, kg_notes
+        kg_notes[kg.kg] = load_json(kg.notes_file)
+
+    return general_notes, kg_notes  # type: ignore
 
 
 def generate(
@@ -143,16 +145,12 @@ def generate(
 
     # setup functions
     fns = kg_functions(managers, config.fn_set)
-    task_fns, task_handler = task_functions(managers, task)
-    fns.extend(task_fns)
-
-    if task == "sparql-qa" and example_indices:
-        ex_fns = example_functions(
-            example_indices,
-            config.num_examples,
-            config.random_examples,
-        )
-        task_fns.extend(ex_fns)
+    additional_fns = task_functions(managers, task, config)
+    if additional_fns is not None:
+        additional_fns, task_handler = additional_fns
+        fns.extend(additional_fns)
+    else:
+        task_handler = None
 
     input, task_state = task_setup(task, input)
 
@@ -294,20 +292,14 @@ def generate(
         for tool_call in response.tool_calls:
             try:
                 result = call_function(
+                    config,
                     managers,
                     tool_call.name,
                     tool_call.args,
-                    config.fn_set,
                     known,
                     task_handler,
                     task_state,
-                    result_max_rows=config.result_max_rows,
-                    result_max_columns=config.result_max_columns,
-                    list_k=config.list_k,
-                    search_top_k=config.search_top_k,
-                    num_examples=config.num_examples,
-                    know_before_use=config.know_before_use,
-                    example_indices=example_indices,
+                    example_indices,
                 )
             except Exception as e:
                 result = f"Call to function {tool_call.name} returned an error:\n{e}"
