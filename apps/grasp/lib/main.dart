@@ -845,12 +845,7 @@ $result
             item["elapsed"],
           );
         } else if (task == Task.generalQa.identifier) {
-          return buildGeneralQaOutputItem(
-            output["type"] == "answer"
-                ? output["answer"]
-                : output["explanation"],
-            item["elapsed"],
-          );
+          return buildGeneralQaOutputItem(output["output"], item["elapsed"]);
         } else {
           // unknown task
           return buildUnknownItem(item);
