@@ -110,6 +110,7 @@ SelectRow = dict[str, Binding]
 class SelectResult:
     variables: list[str]
     data: list[dict | None]
+    complete: bool = True
 
     @staticmethod
     def from_json(data: dict) -> "SelectResult":
@@ -117,6 +118,13 @@ class SelectResult:
             variables=data["head"]["vars"],
             data=data["results"]["bindings"],
         )
+
+    def truncate(self, max_rows: int) -> None:
+        if len(self) <= max_rows:
+            return
+
+        self.data = self.data[:max_rows]
+        self.complete = False
 
     def __len__(self) -> int:
         return len(self.data)

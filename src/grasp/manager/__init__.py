@@ -252,8 +252,9 @@ class KgManager:
             max_column_width=sys.maxsize,
         )
 
+        comp = "" if result.complete else "more than "
         formatted = (
-            f"Got {result.num_rows:,} row{'s' * (result.num_rows != 1)} and "
+            f"Got {comp}{result.num_rows:,} row{'s' * (result.num_rows != 1)} and "
             f"{result.num_columns:,} column{'s' * (result.num_columns != 1)}"
         )
 

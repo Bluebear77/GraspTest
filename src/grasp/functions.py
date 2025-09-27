@@ -22,10 +22,9 @@ from grasp.sparql.types import (
 from grasp.sparql.utils import find_all, parse_string
 from grasp.utils import FunctionCallException
 
-# set up some global variables
-MAX_RESULTS = 65536
-# avoid negative cos sims for fp32 indices, does
-# not restrict ubinary indices
+# maximum number of results for constraining with sub indices
+MAX_RESULTS = 131072
+# minimum score for similarity search index
 MIN_SCORE = 0.5
 
 
@@ -822,7 +821,7 @@ or in full form, like "<http://www.wikidata.org/entity/Q937>".'
 SELECT ?s ?p ?o WHERE {{
     {triple}
     {bindings}
-}} LIMIT {MAX_RESULTS}"""
+}} LIMIT {MAX_RESULTS + 1}"""
 
     try:
         result = manager.execute_sparql(sparql)
@@ -830,6 +829,7 @@ SELECT ?s ?p ?o WHERE {{
         raise FunctionCallException(f"Failed to list triples with error:\n{e}") from e
 
     assert isinstance(result, SelectResult)
+    result.truncate(MAX_RESULTS)
 
     # functions to get scores for properties and entities
     def prop_rank(prop: Binding) -> int:
@@ -982,9 +982,10 @@ or in full form, like "<http://www.wikidata.org/entity/Q937>".'
 
         sparql = f"""\
 SELECT DISTINCT {select_var} WHERE {{
-    {pos_values["subject"]} {pos_values["property"]} {pos_values["object"]} 
-}}
-LIMIT {MAX_RESULTS + 1}"""
+    {pos_values["subject"]}
+    {pos_values["property"]}
+    {pos_values["object"]} 
+}} LIMIT {MAX_RESULTS + 1}"""
 
         try:
             search_items = manager.get_search_items(
