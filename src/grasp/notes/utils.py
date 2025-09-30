@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Iterator
 
 from grasp.model import Message, Response
 from grasp.utils import format_list
@@ -41,17 +41,18 @@ def format_output(output: Any | None, messages: list[Message]) -> str:
 
         contents = []
         if "reasoning" in ass_content:
-            contents.append(f"Reasoning:\n{ass_content['reasoning']}")
+            contents.append(f"Agent reasoning:\n{ass_content['reasoning']}")
 
         if "content" in ass_content:
-            contents.append(f"Output:\n{ass_content['content']}")
+            contents.append(f"Agent message:\n{ass_content['content']}")
 
         for tool_call in assistant.tool_calls:
-            contents.append(
-                f'Call of "{tool_call.name}" function '
-                f"with {format_arguments(tool_call.args)}:\n"
-                f"{tool_call.result}"
-            )
+            tool_call_content = f'Call of "{tool_call.name}" function'
+            if tool_call.args:
+                tool_call_content += f" with {format_arguments(tool_call.args)}"
+
+            tool_call_content += f":\n{tool_call.result}"
+            contents.append(tool_call_content)
 
         content = f"Step {step}:\n{format_list(contents)}"
         fmt.append(content)
@@ -71,3 +72,8 @@ def link(src: str, dst: str) -> None:
 
     rel = os.path.relpath(src, os.path.dirname(dst))
     os.symlink(rel, dst)
+
+
+def consume_iterator(iterator: Iterator) -> None:
+    for _ in iterator:
+        pass

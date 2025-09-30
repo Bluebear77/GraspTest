@@ -118,6 +118,7 @@ def load_notes(config: Config) -> tuple[list[str], dict[str, list[str]]]:
     kg_notes = {}
     for kg in config.knowledge_graphs:
         if kg.notes_file is None:
+            kg_notes[kg.kg] = []
             continue
 
         kg_notes[kg.kg] = load_json(kg.notes_file)

@@ -228,9 +228,8 @@ This function overwrites any previous annotation of the cell.""",
             "strict": True,
         },
         {
-            "name": "clear",
-            "description": """\
-Clear the annotation of a cell in the table.""",
+            "name": "delete_annotation",
+            "description": "Delete the annotation of a cell in the table.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -249,9 +248,8 @@ Clear the annotation of a cell in the table.""",
             "strict": True,
         },
         {
-            "name": "show",
-            "description": """\
-Show the current annotations in the table.""",
+            "name": "show_annotations",
+            "description": "Show the current annotations for the table.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -262,8 +260,7 @@ Show the current annotations in the table.""",
         },
         {
             "name": "stop",
-            "description": """\
-Finalize your annotations and stop the annotation process.""",
+            "description": "Finalize your annotations and stop the annotation process.",
             "parameters": {
                 "type": "object",
                 "properties": {},
@@ -345,7 +342,7 @@ def annotate(
         return f"Updated annotation of cell ({row}, {column}) from {current.entity} to {entity}"
 
 
-def clear(row: int, column: int, state: AnnotationState) -> str:
+def delete(row: int, column: int, state: AnnotationState) -> str:
     try:
         current = state.annotate(row, column, None)
     except ValueError as e:
@@ -354,7 +351,7 @@ def clear(row: int, column: int, state: AnnotationState) -> str:
     if current is None:
         raise FunctionCallException(f"Cell ({row}, {column}) is not annotated")
 
-    return f"Cleared annotation {current.entity} from cell ({row}, {column})"
+    return f"Deleted annotation {current.entity} from cell ({row}, {column})"
 
 
 def input_instructions(state: AnnotationState) -> str:
@@ -422,10 +419,10 @@ def call_function(
             config.know_before_use,
         )
 
-    elif fn_name == "clear":
-        return clear(fn_args["row"], fn_args["column"], state)
+    elif fn_name == "delete_annotation":
+        return delete(fn_args["row"], fn_args["column"], state)
 
-    elif fn_name == "show":
+    elif fn_name == "show_annotations":
         return state.format()
 
     elif fn_name == "stop":

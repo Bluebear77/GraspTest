@@ -8,28 +8,35 @@ from tqdm import tqdm, trange
 from universal_ml_utils.io import dump_json, load_jsonl
 from universal_ml_utils.logging import get_logger
 
-from grasp.configs import Config, NotesFromInputsConfig
+from grasp.configs import (
+    Config,
+    NotesConfig,
+    NotesFromOutputsConfig,
+    NotesFromSamplesConfig,
+    NoteTakingConfig,
+)
 from grasp.core import call_model, generate, load_notes, setup
 from grasp.functions import find_manager
 from grasp.manager import KgManager
 from grasp.model import Message
-from grasp.notes.utils import format_output, link
+from grasp.notes.utils import consume_iterator, format_output, link
 from grasp.tasks import task_to_sample
 from grasp.tasks.cea import AnnotationState, CeaSample, prepare_annotation
+from grasp.tasks.exploration import ExplorationState
 from grasp.tasks.exploration.functions import call_function, note_functions
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.utils import Sample, format_sparql_result, prepare_sparql_result
 from grasp.utils import (
-    format_enumerate,
     format_list,
     format_message,
+    format_notes,
     format_response,
 )
 
 
-def take_notes_from_inputs(
+def take_notes_from_samples(
     task: str,
-    config: NotesFromInputsConfig,
+    config: NotesFromSamplesConfig,
     out_dir: str,
     overwrite: bool = False,
     log_level: str | int | None = None,
@@ -47,26 +54,32 @@ def take_notes_from_inputs(
 
     assert config.seed is not None, "Seed must be set for adaptation"
 
-    inputs: list[tuple[str, Sample]] = []
-    for ipt in config.inputs:
-        samples = [(ipt.kg, sample_cls(**sample)) for sample in load_jsonl(ipt.file)]
+    all_samples: list[tuple[str, Sample]] = []
+    for sample_cfg in config.samples:
+        samples = [
+            (sample_cfg.kg, sample_cls(**sample))
+            for sample in load_jsonl(sample_cfg.file)
+        ]
         if config.samples_per_file is not None:
             random.seed(config.seed)
             random.shuffle(samples)
             samples = samples[: config.samples_per_file]
 
-        inputs.extend(samples)
+        all_samples.extend(samples)
 
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "config.yaml"), "w") as f:
         yaml.dump(config.model_dump(), f)
 
-    for r in trange(config.num_rounds, desc="Adapting GRASP to KGs"):
+    for r in trange(config.num_rounds, desc="Taking notes from samples"):
         random.seed(config.seed + r)
-        samples = random.sample(inputs, min(config.samples_per_round, len(inputs)))
+        samples = random.sample(
+            all_samples,
+            min(config.samples_per_round, len(all_samples)),
+        )
 
         outputs = []
-        for kg, sample in tqdm(samples, desc=f"Round {r + 1} samples", leave=False):
+        for kg, sample in tqdm(samples, desc="Running GRASP on samples", leave=False):
             manager, _ = find_manager(managers, kg)
 
             *_, output = generate(
@@ -80,8 +93,71 @@ def take_notes_from_inputs(
             )
             outputs.append(output)
 
-        take_notes_on_outputs(
-            samples,
+        if config.ignore_ground_truth:
+            ground_truths = None
+        else:
+            ground_truths = prepare_ground_truths(samples, managers, config)
+
+        take_notes(
+            outputs,
+            managers,
+            kg_notes,
+            notes,
+            config,
+            logger,
+            ground_truths,
+        )
+
+        for kg, kg_specific_notes in kg_notes.items():
+            out_file = os.path.join(out_dir, f"notes.{task}.{kg}.round_{r}.json")
+            dump_json(kg_specific_notes, out_file, indent=2)
+            link(out_file, os.path.join(out_dir, f"notes.{task}.{kg}.json"))
+
+        out_file = os.path.join(out_dir, f"notes.{task}.round_{r}.json")
+        dump_json(notes, out_file, indent=2)
+        link(out_file, os.path.join(out_dir, f"notes.{task}.json"))
+
+
+def take_notes_from_outputs(
+    task: str,
+    config: NotesFromOutputsConfig,
+    out_dir: str,
+    overwrite: bool = False,
+    log_level: str | int | None = None,
+) -> None:
+    if os.path.exists(out_dir) and not overwrite:
+        raise FileExistsError(f"Output directory {out_dir} already exists")
+
+    logger = get_logger("GRASP NOTE TAKING", log_level)
+
+    managers = setup(config)
+    notes, kg_notes = load_notes(config)
+
+    assert config.seed is not None, "Seed must be set for adaptation"
+
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "config.yaml"), "w") as f:
+        yaml.dump(config.model_dump(), f)
+
+    all_outputs = []
+    for output_file in config.outputs:
+        outputs = load_jsonl(output_file)
+        if config.outputs_per_file is not None:
+            random.seed(config.seed)
+            random.shuffle(outputs)
+            outputs = outputs[: config.outputs_per_file]
+
+        all_outputs.extend(outputs)
+
+    for r in trange(config.num_rounds, desc="Taking notes from outputs"):
+        random.seed(config.seed + r)
+
+        outputs = random.sample(
+            all_outputs,
+            min(config.outputs_per_round, len(all_outputs)),
+        )
+
+        take_notes(
             outputs,
             managers,
             kg_notes,
@@ -98,6 +174,49 @@ def take_notes_from_inputs(
         out_file = os.path.join(out_dir, f"notes.{task}.round_{r}.json")
         dump_json(notes, out_file, indent=2)
         link(out_file, os.path.join(out_dir, f"notes.{task}.json"))
+
+
+def take_notes_from_exploration(
+    config: NotesConfig,
+    out_dir: str,
+    overwrite: bool = False,
+    log_level: str | int | None = None,
+) -> None:
+    if os.path.exists(out_dir) and not overwrite:
+        raise FileExistsError(f"Output directory {out_dir} already exists")
+
+    agent_logger = get_logger("GRASP AGENT", log_level)
+
+    managers = setup(config)
+    notes, kg_notes = load_notes(config)
+
+    os.makedirs(out_dir, exist_ok=True)
+    with open(os.path.join(out_dir, "config.yaml"), "w") as f:
+        yaml.dump(config.model_dump(), f)
+
+    state = ExplorationState(notes=notes, kg_notes=kg_notes)
+
+    for r in trange(config.num_rounds, desc="Taking notes from exploration"):
+        consume_iterator(
+            generate(
+                "exploration",
+                state,
+                config,
+                managers,
+                state.kg_notes,
+                state.notes,
+                logger=agent_logger,
+            )
+        )
+
+        for kg, kg_specific_notes in state.kg_notes.items():
+            out_file = os.path.join(out_dir, f"notes.exploration.{kg}.round_{r}.json")
+            dump_json(kg_specific_notes, out_file, indent=2)
+            link(out_file, os.path.join(out_dir, f"notes.exploration.{kg}.json"))
+
+        out_file = os.path.join(out_dir, f"notes.exploration.round_{r}.json")
+        dump_json(state.notes, out_file, indent=2)
+        link(out_file, os.path.join(out_dir, "notes.exploration.json"))
 
 
 def rules() -> list[str]:
@@ -141,7 +260,7 @@ Additional rules to follow:
 {format_list(rules())}"""
 
 
-def prepare_groundtruth(
+def prepare_ground_truth(
     sample: Sample,
     kg: str,
     managers: list[KgManager],
@@ -171,17 +290,28 @@ def prepare_groundtruth(
         raise ValueError(f"Unsupported or unknown sample type {type(sample)}")
 
 
-def note_taking_instructions(
+def prepare_ground_truths(
+    samples: list[tuple[str, Sample]],
     managers: list[KgManager],
+    config: Config,
+) -> list[str] | None:
+    ground_truths = []
+    for kg, sample in samples:
+        gt = prepare_ground_truth(sample, kg, managers, config)
+        ground_truths.append(gt)
+    return ground_truths
+
+
+def note_taking_instructions(
     kg_notes: dict[str, list[str]],
     notes: list[str],
-    config: Config,
-    inputs: list[tuple[str, Sample]],
     outputs: list[dict],
+    ground_truths: list[str] | None = None,
 ) -> str:
     formatted = []
-    for i, ((kg, sample), output) in enumerate(zip(inputs, outputs)):
+    for i, output in enumerate(outputs):
         messages = [Message(**msg) for msg in output["messages"]]
+
         if i == 0:
             assert messages[0].role == "system"
             formatted.append(f"Task instructions for the agent:\n{messages[0].content}")
@@ -189,23 +319,22 @@ def note_taking_instructions(
         assert messages[1].role == "user"
         input = messages[1].content
 
-        gt = prepare_groundtruth(sample, kg, managers, config)
-
         content = f"""\
-Input {i + 1} over {kg} knowledge graph:
+Input {i + 1}:
 {input}
 
 Agent trace:
-{format_output(output["output"], messages)}
+{format_output(output["output"], messages)}"""
 
-Ground truth:
-{gt}"""
+        if ground_truths is not None:
+            gt = ground_truths[i]
+            content += f"\n\nGround truth:\n{gt}"
 
         formatted.append(content)
 
     fmt = "\n\n".join(formatted)
     kg_specific_notes = format_list(
-        f"{kg}:\n{format_enumerate(kg_specific_notes, indent=2)}"
+        f"{kg}:\n{format_notes(kg_specific_notes, indent=2, enumerated=True)}"
         for kg, kg_specific_notes in sorted(kg_notes.items())
     )
 
@@ -218,19 +347,19 @@ Knowledge graph specific notes:
 {kg_specific_notes}
 
 General notes across knowledge graphs:
-{format_enumerate(notes)}
+{format_notes(notes, enumerated=True)}
 
 {fmt}"""
 
 
-def take_notes_on_outputs(
-    inputs: list[tuple[str, Sample]],
+def take_notes(
     outputs: list[dict],
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
     notes: list[str],
-    config: NotesFromInputsConfig,
+    config: NoteTakingConfig,
     logger: Logger,
+    ground_truths: list[str] | None = None,
 ) -> None:
     messages = [
         Message(
@@ -239,14 +368,7 @@ def take_notes_on_outputs(
         ),
         Message(
             role="user",
-            content=note_taking_instructions(
-                managers,
-                kg_notes,
-                notes,
-                config,
-                inputs,
-                outputs,
-            ),
+            content=note_taking_instructions(kg_notes, notes, outputs, ground_truths),
         ),
     ]
 

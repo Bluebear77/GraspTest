@@ -68,7 +68,10 @@ class NotesConfig(Config):
     max_note_length: int = 512
     num_rounds: int = 5
 
-    # adapt model can be different from the main model
+
+class NoteTakingConfig(NotesConfig):
+    # add note taking model configuration
+    # note taking model can be different from the main GRASP model
     note_taking_model: str | None = None
     note_taking_model_endpoint: str | None = None
     note_taking_max_steps: int = 50
@@ -81,13 +84,25 @@ class NotesConfig(Config):
     note_taking_api: str | None = None
 
 
-class NotesInput(BaseModel):
+class NotesFromSamplesInput(BaseModel):
     kg: str
     file: str
 
 
-class NotesFromInputsConfig(NotesConfig):
-    # input files with input-output pairs
-    inputs: conlist(NotesInput, min_length=1)  # type: ignore
+class NotesFromSamplesConfig(NoteTakingConfig):
+    # files with task examples
+    samples: conlist(NotesFromSamplesInput, min_length=1)  # type: ignore
     samples_per_round: int = 3
     samples_per_file: int | None = None
+    ignore_ground_truth: bool = False
+
+
+class NotesFromOutputsConfig(NoteTakingConfig):
+    # files with outputs only
+    outputs: conlist(str, min_length=1)  # type: ignore
+    outputs_per_round: int = 3
+    outputs_per_file: int | None = None
+
+
+class NotesFromExplorationConfig(NotesConfig):
+    questions_per_round: int = 3

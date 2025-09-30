@@ -43,9 +43,11 @@ def format_prefixes(prefixes: dict[str, str]) -> str:
     return format_list(f"{short}: {long}" for short, long in sorted(prefixes.items()))
 
 
-def format_notes(notes: list[str], indent: int = 0) -> str:
+def format_notes(notes: list[str], indent: int = 0, enumerated: bool = False) -> str:
     if not notes:
-        return "No notes available"
+        return " " * indent + "No notes available"
+    elif enumerated:
+        return format_enumerate(notes, indent)
     else:
         return format_list(notes, indent)
 

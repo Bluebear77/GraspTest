@@ -22,12 +22,21 @@ from universal_ml_utils.ops import extract_field, partition_by
 
 from grasp.build import build_indices, get_data
 from grasp.build.data import merge_kgs
-from grasp.configs import Config, NotesFromInputsConfig
+from grasp.configs import (
+    Config,
+    NotesFromExplorationConfig,
+    NotesFromOutputsConfig,
+    NotesFromSamplesConfig,
+)
 from grasp.core import generate, load_notes, setup
 from grasp.evaluate import evaluate
 from grasp.manager import find_embedding_model
 from grasp.model import Message
-from grasp.notes import take_notes_from_inputs
+from grasp.notes import (
+    take_notes_from_exploration,
+    take_notes_from_outputs,
+    take_notes_from_samples,
+)
 from grasp.tasks import Task, default_input_field
 from grasp.tasks.examples import ExampleIndex, load_example_indices
 from grasp.utils import (
@@ -212,26 +221,37 @@ def parse_args() -> argparse.Namespace:
         required=True,
     )
 
-    note_inputs_parser = note_subparsers.add_parser(
-        "inputs",
+    note_samples_parser = note_subparsers.add_parser(
+        "samples",
         help="Take notes for a task and one or more knowledge graphs "
-        "by running the task on exemplary inputs "
-        "(and optional groundtruth outputs)",
+        "by running GRASP on exemplary task samples",
     )
-    add_config_arg(note_inputs_parser)
-    note_inputs_parser.add_argument(
+    add_config_arg(note_samples_parser)
+    note_samples_parser.add_argument(
         "output_dir",
         type=str,
         help="Save note taking results in this directory",
     )
-    add_task_arg(note_inputs_parser)
-    add_overwrite_arg(note_inputs_parser)
+    add_task_arg(note_samples_parser)
+    add_overwrite_arg(note_samples_parser)
+
+    note_interactions_parser = note_subparsers.add_parser(
+        "outputs",
+        help="Take notes from existing outputs / runs of GRASP",
+    )
+    add_config_arg(note_interactions_parser)
+    note_interactions_parser.add_argument(
+        "output_dir",
+        type=str,
+        help="Save note taking results in this directory",
+    )
+    add_task_arg(note_interactions_parser)
+    add_overwrite_arg(note_interactions_parser)
 
     note_explore_parser = note_subparsers.add_parser(
         "explore",
         help="Take notes for a task and one or more knowledge graphs "
-        "by exploring the knowledge graphs "
-        "(without any task inputs or groundtruth outputs)",
+        "by exploring the knowledge graphs (without any task samples or outputs)",
     )
     add_config_arg(note_explore_parser)
     note_explore_parser.add_argument(
@@ -239,7 +259,6 @@ def parse_args() -> argparse.Namespace:
         type=str,
         help="Save note taking results in this directory",
     )
-    add_task_arg(note_explore_parser)
     add_overwrite_arg(note_explore_parser)
 
     # evaluate GRASP output
@@ -280,7 +299,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Rerun failed evaluations due to timeouts or errors",
     )
-    add_task_arg(eval_parser)
     add_overwrite_arg(eval_parser)
 
     # get data for GRASP indices
@@ -771,65 +789,39 @@ def get_grasp_data(args: argparse.Namespace) -> None:
     )
 
 
-def merge_grasp_kgs(args: argparse.Namespace) -> None:
-    merge_kgs(
-        args.knowledge_graphs,
-        args.knowledge_graph,
-        args.overwrite,
-        args.log_level,
-    )
-
-
-def build_grasp_indices(args: argparse.Namespace) -> None:
-    build_indices(
-        args.knowledge_graph,
-        args.entities_type,
-        args.properties_type,
-        args.overwrite,
-        args.log_level,
-        sim_batch_size=args.sim_batch_size,
-        sim_precision=args.sim_precision,
-        sim_embedding_dim=args.sim_embedding_dim,
-    )
-
-
-def take_grasp_notes_from_inputs(args: argparse.Namespace) -> None:
-    config = NotesFromInputsConfig(**load_config(args.config))
-    take_notes_from_inputs(
-        args.task,
-        config,
-        args.output_dir,
-        args.overwrite,
-        args.log_level,
-    )
-
-
-def take_grasp_notes_from_exploration(args: argparse.Namespace) -> None:
-    raise NotImplementedError("Exploration-based note taking not implemented yet")
-
-
-def handle_grasp_notes(args: argparse.Namespace) -> None:
+def take_grasp_notes(args: argparse.Namespace) -> None:
     note_cmd = args.note_command
 
-    if note_cmd == "inputs":
-        take_grasp_notes_from_inputs(args)
+    config = load_config(args.config)
+
+    if note_cmd == "samples":
+        take_notes_from_samples(
+            args.task,
+            NotesFromSamplesConfig(**config),
+            args.output_dir,
+            args.overwrite,
+            args.log_level,
+        )
+    elif note_cmd == "outputs":
+        take_notes_from_outputs(
+            args.task,
+            NotesFromOutputsConfig(**config),
+            args.output_dir,
+            args.overwrite,
+            args.log_level,
+        )
     elif note_cmd == "explore":
-        take_grasp_notes_from_exploration(args)
+        take_notes_from_exploration(
+            NotesFromExplorationConfig(**config),
+            args.output_dir,
+            args.overwrite,
+            args.log_level,
+        )
 
 
 def evaluate_grasp(args: argparse.Namespace) -> None:
     assert args.task == "sparql-qa", (
         "Built-in evaluation only supported for 'sparql-qa' task"
-    )
-    evaluate(
-        args.input_file,
-        args.prediction_file,
-        args.endpoint,
-        args.overwrite,
-        args.log_level,
-        args.timeout,
-        args.retry_failed,
-        args.exact_after,
     )
 
 
@@ -840,18 +832,48 @@ def main():
 
     if args.command == "data":
         get_grasp_data(args)
+
     elif args.command == "merge":
-        merge_grasp_kgs(args)
+        merge_kgs(
+            args.knowledge_graphs,
+            args.knowledge_graph,
+            args.overwrite,
+            args.log_level,
+        )
+
     elif args.command == "index":
-        build_grasp_indices(args)
+        build_indices(
+            args.knowledge_graph,
+            args.entities_type,
+            args.properties_type,
+            args.overwrite,
+            args.log_level,
+            sim_batch_size=args.sim_batch_size,
+            sim_precision=args.sim_precision,
+            sim_embedding_dim=args.sim_embedding_dim,
+        )
+
     elif args.command == "notes":
-        handle_grasp_notes(args)
+        take_grasp_notes(args)
+
     elif args.command == "run" or args.command == "file":
         run_grasp(args)
+
     elif args.command == "serve":
         serve_grasp(args)
+
     elif args.command == "evaluate":
-        evaluate_grasp(args)
+        evaluate(
+            args.input_file,
+            args.prediction_file,
+            args.endpoint,
+            args.overwrite,
+            args.log_level,
+            args.timeout,
+            args.retry_failed,
+            args.exact_after,
+        )
+
     elif args.command == "examples":
         ExampleIndex.build(
             args.examples_file,

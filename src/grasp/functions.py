@@ -944,17 +944,16 @@ def search_constrained(
 "{target_constr}" at the same time.'
         )
 
-    if len(constraints) > 2:
+    num_constraints = sum(c is not None for c in constraints.values())
+    if num_constraints > 2:
         raise FunctionCallException(
             "At most two of subject, property, and \
 object should be constrained at once."
         )
 
-    unconstrained = all(c is None for c in constraints.values())
-
     search_items = manager.get_default_search_items(Position(position))
     info = ""
-    if not unconstrained:
+    if num_constraints > 0:
         pos_values = {}
         for pos in ["subject", "property", "object"]:
             const = constraints.get(pos)
