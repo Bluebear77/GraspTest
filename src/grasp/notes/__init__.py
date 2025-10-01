@@ -221,9 +221,7 @@ def take_notes_from_exploration(
 
 def rules() -> list[str]:
     return [
-        "Do not take notes on things that are already handled well by the system.",
-        "Avoid notes about entity or property identifiers just for the sake of not \
-having to look them up again.",
+        "Avoid to take notes on things that are already handled well by the agent.",
         "As you hit the limits on the number of notes and their length, \
 gradually generalize your notes, discard unnecessary details, and move \
 notes that can be useful across knowledge graphs to the general section.",

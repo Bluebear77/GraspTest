@@ -17,8 +17,6 @@ def rules() -> list[str]:
     return [
         "The questions you come up with should be diverse and cover different \
 parts of the knowledge graphs.",
-        "Avoid notes about entity or property identifiers just for the sake of not \
-having to look them up again.",
         "As you hit the limits on the number of notes and their length, \
 gradually generalize your notes, discard unnecessary details, and move \
 notes that can be useful across knowledge graphs to the general section.",
