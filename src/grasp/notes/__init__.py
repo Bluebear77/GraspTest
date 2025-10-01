@@ -142,6 +142,9 @@ def take_notes_from_outputs(
     all_outputs = []
     for output_file in config.outputs:
         outputs = load_jsonl(output_file)
+        assert all(output["task"] == task for output in outputs), (
+            f"All outputs in {output_file} must be for task {task}"
+        )
         if config.outputs_per_file is not None:
             random.seed(config.seed)
             random.shuffle(outputs)
@@ -249,7 +252,7 @@ applicable as possible. Notes are limited to {max_note_length} characters to \
 ensure they are concise and to the point.
 
 Examples of potentially useful types of notes include:
-- overall structure and schema of the knowledge graphs
+- overall structure, domain converage, and schema of the knowledge graphs
 - peculiarities of the knowledge graphs
 - strategies when encountering certain types of questions or errors
 - tips for when and how to use certain functions
