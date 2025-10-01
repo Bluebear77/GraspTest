@@ -196,15 +196,15 @@ class KgManager:
                     formatted_row.append("")
 
                 elif val.typ == "bnode":
-                    formatted_row.append(clip(val.identifier()))
+                    formatted_row.append(val.identifier())
 
                 elif val.typ == "literal":
                     formatted = clip(val.value)
                     if val.lang is not None:
-                        formatted += f" ({val.lang})"
+                        formatted += f" (lang:{val.lang})"
                     elif val.datatype is not None:
                         datatype = self.format_iri("<" + val.datatype + ">")
-                        formatted += f" ({clip(datatype)})"
+                        formatted += f" ({datatype})"
 
                     formatted_row.append(formatted)
 

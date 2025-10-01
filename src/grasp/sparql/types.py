@@ -256,7 +256,7 @@ class Alternative:
                 s += ", etc."
 
         if add_infos and self.infos:
-            s += ": " + " / ".join(clip(info, max_len=128) for info in self.infos)
+            s += ": " + " / ".join(clip(info) for info in self.infos)
 
         return s
 

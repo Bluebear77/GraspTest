@@ -130,8 +130,9 @@ def is_server_error(message: str | None) -> bool:
     phrases = [
         "503 Server Error",  # qlever not available
         "502 Server Error",  # proxy error
-        "Read timed out. (read timeout=6)",  # qlever not reachable
-        "403 Client Error: Forbidden for url",  # wrong URL / API key
+        "(read timeout=6)",  # qlever not reachable
+        "(connect timeout=6)",  # qlever not reachable
+        "403 Client Error",  # wrong URL / API key
     ]
     return any(phrase.lower() in message.lower() for phrase in phrases)
 
@@ -208,7 +209,7 @@ def parse_parameters(headers: list[str]) -> dict[str, str]:
     return header_dict
 
 
-def clip(s: str, max_len: int = 64, respect_word_boundaries: bool = True) -> str:
+def clip(s: str, max_len: int = 128, respect_word_boundaries: bool = True) -> str:
     if len(s) <= max_len:
         return s
 
