@@ -12,11 +12,30 @@ class KgConfig(BaseModel):
     example_index: str | None = None
 
 
-class Config(BaseModel):
+class ModelConfig(BaseModel):
+    seed: int | None = None
+
+    # model parameters
     model: str = "openai/gpt-5-mini"
     model_endpoint: str | None = None
 
-    seed: int | None = None
+    model_kwargs: dict[str, Any] = {}
+
+    # decoding parameters
+    temperature: float | None = 1.0
+    top_p: float | None = 1.0
+    reasoning_effort: str | None = None
+    reasoning_summary: str | None = None
+    api: str | None = None
+    parallel_tool_calls: bool = False
+
+    # completion parameters
+    max_completion_tokens: int = 8192  # 8k, leaves enough space for reasoning models
+    completion_timeout: float = 120.0
+
+
+class GraspConfig(ModelConfig):
+    # function set, notes, and knowledge graphs
     fn_set: str = "search_extended"
     notes_file: str | None = None
 
@@ -37,19 +56,7 @@ class Config(BaseModel):
     # were previously seen
     know_before_use: bool = False
 
-    # model inference parameters
-    model_kwargs: dict[str, Any] = {}
-    temperature: float | None = 1.0
-    top_p: float | None = 1.0
-    reasoning_effort: str | None = None
-    reasoning_summary: str | None = None
-    # one of completions, responses, or None (for auto)
-    api: str | None = None
-    parallel_tool_calls: bool = False
-
-    # completion parameters
-    max_completion_tokens: int = 8192  # 8k, leaves enough space for reasoning models
-    completion_timeout: float = 120.0
+    # interaction parameters
     max_steps: int = 100
 
     # example parameters
@@ -62,7 +69,7 @@ class Config(BaseModel):
     max_feedbacks: int = 2
 
 
-class NotesConfig(Config):
+class NotesConfig(GraspConfig):
     # additional parameters specific to taking notes with GRASP
     max_notes: int = 16
     max_note_length: int = 512

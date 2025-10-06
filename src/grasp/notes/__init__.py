@@ -9,7 +9,7 @@ from universal_ml_utils.io import dump_json, load_jsonl
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import (
-    Config,
+    GraspConfig,
     NotesConfig,
     NotesFromOutputsConfig,
     NotesFromSamplesConfig,
@@ -265,17 +265,18 @@ def prepare_ground_truth(
     sample: Sample,
     kg: str,
     managers: list[KgManager],
-    config: Config,
+    config: GraspConfig,
 ) -> str:
     if isinstance(sample, SparqlQaSample):
-        sparql, selections, result = prepare_sparql_result(
+        result, selections = prepare_sparql_result(
             sample.sparql,
             kg,
             managers,
             config.result_max_rows,
             config.result_max_columns,
         )
-        return format_sparql_result(sparql, selections, result, kg)
+        manager, _ = find_manager(managers, kg)
+        return format_sparql_result(manager, result, selections)
 
     elif isinstance(sample, CeaSample):
         manager, _ = find_manager(managers, kg)
@@ -294,7 +295,7 @@ def prepare_ground_truth(
 def prepare_ground_truths(
     samples: list[tuple[str, Sample]],
     managers: list[KgManager],
-    config: Config,
+    config: GraspConfig,
 ) -> list[str] | None:
     ground_truths = []
     for kg, sample in samples:

@@ -2,9 +2,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from grasp.functions import execute_sparql, find_manager, update_known_from_selections
+from grasp.functions import (
+    ExecutionResult,
+    execute_sparql,
+    find_manager,
+    update_known_from_selections,
+)
 from grasp.manager import KgManager
 from grasp.sparql.item import get_sparql_items, selections_from_items
+from grasp.sparql.types import Selection
 
 
 class Sample(BaseModel):
@@ -24,45 +30,38 @@ def prepare_sparql_result(
     max_rows: int,
     max_columns: int,
     known: set[str] | None = None,
-) -> tuple[str, str, str]:
+) -> tuple[ExecutionResult, list[Selection]]:
     manager, _ = find_manager(managers, kg)
 
-    try:
-        result, sparql = execute_sparql(
-            managers,
-            kg,
-            sparql,
-            max_rows,
-            max_columns,
-            known,
-            return_sparql=True,
-        )
-        sparql = manager.prettify(sparql)
-    except Exception as e:
-        result = f"Failed to execute SPARQL query:\n{e}"
+    result = execute_sparql(
+        managers,
+        kg,
+        sparql,
+        max_rows,
+        max_columns,
+        known,
+    )
 
     try:
         _, items = get_sparql_items(sparql, manager)
         selections = selections_from_items(items)
         if known is not None:
             update_known_from_selections(known, selections, manager)
-        selections = manager.format_selections(selections)
-    except Exception as e:
-        selections = f"Failed to determine used entities and properties:\n{e}"
+    except Exception:
+        selections = []
 
-    return sparql, selections, result
+    return result, selections
 
 
 def format_sparql_result(
-    sparql: str,
-    selections: str,
-    result: str,
-    kg: str,
+    manager: KgManager,
+    result: ExecutionResult,
+    selections: list[Selection],
 ) -> str:
-    fmt = f"SPARQL query over {kg}:\n{sparql.strip()}"
+    fmt = f"SPARQL query over {manager.kg}:\n{result.sparql}"
 
     if selections:
-        fmt += f"\n\n{selections}"
+        fmt += f"\n\n{manager.format_selections(selections)}"
 
-    fmt += f"\n\nExecution result:\n{result.strip()}"
+    fmt += f"\n\nExecution result:\n{result.formatted}"
     return fmt

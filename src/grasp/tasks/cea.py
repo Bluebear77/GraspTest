@@ -4,7 +4,7 @@ from typing import Any, Iterator
 from pydantic import BaseModel
 from universal_ml_utils.table import generate_table
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.sparql.types import Alternative
@@ -394,7 +394,7 @@ def input_and_state(input: Any) -> tuple[str, AnnotationState]:
 
 
 def call_function(
-    config: Config,
+    config: GraspConfig,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,

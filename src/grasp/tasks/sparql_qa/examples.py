@@ -2,7 +2,7 @@ import random
 from typing import Any
 from uuid import uuid4
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.manager import KgManager
 from grasp.model import Message, Response, ToolCall
 from grasp.tasks.examples import ExampleIndex
@@ -30,7 +30,7 @@ class SparqlQaExampleIndex(ExampleIndex):
 MIN_EXAMPLE_SCORE = 0.5
 
 
-def functions(config: Config) -> list[dict]:
+def functions(config: GraspConfig) -> list[dict]:
     example_indices = [
         kg.kg for kg in config.knowledge_graphs if kg.example_index is not None
     ]

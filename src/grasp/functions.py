@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import math
 from itertools import chain
 from typing import Any, Callable, Iterable
@@ -5,13 +6,14 @@ from typing import Any, Callable, Iterable
 import validators
 from universal_ml_utils.ops import partition_by
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.manager import KgManager
 from grasp.manager.mapping import Mapping
 from grasp.manager.utils import get_common_sparql_prefixes
 from grasp.sparql.item import parse_into_binding
 from grasp.sparql.types import (
     Alternative,
+    AskResult,
     Binding,
     ObjType,
     Position,
@@ -33,7 +35,7 @@ MIN_SCORE = 0.5
 # it return a string observation and the updated additional state object
 TaskHandler = Callable[
     [
-        Config,
+        GraspConfig,
         list[KgManager],
         str,
         dict,
@@ -394,7 +396,7 @@ def find_manager(
 
 
 def call_function(
-    config: Config,
+    config: GraspConfig,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,
@@ -412,7 +414,7 @@ def call_function(
             config.result_max_columns,
             known,
             config.know_before_use,
-        )  # type: ignore
+        ).formatted  # type: ignore
 
     elif fn_name == "list":
         return list_triples(
@@ -692,6 +694,13 @@ def update_known_from_selections(
     )
 
 
+@dataclass
+class ExecutionResult:
+    sparql: str
+    formatted: str
+    result: SelectResult | AskResult | None = None
+
+
 def execute_sparql(
     managers: list[KgManager],
     kg: str,
@@ -700,14 +709,15 @@ def execute_sparql(
     max_columns: int,
     known: set[str] | None = None,
     know_before_use: bool = False,
-    return_sparql: bool = False,
-) -> str | tuple[str, str]:
+) -> ExecutionResult:
     manager, others = find_manager(managers, kg)
 
     # fix prefixes with managers
     sparql = manager.fix_prefixes(sparql)
     for other in others:
         sparql = other.fix_prefixes(sparql)
+
+    sparql = manager.prettify(sparql)
 
     if know_before_use and known is not None:
         check_known(manager, sparql, known)
@@ -716,9 +726,7 @@ def execute_sparql(
         result = manager.execute_sparql(sparql)
     except Exception as e:
         error = f"SPARQL execution failed:\n{e}"
-        if return_sparql:
-            return error, sparql
-        return error
+        return ExecutionResult(sparql, error)
 
     half_rows = math.ceil(max_rows / 2)
     half_columns = math.ceil(max_columns / 2)
@@ -740,17 +748,14 @@ def execute_sparql(
         # property mapping
         update_known_from_rows(known, rows, manager.property_mapping)
 
-    result = manager.format_sparql_result(
+    formatted = manager.format_sparql_result(
         result,
         half_rows,
         half_rows,
         half_columns,
         half_columns,
     )
-    if return_sparql:
-        return result, sparql
-
-    return result
+    return ExecutionResult(sparql, formatted, result)
 
 
 def is_iri_or_literal(iri: str, manager: KgManager) -> bool:

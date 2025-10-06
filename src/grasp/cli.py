@@ -23,13 +23,14 @@ from universal_ml_utils.ops import extract_field, partition_by
 from grasp.build import build_indices, get_data
 from grasp.build.data import merge_kgs
 from grasp.configs import (
-    Config,
+    GraspConfig,
+    ModelConfig,
     NotesFromExplorationConfig,
     NotesFromOutputsConfig,
     NotesFromSamplesConfig,
 )
 from grasp.core import generate, load_notes, setup
-from grasp.evaluate import evaluate
+from grasp.evaluate import evaluate_f1, evaluate_with_judge
 from grasp.manager import find_embedding_model
 from grasp.model import Message
 from grasp.notes import (
@@ -266,38 +267,82 @@ def parse_args() -> argparse.Namespace:
         "evaluate",
         help="Evaluate GRASP output against a reference file (only for 'sparql-qa' task)",
     )
-    eval_parser.add_argument(
+
+    eval_subparsers = eval_parser.add_subparsers(
+        title="evaluation commands",
+        description="Available evaluation commands",
+        dest="evaluate_command",
+        required=True,
+    )
+    eval_f1_parser = eval_subparsers.add_parser(
+        "f1",
+        help="Evaluate GRASP output using F1 score based on query results",
+    )
+    eval_f1_parser.add_argument(
+        "knowledge_graph",
+        type=str,
+        choices=available_kgs,
+        help="Knowledge graph the input questions refer to",
+    )
+    eval_f1_parser.add_argument(
         "input_file",
         type=str,
         help="Path to file with question-sparql pairs in JSONL format",
     )
-    eval_parser.add_argument(
+    eval_f1_parser.add_argument(
         "prediction_file",
         type=str,
         help="Path to file with GRASP predictions as produced by the 'file' command",
     )
-    eval_parser.add_argument(
-        "endpoint",
+    eval_f1_parser.add_argument(
+        "--endpoint",
         type=str,
         help="SPARQL endpoint to use for evaluation",
     )
-    eval_parser.add_argument(
+    eval_f1_parser.add_argument(
         "--timeout",
         type=float,
         default=300.0,
         help="Maximum duration for a single query in seconds",
     )
-    eval_parser.add_argument(
+    eval_f1_parser.add_argument(
         "--exact-after",
         type=int,
         default=1024,
         help="Result size after which exact F1 score instead of assignment F1 score "
         "is used (due to performance reasons)",
     )
+
+    eval_judge_parser = eval_subparsers.add_parser(
+        "judge",
+        help="Evaluate GRASP outputs by picking the best using a judge model",
+    )
+    eval_judge_parser.add_argument(
+        "config",
+        type=str,
+        help="Path to the GRASP configuration file (used for the judge)",
+    )
+    eval_judge_parser.add_argument(
+        "input_file",
+        type=str,
+        help="Path to file with inputs in JSONL format",
+    )
+    eval_judge_parser.add_argument(
+        "prediction_files",
+        type=str,
+        nargs="+",
+        help="Paths to files with GRASP predictions as produced by the 'file' command",
+    )
+    eval_judge_parser.add_argument(
+        "evaluation_file",
+        type=str,
+        help="Path to file to write the evaluation results to",
+    )
+
     eval_parser.add_argument(
         "--retry-failed",
         action="store_true",
-        help="Rerun failed evaluations due to timeouts or errors",
+        help="Rerun failed evaluations",
     )
     add_overwrite_arg(eval_parser)
 
@@ -450,7 +495,7 @@ def parse_args() -> argparse.Namespace:
 
 def run_grasp(args: argparse.Namespace) -> None:
     logger = get_logger("GRASP", args.log_level)
-    config = Config(**load_config(args.config))
+    config = GraspConfig(**load_config(args.config))
 
     managers = setup(config)
 
@@ -581,7 +626,7 @@ class Request(BaseModel):
 
 
 def serve_grasp(args: argparse.Namespace) -> None:
-    config = Config(**load_config(args.config))
+    config = GraspConfig(**load_config(args.config))
 
     # create a fast api websocket server to serve the generate_sparql function
     import uvicorn
@@ -820,9 +865,32 @@ def take_grasp_notes(args: argparse.Namespace) -> None:
 
 
 def evaluate_grasp(args: argparse.Namespace) -> None:
-    assert args.task == "sparql-qa", (
-        "Built-in evaluation only supported for 'sparql-qa' task"
-    )
+    eval_cmd = args.evaluate_command
+
+    if eval_cmd == "f1":
+        evaluate_f1(
+            args.knowledge_graph,
+            args.input_file,
+            args.prediction_file,
+            args.endpoint,
+            args.overwrite,
+            args.timeout,
+            args.retry_failed,
+            args.exact_after,
+            args.log_level,
+        )
+
+    elif eval_cmd == "judge":
+        judge_config = ModelConfig(**load_config(args.config))
+        evaluate_with_judge(
+            args.input_file,
+            args.prediction_files,
+            args.evaluation_file,
+            judge_config,
+            args.overwrite,
+            args.retry_failed,
+            args.log_level,
+        )
 
 
 def main():
@@ -863,16 +931,7 @@ def main():
         serve_grasp(args)
 
     elif args.command == "evaluate":
-        evaluate(
-            args.input_file,
-            args.prediction_file,
-            args.endpoint,
-            args.overwrite,
-            args.log_level,
-            args.timeout,
-            args.retry_failed,
-            args.exact_after,
-        )
+        evaluate_grasp(args)
 
     elif args.command == "examples":
         ExampleIndex.build(

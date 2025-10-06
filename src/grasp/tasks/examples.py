@@ -6,7 +6,7 @@ from search_index import IndexData, SimilarityIndex
 from universal_ml_utils.io import dump_jsonl, load_jsonl
 from universal_ml_utils.logging import get_logger
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.tasks.utils import Sample
 
 
@@ -127,7 +127,7 @@ def task_to_index(task: str) -> Type[ExampleIndex]:
 
 def load_example_indices(
     task: str,
-    config: Config,
+    config: GraspConfig,
     **kwargs: Any,
 ) -> dict[str, ExampleIndex]:
     try:

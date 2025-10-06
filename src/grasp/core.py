@@ -9,7 +9,7 @@ from search_index.similarity import EmbeddingModel
 from universal_ml_utils.io import load_json
 from universal_ml_utils.logging import get_logger
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.functions import (
     call_function,
     kg_functions,
@@ -43,7 +43,7 @@ from grasp.utils import (
 
 def system_instructions(
     task: str,
-    config: Config,
+    config: GraspConfig,
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
     notes: list[str],
@@ -90,7 +90,7 @@ Additional rules to follow:
     return instructions
 
 
-def setup(config: Config) -> list[KgManager]:
+def setup(config: GraspConfig) -> list[KgManager]:
     emb_model: EmbeddingModel | None = None
     managers: list[KgManager] = []
     for kg in config.knowledge_graphs:
@@ -108,7 +108,7 @@ def setup(config: Config) -> list[KgManager]:
     return managers
 
 
-def load_notes(config: Config) -> tuple[list[str], dict[str, list[str]]]:
+def load_notes(config: GraspConfig) -> tuple[list[str], dict[str, list[str]]]:
     # load notes
     if config.notes_file is None:
         general_notes = []
@@ -129,7 +129,7 @@ def load_notes(config: Config) -> tuple[list[str], dict[str, list[str]]]:
 def generate(
     task: str,
     input: Any,
-    config: Config,
+    config: GraspConfig,
     managers: list[KgManager],
     kg_notes: dict[str, list[str]] | None = None,
     notes: list[str] | None = None,

@@ -1,7 +1,7 @@
 from enum import StrEnum
 from typing import Any, Type
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.functions import TaskFunctions
 from grasp.manager import KgManager
 from grasp.model import Message
@@ -64,7 +64,7 @@ def task_rules(task: str) -> list[str]:
     raise ValueError(f"Unknown task {task}")
 
 
-def task_system_information(task: str, config: Config) -> str:
+def task_system_information(task: str, config: GraspConfig) -> str:
     if task == "sparql-qa":
         return sparql_qa_system_information()
     elif task == "general-qa":
@@ -80,7 +80,7 @@ def task_system_information(task: str, config: Config) -> str:
 def task_functions(
     managers: list[KgManager],
     task: str,
-    config: Config,
+    config: GraspConfig,
 ) -> TaskFunctions | None:
     if task == "sparql-qa":
         return sparql_qa_functions(managers, config)
@@ -148,7 +148,7 @@ def task_output(
     task: str,
     messages: list[Message],
     managers: list[KgManager],
-    config: Config,
+    config: GraspConfig,
     task_state: Any = None,
 ) -> dict | None:
     if task == "sparql-qa":

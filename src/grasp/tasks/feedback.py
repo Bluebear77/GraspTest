@@ -4,7 +4,7 @@ from typing import Any
 import litellm
 from universal_ml_utils.logging import get_logger
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.manager import KgManager
 from grasp.model import Message, call_model
 from grasp.tasks.cea import (
@@ -91,7 +91,7 @@ def feedback_instructions(task: str, inputs: list[str], output: Any) -> str:
 def generate_feedback(
     task: str,
     managers: list[KgManager],
-    config: Config,
+    config: GraspConfig,
     kg_notes: dict[str, list[str]],
     notes: list[str],
     inputs: list[str],

@@ -18,7 +18,7 @@ from openai.types.responses.response_output_message import ResponseOutputMessage
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 from pydantic import BaseModel
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig, ModelConfig
 
 
 class ToolCall(BaseModel):
@@ -322,7 +322,7 @@ def responses_api_messages(messages: list[Message]) -> list[dict[str, Any]]:
 def call_model(
     messages: list[Message],
     functions: list[dict],
-    config: Config,
+    config: ModelConfig,
     num_retries: int = 2,
 ) -> Response:
     if config.api is None:

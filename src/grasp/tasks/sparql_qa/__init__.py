@@ -4,15 +4,17 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ValidationError
 
-from grasp.configs import Config
+from grasp.configs import GraspConfig
 from grasp.functions import TaskFunctions, find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.model import Message, ToolCall
 from grasp.tasks.sparql_qa.examples import (
     SparqlQaExampleIndex,
-    functions as example_functions,
     find_random_examples,
     find_similar_examples,
+)
+from grasp.tasks.sparql_qa.examples import (
+    functions as example_functions,
 )
 from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
 from grasp.utils import FunctionCallException, format_list, format_notes
@@ -55,7 +57,7 @@ should be an ASK query.',
     ]
 
 
-def functions(managers: list[KgManager], config: Config) -> TaskFunctions:
+def functions(managers: list[KgManager], config: GraspConfig) -> TaskFunctions:
     kgs = [manager.kg for manager in managers]
     fns = [
         {
@@ -134,7 +136,7 @@ the SPARQL query needs to be executed",
 
 
 def call_function(
-    config: Config,
+    config: GraspConfig,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,
@@ -400,7 +402,7 @@ def output(
         if output["kg"] is None:
             output["kg"] = managers[0].kg
 
-        sparql, selections, result = prepare_sparql_result(
+        result, selections = prepare_sparql_result(
             output["sparql"],
             output["kg"],
             managers,
@@ -409,15 +411,13 @@ def output(
         )
         manager, _ = find_manager(managers, output["kg"])
 
-        output["sparql"] = sparql
-        output["selections"] = selections
-        output["result"] = result
+        output["sparql"] = result.sparql
+        output["selections"] = manager.format_selections(selections)
+        output["result"] = result.formatted
         output["endpoint"] = manager.endpoint
 
         output["formatted"] += "\n\n"
-        output["formatted"] += format_sparql_result(
-            sparql, selections, result, output["kg"]
-        )
+        output["formatted"] += format_sparql_result(manager, result, selections)
 
     return output
 

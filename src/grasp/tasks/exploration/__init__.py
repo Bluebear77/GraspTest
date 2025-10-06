@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from grasp.configs import Config, NotesConfig, NotesFromExplorationConfig
+from grasp.configs import GraspConfig, NotesConfig, NotesFromExplorationConfig
 from grasp.functions import TaskFunctions
 from grasp.manager import KgManager
 from grasp.tasks.exploration.functions import call_function as call_note_function
@@ -23,7 +23,7 @@ notes that can be useful across knowledge graphs to the general section.",
     ]
 
 
-def system_information(config: Config) -> str:
+def system_information(config: GraspConfig) -> str:
     assert isinstance(config, NotesFromExplorationConfig)
     return f"""\
 You are a note-taking assistant. Your task is to \
@@ -95,7 +95,7 @@ General notes across knowledge graphs:
 
 
 def call_function(
-    config: Config,
+    config: GraspConfig,
     managers: list[KgManager],
     fn_name: str,
     fn_args: dict,

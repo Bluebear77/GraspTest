@@ -1,12 +1,11 @@
 import unittest
 from collections import Counter
-from typing import Any, Iterable
+from typing import Iterable
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 from grasp.sparql.types import AskResult, SelectResult
-from grasp.sparql.utils import execute
 
 
 def exact_f1_score(pred: Iterable[tuple], target: Iterable[tuple]) -> float:
@@ -79,28 +78,6 @@ def f1_score(
         return exact_f1_score(pred.bindings(), target.bindings())
     else:
         return assignment_f1_score(pred.bindings(), target.bindings())
-
-
-def get_result_size(result: SelectResult | AskResult | None) -> int:
-    if result is None:
-        return 0
-    elif isinstance(result, AskResult):
-        return 1
-    else:
-        return len(result)
-
-
-def get_result_or_error(
-    sparql: str,
-    endpoint: str,
-    **kwargs: Any,
-) -> tuple[SelectResult | AskResult | None, str | None]:
-    try:
-        result = execute(sparql, endpoint, **kwargs)
-    except Exception as e:
-        return None, str(e)
-
-    return result, None
 
 
 class TestF1Score(unittest.TestCase):
@@ -188,49 +165,22 @@ class TestF1Score(unittest.TestCase):
         self.assertEqual(assignment_f1_score(pred, target), 1.0)
 
     def test_f1_score_ask_results(self):
-        from grasp.sparql.constants import AskResult
+        from grasp.sparql.types import AskResult
 
         self.assertEqual(f1_score(AskResult(True), AskResult(True)), 1.0)
         self.assertEqual(f1_score(AskResult(False), AskResult(False)), 1.0)
         self.assertEqual(f1_score(AskResult(True), AskResult(False)), 0.0)
 
     def test_f1_score_empty_results(self):
-        from grasp.sparql.constants import SelectResult
+        from grasp.sparql.types import SelectResult
 
         empty1 = SelectResult([], [])
         empty2 = SelectResult([], [])
-        non_empty = SelectResult(["var"], [["value"]])
+        non_empty = SelectResult(["var"], [{"var": "value"}])
 
         self.assertEqual(f1_score(empty1, empty2), 1.0)
         self.assertEqual(f1_score(empty1, non_empty), 0.0)
         self.assertEqual(f1_score(non_empty, empty1), 0.0)
-
-    def test_f1_score_exact_parameter(self):
-        from grasp.sparql.constants import SelectResult
-
-        # Create results with more than the default threshold rows
-        many_rows1 = SelectResult(["var"], [["val" + str(i)] for i in range(2000)])
-        many_rows2 = SelectResult(
-            ["var"], [["val" + str(i)] for i in range(1000, 3000)]
-        )
-
-        # With exact=True (0), use assignment_f1_score
-        self.assertEqual(
-            f1_score(many_rows1, many_rows2, exact=True),
-            exact_f1_score(many_rows1.rows(), many_rows2.rows()),
-        )
-
-        # With exact=False (max len), use exact_f1_score
-        self.assertEqual(
-            f1_score(many_rows1, many_rows2, exact=False),
-            exact_f1_score(many_rows1.rows(), many_rows2.rows()),
-        )
-
-        # With exact=500 (less than both lengths), use exact_f1_score
-        self.assertEqual(
-            f1_score(many_rows1, many_rows2, exact=500),
-            exact_f1_score(many_rows1.rows(), many_rows2.rows()),
-        )
 
 
 class PerformanceTests(unittest.TestCase):
