@@ -157,6 +157,62 @@ def load_ranking_data():
     return rankings
 
 
+def load_model_outputs(output_file):
+    """Load model outputs from a JSONL file and convert to dictionary by ID."""
+    outputs_list = load_jsonl(output_file)
+    outputs_dict = {}
+
+    # Convert list to dictionary by ID
+    for output in outputs_list:
+        if output is None:
+            continue
+
+        assert output["id"] not in outputs_dict, (
+            f"Duplicate id {output['id']} in {output_file}"
+        )
+        outputs_dict[output["id"]] = output
+
+    return outputs_dict
+
+
+def calculate_ranking_metrics(outputs_dict):
+    """
+    Calculate average metrics for ranking view from model outputs.
+
+    Returns:
+        tuple: (avg_steps, avg_time) or (None, None) if no data
+    """
+    if not outputs_dict:
+        return None, None
+
+    total_steps = 0
+    total_time = 0
+    count = 0
+
+    for output in outputs_dict.values():
+        if "messages" not in output:
+            continue
+
+        # Count steps (messages that are not user or system)
+        steps = sum(1 for msg in output["messages"]
+                  if msg.get("role") not in ["user", "system"])
+        total_steps += steps
+
+        # Get elapsed time
+        if "elapsed" in output:
+            total_time += output["elapsed"]
+
+        count += 1
+
+    if count == 0:
+        return None, None
+
+    return (
+        total_steps / count,
+        total_time / count
+    )
+
+
 def calculate_metrics(
     ground_truth,
     model_outputs,
@@ -238,20 +294,7 @@ def load_and_process_data(
 
         # Load model output file
         try:
-            outputs_list = load_jsonl(output_file)
-            outputs_dict = {}
-
-            # Convert list to dictionary by ID
-            for output in outputs_list:
-                if output is None:
-                    continue
-
-                assert output["id"] not in outputs_dict, (
-                    f"Duplicate id {output['id']} in {output_file}"
-                )
-                outputs_dict[output["id"]] = output
-
-            model_outputs[model_name] = outputs_dict
+            model_outputs[model_name] = load_model_outputs(output_file)
         except Exception as e:
             # Log error but don't display in UI
             print(f"Error loading model output file {output_file}: {e}")
@@ -1037,21 +1080,38 @@ def show_ranking_view(ranking_data):
                         )
                         
                         st.markdown(f"### {display_name}")
-                        
+
                         if "summary" in rank_data:
                             summary = rank_data["summary"]
-                            
+
+                            # Load model outputs to calculate additional metrics
+                            rank_dir = Path(rank_file).parent
+                            model_outputs_cache = {}
+
+                            for key in summary.keys():
+                                if key != "tie":
+                                    # Key is a path relative to the data root, resolve it relative to rank_dir
+                                    output_file = rank_dir.parent / "outputs" / Path(key).name
+                                    try:
+                                        model_outputs_cache[key] = load_model_outputs(str(output_file))
+                                        print(f"Loaded {len(model_outputs_cache[key])} outputs from {output_file}")
+                                    except Exception as e:
+                                        print(f"Failed to load {output_file}: {e}")
+                                        model_outputs_cache[key] = {}
+
                             # Prepare data for table - models first, then tie
                             table_data = []
                             tie_data = None
                             max_wins = 0
-                            
+
                             for key, value in summary.items():
                                 if key == "tie":
                                     tie_data = {
-                                        "Model": "Tie",
-                                        "Wins": value['count'],
-                                        "Win Rate": f"{value['ratio']:.1%}",
+                                        ("", "Model"): "Tie",
+                                        ("", "Wins"): value['count'],
+                                        ("", "Win Rate"): f"{value['ratio']:.1%}",
+                                        ("Average", "STP"): "—",
+                                        ("Average", "DUR"): "—",
                                         "is_tie": True
                                     }
                                 else:
@@ -1065,32 +1125,45 @@ def show_ranking_view(ranking_data):
                                     )
                                     wins = value['count']
                                     max_wins = max(max_wins, wins)
-                                    
+
+                                    # Calculate average metrics
+                                    avg_steps, avg_time = calculate_ranking_metrics(
+                                        model_outputs_cache.get(key, {})
+                                    )
+
                                     table_data.append({
-                                        "Model": display_name,
-                                        "Wins": wins,
-                                        "Win Rate": f"{value['ratio']:.1%}",
+                                        ("", "Model"): display_name,
+                                        ("", "Wins"): wins,
+                                        ("", "Win Rate"): f"{value['ratio']:.1%}",
+                                        ("Average", "STP"): f"{avg_steps:.1f}" if avg_steps is not None else "—",
+                                        ("Average", "DUR"): f"{avg_time:.2f}" if avg_time is not None else "—",
                                         "is_tie": False
                                     })
-                            
+
                             # Add tie data at the end if it exists
                             if tie_data:
                                 table_data.append(tie_data)
-                            
-                            # Create DataFrame
+
+                            # Create DataFrame with MultiIndex columns
                             df = pd.DataFrame(table_data)
-                            
+
+                            # Create proper MultiIndex for columns
+                            df.columns = pd.MultiIndex.from_tuples([
+                                col if isinstance(col, tuple) else ("", col)
+                                for col in df.columns
+                            ])
+
                             # Style the table
                             def style_rows(row):
                                 # Check if this is a tie row by looking at the Model column
-                                if row['Model'] == 'Tie':
+                                if row[("", "Model")] == 'Tie':
                                     return ['background-color: #444444; color: #cccccc; border-top: 3px solid #999999'] * len(row)
-                                elif row['Wins'] == max_wins:
+                                elif row[("", "Wins")] == max_wins:
                                     return ['background-color: #005500; color: white; font-weight: bold'] * len(row)
                                 return [''] * len(row)
-                            
+
                             # Drop the helper column and apply styling
-                            display_df = df.drop('is_tie', axis=1)
+                            display_df = df.drop(("", "is_tie"), axis=1)
                             styled_df = display_df.style.apply(style_rows, axis=1)
                             st.dataframe(styled_df, use_container_width=True, hide_index=True)
                             
