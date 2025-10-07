@@ -198,6 +198,7 @@ def judge_candidates(
                         "enum": list(candidate_chars) + [None],
                     },
                 },
+                "additionalProperties": False,
                 "required": ["explanation", "verdict"],
             },
             "strict": True,
@@ -355,17 +356,25 @@ def evaluate_with_judge(
         evaluations["evaluations"][id] = evaluation
         dump_json(evaluations, evaluation_file)
 
-    dump_json(evaluations, evaluation_file)
-
     # create histogram over verdicts
     verdict_dist = Counter(
         evaluation["verdict"]
         for evaluation in evaluations["evaluations"].values()
         if evaluation["err"] is None
     )
+
+    summary = {}
+
     for idx, count in verdict_dist.most_common():
+        pred_file = prediction_files[idx] if idx is not None else "tie"
+
         rel_count = count / max(1, verdict_dist.total())
-        if idx is None:
-            logger.info(f"Tie: {rel_count:.2%} ({count})")
-        else:
-            logger.info(f"{prediction_files[idx]}: {rel_count:.2%} ({count})")
+        logger.info(f"{pred_file}: {rel_count:.2%} ({count})")
+
+        summary[pred_file] = {
+            "count": count,
+            "ratio": rel_count,
+        }
+
+    evaluations["summary"] = summary
+    dump_json(evaluations, evaluation_file)
