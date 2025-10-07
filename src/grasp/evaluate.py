@@ -169,7 +169,7 @@ def judge_candidates(
     candidates: list[str],
     config: ModelConfig,
     logger: Logger,
-) -> int | None:
+) -> tuple[str, int | None]:
     if len(candidates) > len(string.ascii_uppercase):
         raise ValueError(
             f"Too many candidates ({len(candidates)}), max is {len(string.ascii_uppercase)}"
@@ -247,9 +247,9 @@ Question:
     verdict = tool_call.args["verdict"]
     logger.debug(f"Verdict: {verdict}\n{explanation}")
     if verdict is None:
-        return None
+        return explanation, None
 
-    return candidate_chars.index(verdict)
+    return explanation, candidate_chars.index(verdict)
 
 
 def evaluate_with_judge(
@@ -338,16 +338,18 @@ def evaluate_with_judge(
         candidates = [candidates[i] for i in indices]
 
         evaluation: dict = {
+            "explanation": None,
             "verdict": None,
             "err": None,
         }
         try:
-            verdict = judge_candidates(
+            explanation, verdict = judge_candidates(
                 sample.question,
                 candidates,
                 judge_config,
                 logger,
             )
+            evaluation["explanation"] = explanation
             evaluation["verdict"] = indices[verdict] if verdict is not None else None
         except Exception as e:
             logger.warning(f"Error during judgment of sample {id}: {e}")

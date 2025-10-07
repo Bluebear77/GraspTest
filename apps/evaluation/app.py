@@ -121,6 +121,42 @@ def load_available_data():
     return benchmarks
 
 
+def load_ranking_data():
+    """Find all available ranking evaluation files."""
+    data_root = Path(sys.argv[1])
+    rankings = {}
+
+    # Find all directories that might contain ranking data
+    for kg_dir in data_root.glob("*"):
+        if not kg_dir.is_dir():
+            continue
+
+        kg = kg_dir.name
+
+        for benchmark_dir in kg_dir.glob("*"):
+            if not benchmark_dir.is_dir():
+                continue
+
+            benchmark = benchmark_dir.name
+            rank_dir = benchmark_dir / "rank"
+
+            if rank_dir.exists() and rank_dir.is_dir():
+                # Find all ranking evaluation JSON files
+                rank_files = []
+                for rank_file in rank_dir.glob("*.json"):
+                    rank_files.append(rank_file)
+
+                if rank_files:
+                    if kg not in rankings:
+                        rankings[kg] = {}
+                    
+                    rankings[kg][benchmark] = {
+                        "rank_files": [str(f) for f in rank_files]
+                    }
+
+    return rankings
+
+
 def calculate_metrics(
     ground_truth,
     model_outputs,
@@ -931,6 +967,146 @@ def show_predictions_view(available_data):
                 st.markdown("---")
 
 
+def show_ranking_view(ranking_data):
+    """Show a view for ranking evaluations in a tiled dashboard format."""
+    st.title("Ranking View")
+
+    if not ranking_data:
+        st.warning("No ranking evaluation files found. Please make sure ranking files are in the 'rank' subdirectories.")
+        return
+
+    # Sidebar for KG and benchmark selection
+    st.sidebar.title("Ranking Settings")
+
+    kg_options = list(ranking_data.keys())
+    # Set Wikidata as default if available
+    default_index = kg_options.index("wikidata") if "wikidata" in kg_options else 0
+    selected_kg = st.sidebar.selectbox(
+        "Select Knowledge Graph", kg_options, index=default_index
+    )
+
+    benchmark_options = list(ranking_data[selected_kg].keys())
+    # Set default benchmark based on selected knowledge graph
+    default_benchmark = (
+        "qald10"
+        if selected_kg == "wikidata"
+        else "wqsp"
+        if selected_kg == "freebase"
+        else benchmark_options[0]
+    )
+    # Make sure the default benchmark exists in the options
+    default_index = (
+        benchmark_options.index(default_benchmark)
+        if default_benchmark in benchmark_options
+        else 0
+    )
+    selected_benchmark = st.sidebar.selectbox(
+        "Select Benchmark", benchmark_options, index=default_index
+    )
+
+    # Get ranking files for selected KG and benchmark
+    rank_files = ranking_data[selected_kg][selected_benchmark]["rank_files"]
+    
+    if not rank_files:
+        st.warning(f"No ranking files found for {selected_kg}/{selected_benchmark}.")
+        return
+
+    # Display tiles in columns (2-3 per row)
+    cols_per_row = min(3, len(rank_files))
+    if len(rank_files) == 1:
+        cols_per_row = 2  # Show single tile in first column of two
+    
+    rows = [rank_files[i:i + cols_per_row] for i in range(0, len(rank_files), cols_per_row)]
+    
+    for row_files in rows:
+        cols = st.columns(cols_per_row)
+        
+        for i, rank_file in enumerate(row_files):
+            with cols[i]:
+                with st.container():
+                    try:
+                        rank_data = load_json(rank_file)
+                        file_name = Path(rank_file).stem
+                        
+                        # Parse the file name like model names
+                        model_name, additional_info = parse_model_name(file_name)
+                        display_name = (
+                            f"{model_name} ({additional_info})"
+                            if additional_info
+                            else model_name
+                        )
+                        
+                        st.markdown(f"### {display_name}")
+                        
+                        if "summary" in rank_data:
+                            summary = rank_data["summary"]
+                            
+                            # Prepare data for table - models first, then tie
+                            table_data = []
+                            tie_data = None
+                            max_wins = 0
+                            
+                            for key, value in summary.items():
+                                if key == "tie":
+                                    tie_data = {
+                                        "Model": "Tie",
+                                        "Wins": value['count'],
+                                        "Win Rate": f"{value['ratio']:.1%}",
+                                        "is_tie": True
+                                    }
+                                else:
+                                    # Parse model name from the prediction file path
+                                    file_path = Path(key)
+                                    model_name, additional_info = parse_model_name(file_path.stem)
+                                    display_name = (
+                                        f"{model_name} ({additional_info})"
+                                        if additional_info
+                                        else model_name
+                                    )
+                                    wins = value['count']
+                                    max_wins = max(max_wins, wins)
+                                    
+                                    table_data.append({
+                                        "Model": display_name,
+                                        "Wins": wins,
+                                        "Win Rate": f"{value['ratio']:.1%}",
+                                        "is_tie": False
+                                    })
+                            
+                            # Add tie data at the end if it exists
+                            if tie_data:
+                                table_data.append(tie_data)
+                            
+                            # Create DataFrame
+                            df = pd.DataFrame(table_data)
+                            
+                            # Style the table
+                            def style_rows(row):
+                                # Check if this is a tie row by looking at the Model column
+                                if row['Model'] == 'Tie':
+                                    return ['background-color: #444444; color: #cccccc; border-top: 3px solid #999999'] * len(row)
+                                elif row['Wins'] == max_wins:
+                                    return ['background-color: #005500; color: white; font-weight: bold'] * len(row)
+                                return [''] * len(row)
+                            
+                            # Drop the helper column and apply styling
+                            display_df = df.drop('is_tie', axis=1)
+                            styled_df = display_df.style.apply(style_rows, axis=1)
+                            st.dataframe(styled_df, use_container_width=True, hide_index=True)
+                            
+                            # Show total evaluations count
+                            if "evaluations" in rank_data:
+                                total_evals = len(rank_data["evaluations"])
+                                valid_evals = sum(1 for eval_data in rank_data["evaluations"].values() 
+                                                if eval_data.get("err") is None)
+                                st.caption(f"{valid_evals}/{total_evals} valid evaluations")
+                        else:
+                            st.write("No summary available")
+                            
+                    except Exception as e:
+                        st.error(f"Error loading {Path(rank_file).name}: {str(e)}")
+
+
 def show_comprehensive_view(available_data):
     """Show a comprehensive view with a large table of metrics across KGs and benchmarks."""
     st.title("Comprehensive Model Comparison")
@@ -1488,7 +1664,7 @@ def main():
         st.session_state.stored_model_regex = ""
 
     # Create a view selector
-    view_options = ["Benchmark View", "Comprehensive View", "Outputs View"]
+    view_options = ["Benchmark View", "Comprehensive View", "Outputs View", "Ranking View"]
     # Benchmark View is the default (index=0)
     selected_view = st.sidebar.radio("Select View", view_options, index=0)
 
@@ -1498,6 +1674,10 @@ def main():
         show_comprehensive_view(available_data)
     elif selected_view == "Outputs View":
         show_predictions_view(available_data)
+    elif selected_view == "Ranking View":
+        # Load ranking data and show ranking view
+        ranking_data = load_ranking_data()
+        show_ranking_view(ranking_data)
     else:  # Benchmark View
         # Sidebar for benchmark and model selection
         st.sidebar.title("Benchmark Settings")
