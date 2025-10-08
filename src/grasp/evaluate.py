@@ -297,7 +297,8 @@ def evaluate_with_judge(
 
     logger.info(
         f"Evaluating {len(prediction_files)} prediction files "
-        f"on {len(inputs):,} inputs from {input_file}"
+        f"on {len(inputs):,} inputs from {input_file} with "
+        f"{len(evaluations['evaluations']):,} existing evaluations"
     )
 
     random.seed(judge_config.seed)

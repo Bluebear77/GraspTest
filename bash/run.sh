@@ -6,6 +6,8 @@ kg=${KG:?"Set KG to the name of the knowledge graph"}
 # error if name is not set
 name=${NAME:?"Set NAME to the name of the model"}
 
+config=${CONFIG:-"configs/run.yaml"}
+
 # check if BENCHMARKS is not set
 if [ -z "$BENCHMARKS" ]; then
   echo "BENCHMARKS not set"
@@ -32,8 +34,8 @@ for benchmark in "${benchmarks[@]}"; do
 
   mkdir -p "$dir/outputs"
 
-  grasp --log-level $log_level file \
-    configs/run.yaml \
+  grasp --log-level "$log_level" file \
+    "$config" \
     --input-file "$file" \
     --output-file "$dir/outputs/$name.jsonl" \
     $args \

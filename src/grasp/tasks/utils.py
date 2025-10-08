@@ -32,15 +32,22 @@ def prepare_sparql_result(
     known: set[str] | None = None,
 ) -> tuple[ExecutionResult, list[Selection]]:
     manager, _ = find_manager(managers, kg)
+    selections = []
 
-    result = execute_sparql(
-        managers,
-        kg,
-        sparql,
-        max_rows,
-        max_columns,
-        known,
-    )
+    try:
+        result = execute_sparql(
+            managers,
+            kg,
+            sparql,
+            max_rows,
+            max_columns,
+            known,
+        )
+    except Exception as e:
+        return ExecutionResult(
+            sparql=sparql,
+            formatted=f"Error executing SPARQL query over {kg}:\n{str(e)}",
+        ), selections
 
     try:
         _, items = get_sparql_items(sparql, manager)
@@ -48,7 +55,7 @@ def prepare_sparql_result(
         if known is not None:
             update_known_from_selections(known, selections, manager)
     except Exception:
-        selections = []
+        pass
 
     return result, selections
 

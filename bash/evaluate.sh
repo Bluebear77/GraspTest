@@ -22,7 +22,8 @@ for file in $glob; do
   dir=$(dirname $(dirname $file))
   echo "$(basename $dir): $(basename $file)"
 
-  grasp evaluate "$dir/test.jsonl" "$file" "$endpoint" $args
+  grasp evaluate f1 "$kg" "$dir/test.jsonl" "$file" \
+    --endpoint "$endpoint" $args
 
   echo
 done
