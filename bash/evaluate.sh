@@ -10,8 +10,6 @@ name=${NAME:-"*"}
 
 glob="data/benchmark/$kg/$benchmark/outputs/$name.jsonl"
 
-endpoint=${ENDPOINT:?"ENDPOINT not set"}
-
 args=${ARGS:-""}
 
 for file in $glob; do
@@ -22,8 +20,7 @@ for file in $glob; do
   dir=$(dirname $(dirname $file))
   echo "$(basename $dir): $(basename $file)"
 
-  grasp evaluate f1 "$kg" "$dir/test.jsonl" "$file" \
-    --endpoint "$endpoint" $args
+  grasp evaluate f1 "$kg" "$dir/test.jsonl" "$file" $args
 
   echo
 done
