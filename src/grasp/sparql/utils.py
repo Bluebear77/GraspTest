@@ -831,11 +831,10 @@ def execute(
                 response = requests.post(
                     endpoint,
                     headers={
-                        "Content-type": "application/sparql-query",
                         "Accept": "application/sparql-results+json",
                         "User-Agent": "grasp-bot",
                     },
-                    data=sparql,
+                    data={"query": sparql},
                     timeout=request_timeout,
                 )
             response.raise_for_status()
