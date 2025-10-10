@@ -294,6 +294,29 @@ def evaluate_with_judge(
     if os.path.exists(evaluation_file) and not overwrite:
         evaluations = load_json(evaluation_file)
 
+    def dump_evaluations():
+        # create summary (histogram of verdicts)
+        verdict_dist = Counter(
+            evaluation["verdict"]
+            for evaluation in evaluations["evaluations"].values()
+            if evaluation["err"] is None
+        )
+
+        summary = {}
+
+        for idx, count in verdict_dist.most_common():
+            pred_file = prediction_files[idx] if idx is not None else "tie"
+
+            rel_count = count / max(1, verdict_dist.total())
+
+            summary[pred_file] = {
+                "count": count,
+                "ratio": rel_count,
+            }
+
+        evaluations["summary"] = summary
+        dump_json(evaluations, evaluation_file)
+
     inputs = load_inputs(input_file)
 
     logger.info(
@@ -358,27 +381,10 @@ def evaluate_with_judge(
             evaluation["err"] = str(e)
 
         evaluations["evaluations"][id] = evaluation
-        dump_json(evaluations, evaluation_file)
+        dump_evaluations()
 
-    # create histogram over verdicts
-    verdict_dist = Counter(
-        evaluation["verdict"]
-        for evaluation in evaluations["evaluations"].values()
-        if evaluation["err"] is None
-    )
-
-    summary = {}
-
-    for idx, count in verdict_dist.most_common():
-        pred_file = prediction_files[idx] if idx is not None else "tie"
-
-        rel_count = count / max(1, verdict_dist.total())
-        logger.info(f"{pred_file}: {rel_count:.2%} ({count})")
-
-        summary[pred_file] = {
-            "count": count,
-            "ratio": rel_count,
-        }
-
-    evaluations["summary"] = summary
-    dump_json(evaluations, evaluation_file)
+    dump_evaluations()
+    for pred_file, summary in evaluations["summary"].items():
+        ratio = summary["ratio"]
+        count = summary["count"]
+        logger.info(f"{pred_file}: {ratio:.2%} ({count})")
