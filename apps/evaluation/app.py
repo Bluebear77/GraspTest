@@ -122,7 +122,7 @@ def load_available_data():
 
 
 def load_ranking_data():
-    """Find all available ranking evaluation files."""
+    """Find all available ranking evaluation files, organized by ranking filename."""
     data_root = Path(sys.argv[1])
     rankings = {}
 
@@ -142,17 +142,18 @@ def load_ranking_data():
 
             if rank_dir.exists() and rank_dir.is_dir():
                 # Find all ranking evaluation JSON files
-                rank_files = []
                 for rank_file in rank_dir.glob("*.json"):
-                    rank_files.append(rank_file)
+                    # Group by filename (without extension)
+                    filename = rank_file.stem
 
-                if rank_files:
-                    if kg not in rankings:
-                        rankings[kg] = {}
-                    
-                    rankings[kg][benchmark] = {
-                        "rank_files": [str(f) for f in rank_files]
-                    }
+                    if filename not in rankings:
+                        rankings[filename] = []
+
+                    rankings[filename].append({
+                        "kg": kg,
+                        "benchmark": benchmark,
+                        "filepath": str(rank_file)
+                    })
 
     return rankings
 
@@ -175,9 +176,9 @@ def load_model_outputs(output_file):
     return outputs_dict
 
 
-def calculate_ranking_metrics(outputs_dict):
+def calculate_average_steps_and_time(outputs_dict):
     """
-    Calculate average metrics for ranking view from model outputs.
+    Calculate average steps and time from model outputs.
 
     Returns:
         tuple: (avg_steps, avg_time) or (None, None) if no data
@@ -262,6 +263,9 @@ def calculate_metrics(
     accuracy = total_accuracy / max(num_valid_evaluations, 1)
     avg_time = total_time / max(time_count, 1)
 
+    # Calculate average steps using the average steps and time function
+    avg_steps, _ = calculate_average_steps_and_time(model_outputs)
+
     return {
         "num_total": total,
         "num_outputs": num_outputs,
@@ -271,6 +275,7 @@ def calculate_metrics(
         "accuracy": accuracy,
         "f1": f1_score,
         "time": avg_time,
+        "steps": avg_steps if avg_steps is not None else 0,
     }
 
 
@@ -1011,173 +1016,271 @@ def show_predictions_view(available_data):
 
 
 def show_ranking_view(ranking_data):
-    """Show a view for ranking evaluations in a tiled dashboard format."""
-    st.title("Ranking View")
+    """Show a view for ranking evaluations across multiple benchmarks."""
+    st.title("Ranking View - Cross-Benchmark Comparison")
 
     if not ranking_data:
         st.warning("No ranking evaluation files found. Please make sure ranking files are in the 'rank' subdirectories.")
         return
 
-    # Sidebar for KG and benchmark selection
+    # Sidebar for ranking model selection
     st.sidebar.title("Ranking Settings")
 
-    kg_options = list(ranking_data.keys())
-    # Set Wikidata as default if available
-    default_index = kg_options.index("wikidata") if "wikidata" in kg_options else 0
-    selected_kg = st.sidebar.selectbox(
-        "Select Knowledge Graph", kg_options, index=default_index
-    )
+    # Get all available ranking filenames
+    ranking_options = sorted(ranking_data.keys())
 
-    benchmark_options = list(ranking_data[selected_kg].keys())
-    # Set default benchmark based on selected knowledge graph
-    default_benchmark = (
-        "qald10"
-        if selected_kg == "wikidata"
-        else "wqsp"
-        if selected_kg == "freebase"
-        else benchmark_options[0]
-    )
-    # Make sure the default benchmark exists in the options
-    default_index = (
-        benchmark_options.index(default_benchmark)
-        if default_benchmark in benchmark_options
-        else 0
-    )
-    selected_benchmark = st.sidebar.selectbox(
-        "Select Benchmark", benchmark_options, index=default_index
-    )
-
-    # Get ranking files for selected KG and benchmark
-    rank_files = ranking_data[selected_kg][selected_benchmark]["rank_files"]
-    
-    if not rank_files:
-        st.warning(f"No ranking files found for {selected_kg}/{selected_benchmark}.")
+    if not ranking_options:
+        st.warning("No ranking files found.")
         return
 
-    # Display tiles in columns (2-3 per row)
-    cols_per_row = min(3, len(rank_files))
-    if len(rank_files) == 1:
-        cols_per_row = 2  # Show single tile in first column of two
-    
-    rows = [rank_files[i:i + cols_per_row] for i in range(0, len(rank_files), cols_per_row)]
-    
-    for row_files in rows:
-        cols = st.columns(cols_per_row)
-        
-        for i, rank_file in enumerate(row_files):
-            with cols[i]:
-                with st.container():
-                    try:
-                        rank_data = load_json(rank_file)
-                        file_name = Path(rank_file).stem
-                        
-                        # Parse the file name like model names
-                        model_name, additional_info = parse_model_name(file_name)
-                        display_name = (
-                            f"{model_name} ({additional_info})"
-                            if additional_info
-                            else model_name
+    # Add regex filter for ranking selection
+    if "ranking_regex" not in st.session_state:
+        st.session_state.ranking_regex = ""
+
+    ranking_regex = st.sidebar.text_input(
+        "Filter rankings by regex pattern",
+        value=st.session_state.ranking_regex,
+        help="Enter a regex pattern to filter ranking files. Example: 'gpt|claude' shows rankings involving GPT or Claude models.",
+    )
+    st.session_state.ranking_regex = ranking_regex
+
+    # Filter ranking options based on regex
+    filtered_ranking_options = ranking_options
+    if ranking_regex:
+        try:
+            regex = re.compile(ranking_regex)
+            filtered_ranking_options = [r for r in ranking_options if regex.search(r)]
+            if not filtered_ranking_options:
+                st.sidebar.warning(f"No rankings match the pattern '{ranking_regex}'")
+                filtered_ranking_options = ranking_options
+        except re.error as e:
+            st.sidebar.error(f"Invalid regex pattern: {e}")
+
+    # Select ranking comparison to view
+    selected_ranking = st.sidebar.selectbox(
+        "Select Ranking Comparison",
+        filtered_ranking_options,
+        index=0
+    )
+
+    # Parse and display the ranking name nicely
+    model_name, additional_info = parse_model_name(selected_ranking)
+    display_name = (
+        f"{model_name} ({additional_info})"
+        if additional_info
+        else model_name
+    )
+
+    st.subheader(f"Comparison: {display_name}")
+
+    # Get all benchmarks for this ranking
+    benchmark_entries = ranking_data[selected_ranking]
+
+    if not benchmark_entries:
+        st.warning(f"No benchmark data found for {selected_ranking}.")
+        return
+
+    # Extract judge model information from the first available ranking file
+    judge_model_info = None
+    for entry in benchmark_entries:
+        try:
+            rank_data = load_json(entry["filepath"])
+            if "judge_config" in rank_data and "model" in rank_data["judge_config"]:
+                judge_model_info = rank_data["judge_config"]["model"]
+                break
+        except Exception:
+            continue
+
+    # Display judge model if found
+    if judge_model_info:
+        st.caption(f"**Judge Model:** {judge_model_info}")
+
+    # First pass: collect all unique models across all benchmarks to establish global ordering
+    all_models = set()
+    for entry in benchmark_entries:
+        try:
+            rank_data = load_json(entry["filepath"])
+            if "summary" in rank_data:
+                for key in rank_data["summary"].keys():
+                    if key != "tie":
+                        file_path = Path(key)
+                        model_name_parsed, additional_info_parsed = parse_model_name(file_path.stem)
+                        model_display_name = (
+                            f"{model_name_parsed} ({additional_info_parsed})"
+                            if additional_info_parsed
+                            else model_name_parsed
                         )
-                        
-                        st.markdown(f"### {display_name}")
+                        all_models.add(model_display_name)
+        except Exception:
+            continue
 
-                        if "summary" in rank_data:
-                            summary = rank_data["summary"]
+    # Sort models and assign letters
+    sorted_models = sorted(all_models)
+    model_to_letter = {model: chr(65 + i) for i, model in enumerate(sorted_models)}  # A=65 in ASCII
+    letter_to_model = {v: k for k, v in model_to_letter.items()}
 
-                            # Load model outputs to calculate additional metrics
-                            rank_dir = Path(rank_file).parent
-                            model_outputs_cache = {}
+    # Display model legend
+    if sorted_models:
+        st.markdown("**Model Legend:**")
+        legend_items = "\n".join([f"- **{model_to_letter[model]}**: {model}" for model in sorted_models])
+        st.markdown(legend_items)
 
-                            for key in summary.keys():
-                                if key != "tie":
-                                    # Key is a path relative to the data root, resolve it relative to rank_dir
-                                    output_file = rank_dir.parent / "outputs" / Path(key).name
-                                    try:
-                                        model_outputs_cache[key] = load_model_outputs(str(output_file))
-                                        print(f"Loaded {len(model_outputs_cache[key])} outputs from {output_file}")
-                                    except Exception as e:
-                                        print(f"Failed to load {output_file}: {e}")
-                                        model_outputs_cache[key] = {}
+    # Process all benchmarks to build comprehensive table (one row per benchmark)
+    table_rows = []
 
-                            # Prepare data for table - models first, then tie
-                            table_data = []
-                            tie_data = None
-                            max_wins = 0
+    for entry in benchmark_entries:
+        kg = entry["kg"]
+        benchmark = entry["benchmark"]
+        rank_file = entry["filepath"]
 
-                            for key, value in summary.items():
-                                if key == "tie":
-                                    tie_data = {
-                                        ("", "Model"): "Tie",
-                                        ("", "Wins"): value['count'],
-                                        ("", "Win Rate"): f"{value['ratio']:.1%}",
-                                        ("Average", "STP"): "—",
-                                        ("Average", "DUR"): "—",
-                                        "is_tie": True
-                                    }
-                                else:
-                                    # Parse model name from the prediction file path
-                                    file_path = Path(key)
-                                    model_name, additional_info = parse_model_name(file_path.stem)
-                                    display_name = (
-                                        f"{model_name} ({additional_info})"
-                                        if additional_info
-                                        else model_name
-                                    )
-                                    wins = value['count']
-                                    max_wins = max(max_wins, wins)
+        try:
+            rank_data = load_json(rank_file)
 
-                                    # Calculate average metrics
-                                    avg_steps, avg_time = calculate_ranking_metrics(
-                                        model_outputs_cache.get(key, {})
-                                    )
+            if "summary" not in rank_data:
+                continue
 
-                                    table_data.append({
-                                        ("", "Model"): display_name,
-                                        ("", "Wins"): wins,
-                                        ("", "Win Rate"): f"{value['ratio']:.1%}",
-                                        ("Average", "STP"): f"{avg_steps:.1f}" if avg_steps is not None else "—",
-                                        ("Average", "DUR"): f"{avg_time:.2f}" if avg_time is not None else "—",
-                                        "is_tie": False
-                                    })
+            summary = rank_data["summary"]
 
-                            # Add tie data at the end if it exists
-                            if tie_data:
-                                table_data.append(tie_data)
+            # Load model outputs to calculate additional metrics
+            rank_dir = Path(rank_file).parent
+            model_outputs_cache = {}
 
-                            # Create DataFrame with MultiIndex columns
-                            df = pd.DataFrame(table_data)
-
-                            # Create proper MultiIndex for columns
-                            df.columns = pd.MultiIndex.from_tuples([
-                                col if isinstance(col, tuple) else ("", col)
-                                for col in df.columns
-                            ])
-
-                            # Style the table
-                            def style_rows(row):
-                                # Check if this is a tie row by looking at the Model column
-                                if row[("", "Model")] == 'Tie':
-                                    return ['background-color: #444444; color: #cccccc; border-top: 3px solid #999999'] * len(row)
-                                elif row[("", "Wins")] == max_wins:
-                                    return ['background-color: #005500; color: white; font-weight: bold'] * len(row)
-                                return [''] * len(row)
-
-                            # Drop the helper column and apply styling
-                            display_df = df.drop(("", "is_tie"), axis=1)
-                            styled_df = display_df.style.apply(style_rows, axis=1)
-                            st.dataframe(styled_df, use_container_width=True, hide_index=True)
-                            
-                            # Show total evaluations count
-                            if "evaluations" in rank_data:
-                                total_evals = len(rank_data["evaluations"])
-                                valid_evals = sum(1 for eval_data in rank_data["evaluations"].values() 
-                                                if eval_data.get("err") is None)
-                                st.caption(f"{valid_evals}/{total_evals} valid evaluations")
-                        else:
-                            st.write("No summary available")
-                            
+            for key in summary.keys():
+                if key != "tie":
+                    # Key is a path relative to the data root, resolve it relative to rank_dir
+                    output_file = rank_dir.parent / "outputs" / Path(key).name
+                    try:
+                        model_outputs_cache[key] = load_model_outputs(str(output_file))
                     except Exception as e:
-                        st.error(f"Error loading {Path(rank_file).name}: {str(e)}")
+                        print(f"Failed to load {output_file}: {e}")
+                        model_outputs_cache[key] = {}
+
+            # Get evaluation counts
+            total_evals = len(rank_data.get("evaluations", {}))
+            valid_evals = sum(1 for eval_data in rank_data.get("evaluations", {}).values()
+                            if eval_data.get("err") is None)
+
+            # Build a single row for this benchmark
+            row_data = {
+                "KG": kg,
+                "Benchmark": benchmark,
+                "Valid Evals": f"{valid_evals}/{total_evals}"
+            }
+
+            # Initialize wins, steps, and time for each model
+            model_wins = {}
+            model_steps = {}
+            model_time = {}
+            tie_count = 0
+
+            # Process each model in the summary
+            for key, value in summary.items():
+                if key == "tie":
+                    tie_count = value['count']
+                else:
+                    # Parse model name from the prediction file path
+                    file_path = Path(key)
+                    model_name_parsed, additional_info_parsed = parse_model_name(file_path.stem)
+                    model_display_name = (
+                        f"{model_name_parsed} ({additional_info_parsed})"
+                        if additional_info_parsed
+                        else model_name_parsed
+                    )
+
+                    # Calculate average metrics
+                    avg_steps, avg_time = calculate_average_steps_and_time(
+                        model_outputs_cache.get(key, {})
+                    )
+
+                    model_wins[model_display_name] = value['count']
+                    model_steps[model_display_name] = avg_steps
+                    model_time[model_display_name] = avg_time
+
+            # Calculate total for percentages
+            total_comparisons = sum(model_wins.values()) + tie_count
+
+            # Add columns for each model in alphabetical letter order
+            for model in sorted_models:
+                letter = model_to_letter[model]
+                wins = model_wins.get(model, 0)
+                percentage = (wins / total_comparisons * 100) if total_comparisons > 0 else 0
+                row_data[f"{letter} Wins"] = f"{percentage:.1f}% ({wins})"
+                # Store raw value for determining winner
+                row_data[f"_{letter}_wins_raw"] = wins
+
+            # Add ties column
+            tie_percentage = (tie_count / total_comparisons * 100) if total_comparisons > 0 else 0
+            row_data["Ties"] = f"{tie_percentage:.1f}% ({tie_count})"
+            row_data["_ties_raw"] = tie_count
+
+            # Format aggregate steps and time columns
+            steps_parts = []
+            time_parts = []
+            for model in sorted_models:
+                steps = model_steps.get(model)
+                time = model_time.get(model)
+                steps_parts.append(f"{steps:.1f}" if steps is not None else "—")
+                time_parts.append(f"{time:.2f}" if time is not None else "—")
+
+            row_data["Avg Steps"] = " / ".join(steps_parts)
+            row_data["Avg Time"] = " / ".join(time_parts)
+
+            # Determine which letter or "Ties" has the max wins
+            max_wins = max([row_data.get(f"_{model_to_letter[model]}_wins_raw", 0) for model in sorted_models] + [row_data["_ties_raw"]])
+            row_data["_max_wins"] = max_wins
+
+            winner = None
+            for model in sorted_models:
+                letter = model_to_letter[model]
+                if row_data.get(f"_{letter}_wins_raw", 0) == max_wins and max_wins > 0:
+                    winner = letter
+                    break
+            if winner is None and row_data["_ties_raw"] == max_wins and max_wins > 0:
+                winner = "Ties"
+            row_data["_winner"] = winner
+
+            table_rows.append(row_data)
+
+        except Exception as e:
+            st.error(f"Error loading {kg}/{benchmark}: {str(e)}")
+            continue
+
+    if not table_rows:
+        st.warning(f"No valid ranking data found for {selected_ranking}.")
+        return
+
+    # Create DataFrame
+    df = pd.DataFrame(table_rows)
+
+    # Define column order
+    display_columns = ["KG", "Benchmark"]
+    for model in sorted_models:
+        letter = model_to_letter[model]
+        display_columns.append(f"{letter} Wins")
+    display_columns.extend(["Ties", "Avg Steps", "Avg Time", "Valid Evals"])
+
+    df_display = df[display_columns]
+
+    # Create styling function to highlight winning column
+    def highlight_winner(row):
+        styles = [''] * len(row)
+        row_data = df.iloc[row.name]
+        winner = row_data.get("_winner")
+
+        if winner:
+            # Find the column index for the winner
+            winner_col = f"{winner} Wins" if winner != "Ties" else "Ties"
+            if winner_col in display_columns:
+                col_idx = display_columns.index(winner_col)
+                styles[col_idx] = 'background-color: #005500; color: white; font-weight: bold'
+
+        return styles
+
+    styled_df = df_display.style.apply(highlight_winner, axis=1)
+    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+
+    # Show summary statistics
+    st.caption(f"Showing {len(benchmark_entries)} benchmark(s) for {display_name}")
 
 
 def show_comprehensive_view(available_data):
@@ -1867,6 +1970,9 @@ def main():
                 "Average F1 Score (%)": [
                     round(metrics[m]["f1"] * 100, 1) for m in metrics
                 ],  # 1 decimal for percentages
+                "Avg. Steps": [
+                    round(metrics[m].get("steps", 0), 1) for m in metrics
+                ],  # 1 decimal for average steps
                 "Avg. Time (sec)": [
                     round(metrics[m].get("time", 0), 3) for m in metrics
                 ],  # 3 decimals for time in seconds
