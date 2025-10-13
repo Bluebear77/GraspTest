@@ -21,7 +21,7 @@ REQUEST_TIMEOUT = (6, 30)
 # 60 seconds for everything (including receiving the response)
 READ_TIMEOUT = 60
 
-QLEVER_API = "https://qlever.cs.uni-freiburg.de/api"
+QLEVER_API = "https://qlever.dev/api"
 
 
 def get_endpoint(kg: str) -> str:
