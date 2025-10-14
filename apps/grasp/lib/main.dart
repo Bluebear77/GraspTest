@@ -755,7 +755,7 @@ $result
               if (sparql != null &&
                   endpoint != null &&
                   parsed != null &&
-                  parsed.host == "qlever.cs.uni-freiburg.de")
+                  qleverHosts.contains(parsed.host))
                 TextButton.icon(
                   onPressed: () async {
                     var query =

@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 const hostAndPort = "grasp.cs.uni-freiburg.de";
 const secure = true;
 const baseURL = "/api";
+const qleverHosts = {
+  "qlever.cs.uni-freiburg.de",
+  "qlever.informatik.uni-freiburg.de",
+  "qlever.dev",
+};
 
 // do not change that
 enum Task { sparqlQa, generalQa }
