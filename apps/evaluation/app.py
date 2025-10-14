@@ -1015,6 +1015,96 @@ def show_predictions_view(available_data):
                 st.markdown("---")
 
 
+def validate_ranking_consistency(benchmark_entries):
+    """
+    Validate consistency across ranking files.
+
+    Checks:
+    1. Judge model consistency across all KGs and benchmarks
+    2. Prediction file paths don't reference other directories
+    3. Same set of models compared across all benchmarks
+
+    Displays warnings in Streamlit UI for any inconsistencies found.
+    """
+    judge_configs = {}
+    prediction_file_sets = {}
+    path_issues = []
+
+    for entry in benchmark_entries:
+        kg = entry["kg"]
+        benchmark = entry["benchmark"]
+        rank_file = entry["filepath"]
+
+        try:
+            rank_data = load_json(rank_file)
+
+            # Collect judge config
+            if "judge_config" in rank_data:
+                judge_key = f"{kg}/{benchmark}"
+                judge_configs[judge_key] = rank_data["judge_config"]
+
+            # Collect and validate prediction file paths
+            if "summary" in rank_data:
+                prediction_files = set()
+                for key in rank_data["summary"].keys():
+                    if key != "tie":
+                        # Extract basename for comparison
+                        file_path = Path(key)
+                        prediction_files.add(file_path.stem)
+
+                        # Check if prediction file path matches the KG/benchmark context
+                        # The key should be a relative path like "outputs/model.jsonl"
+                        # We need to verify it's from the same kg/benchmark
+                        if "../" in key or key.startswith("/"):
+                            path_issues.append(f"{kg}/{benchmark}: Prediction file '{key}' uses absolute or parent directory path")
+
+                benchmark_key = f"{kg}/{benchmark}"
+                prediction_file_sets[benchmark_key] = prediction_files
+
+        except Exception as e:
+            st.warning(f"Error loading ranking file {rank_file}: {e}")
+            continue
+
+    # Check 1: Judge model consistency
+    if judge_configs:
+        judge_models = {}
+        for benchmark_key, judge_config in judge_configs.items():
+            # Only compare the model name
+            model_name = judge_config.get("model", "Unknown")
+            if model_name not in judge_models:
+                judge_models[model_name] = []
+            judge_models[model_name].append(benchmark_key)
+
+        if len(judge_models) > 1:
+            warning_msg = "⚠️ **Inconsistent judge models detected!** Different ranking files use different judge models:\n"
+            for model_name, benchmarks in judge_models.items():
+                warning_msg += f"\n  {model_name} (used by {', '.join(benchmarks)})"
+            st.warning(warning_msg)
+
+    # Check 2: Prediction file path issues
+    if path_issues:
+        warning_msg = "⚠️ **Prediction file path issues detected!**\n"
+        for issue in path_issues:
+            warning_msg += f"\n  - {issue}"
+        st.warning(warning_msg)
+
+    # Check 3: Same set of models compared
+    if prediction_file_sets:
+        # Get all unique sets of prediction files
+        unique_sets = {}
+        for benchmark_key, file_set in prediction_file_sets.items():
+            set_key = frozenset(file_set)
+            if set_key not in unique_sets:
+                unique_sets[set_key] = []
+            unique_sets[set_key].append(benchmark_key)
+
+        if len(unique_sets) > 1:
+            warning_msg = "⚠️ **Inconsistent prediction files detected!** Different benchmarks are comparing different sets of models:\n"
+            for i, (file_set, benchmarks) in enumerate(unique_sets.items(), 1):
+                warning_msg += f"\n  Set {i} (used by {', '.join(benchmarks)}): {sorted(file_set)}"
+            st.warning(warning_msg)
+
+
 def show_ranking_view(ranking_data):
     """Show a view for ranking evaluations across multiple benchmarks."""
     st.title("Ranking View - Cross-Benchmark Comparison")
@@ -1033,33 +1123,10 @@ def show_ranking_view(ranking_data):
         st.warning("No ranking files found.")
         return
 
-    # Add regex filter for ranking selection
-    if "ranking_regex" not in st.session_state:
-        st.session_state.ranking_regex = ""
-
-    ranking_regex = st.sidebar.text_input(
-        "Filter rankings by regex pattern",
-        value=st.session_state.ranking_regex,
-        help="Enter a regex pattern to filter ranking files. Example: 'gpt|claude' shows rankings involving GPT or Claude models.",
-    )
-    st.session_state.ranking_regex = ranking_regex
-
-    # Filter ranking options based on regex
-    filtered_ranking_options = ranking_options
-    if ranking_regex:
-        try:
-            regex = re.compile(ranking_regex)
-            filtered_ranking_options = [r for r in ranking_options if regex.search(r)]
-            if not filtered_ranking_options:
-                st.sidebar.warning(f"No rankings match the pattern '{ranking_regex}'")
-                filtered_ranking_options = ranking_options
-        except re.error as e:
-            st.sidebar.error(f"Invalid regex pattern: {e}")
-
     # Select ranking comparison to view
     selected_ranking = st.sidebar.selectbox(
         "Select Ranking Comparison",
-        filtered_ranking_options,
+        ranking_options,
         index=0
     )
 
@@ -1079,6 +1146,50 @@ def show_ranking_view(ranking_data):
     if not benchmark_entries:
         st.warning(f"No benchmark data found for {selected_ranking}.")
         return
+
+    # Validate consistency across all ranking files
+    validate_ranking_consistency(benchmark_entries)
+
+    # Organize benchmarks by knowledge graph for selection
+    entries_by_kg = defaultdict(list)
+    for entry in benchmark_entries:
+        entries_by_kg[entry["kg"]].append(entry)
+
+    kg_options = sorted(entries_by_kg.keys())
+    if not kg_options:
+        st.warning("No knowledge graphs found for the selected ranking.")
+        return
+
+    default_kg_index = kg_options.index("wikidata") if "wikidata" in kg_options else 0
+    selected_kg = st.sidebar.selectbox(
+        "Select Knowledge Graph",
+        kg_options,
+        index=default_kg_index,
+    )
+
+    benchmark_options = sorted(
+        {entry["benchmark"] for entry in entries_by_kg[selected_kg]}
+    )
+
+    if not benchmark_options:
+        st.warning(f"No benchmarks available for knowledge graph {selected_kg}.")
+        return
+
+    default_benchmark_index = 0
+    selected_benchmark = st.sidebar.selectbox(
+        "Select Benchmark",
+        benchmark_options,
+        index=default_benchmark_index,
+    )
+
+    selected_entry = next(
+        (
+            entry
+            for entry in entries_by_kg[selected_kg]
+            if entry["benchmark"] == selected_benchmark
+        ),
+        None,
+    )
 
     # Extract judge model information from the first available ranking file
     judge_model_info = None
@@ -1281,6 +1392,206 @@ def show_ranking_view(ranking_data):
 
     # Show summary statistics
     st.caption(f"Showing {len(benchmark_entries)} benchmark(s) for {display_name}")
+
+    # Detailed sample view for the selected KG and benchmark
+    if not selected_entry:
+        return
+
+    try:
+        selected_rank_data = load_json(selected_entry["filepath"])
+    except Exception as exc:
+        st.warning(f"Failed to load ranking data for detailed view: {exc}")
+        return
+
+    evaluations = selected_rank_data.get("evaluations", {})
+    if not evaluations:
+        st.info("No detailed evaluations available for the selected benchmark.")
+        return
+
+    benchmark_dir = Path(selected_entry["filepath"]).parent.parent
+    test_file = benchmark_dir / "test.jsonl"
+
+    try:
+        ground_truth_examples = load_jsonl(test_file)
+    except Exception as exc:
+        print(f"Failed to load test file {test_file}: {exc}")
+        ground_truth_examples = []
+
+    id_to_question = {
+        example.get("id"): example.get("question", "No question provided")
+        for example in ground_truth_examples
+        if isinstance(example, dict)
+    }
+
+    sorted_ids = natsort.natsorted(evaluations.keys())
+    if not sorted_ids:
+        st.info("No sample identifiers found in the evaluations.")
+        return
+
+    selection_options = [
+        f"{sample_id} - {id_to_question.get(sample_id, 'No question provided')}"
+        for sample_id in sorted_ids
+    ]
+
+    st.markdown("---")
+    st.subheader(
+        f"Sample Explorer: {selected_kg} / {selected_benchmark}"
+    )
+
+    selected_option = st.selectbox(
+        "Select an example:",
+        selection_options,
+        key=f"ranking_sample_{selected_kg}_{selected_benchmark}",
+    )
+
+    if not selected_option:
+        return
+
+    selected_id = selected_option.split(" - ")[0]
+    summary = selected_rank_data.get("summary", {})
+    outputs_dir = benchmark_dir / "outputs"
+    model_outputs = {}
+    summary_model_entries = []
+    model_display_order = []
+    seen_models = set()
+
+    for key in summary.keys():
+        if key == "tie":
+            continue
+
+        file_path = Path(key)
+        model_name_parsed, additional_info_parsed = parse_model_name(file_path.stem)
+        model_display_name = (
+            f"{model_name_parsed} ({additional_info_parsed})"
+            if additional_info_parsed
+            else model_name_parsed
+        )
+
+        output_path = outputs_dir / file_path.name
+        summary_model_entries.append(
+            {
+                "display_name": model_display_name,
+                "output_path": output_path,
+                "summary_key": key,
+            }
+        )
+
+        if model_display_name in seen_models:
+            continue
+
+        try:
+            model_outputs[model_display_name] = load_model_outputs(str(output_path))
+        except Exception as exc:
+            print(f"Failed to load model outputs from {output_path}: {exc}")
+            model_outputs[model_display_name] = {}
+
+        model_display_order.append(model_display_name)
+        seen_models.add(model_display_name)
+
+    evaluation_entry = evaluations.get(selected_id, {})
+
+    question_text = id_to_question.get(selected_id)
+    if question_text:
+        st.markdown(f"**Question:** {question_text}")
+
+    st.markdown("**Judge Verdict**")
+    if not evaluation_entry:
+        st.info("Judge verdict not available for the selected example.")
+    else:
+        verdict_value = evaluation_entry.get("verdict")
+
+        winning_model_name = None
+        if isinstance(verdict_value, int) and 0 <= verdict_value < len(summary_model_entries):
+            winning_model_name = summary_model_entries[verdict_value]["display_name"]
+
+        verdict_display = (
+            f"- Verdict Index: `{verdict_value}`"
+            if verdict_value is not None
+            else "- Verdict Index: `None`"
+        )
+        if winning_model_name:
+            verdict_display += f" → **{winning_model_name}**"
+        st.markdown(verdict_display)
+
+        explanation_text = evaluation_entry.get("explanation")
+        err_text = evaluation_entry.get("err")
+
+        if explanation_text:
+            st.markdown(explanation_text)
+        if err_text:
+            st.error(f"Judge error: {err_text}")
+
+    st.markdown("**Model Outputs**")
+    if not model_display_order:
+        st.info("No model outputs available for this benchmark.")
+    else:
+        columns_per_row = 3
+        for i in range(0, len(model_display_order), columns_per_row):
+            current_models = model_display_order[i : i + columns_per_row]
+            cols = st.columns(len(current_models))
+            for col, model_name in zip(cols, current_models):
+                outputs = model_outputs.get(model_name, {})
+                output_entry = outputs.get(selected_id)
+                output_payload = {}
+
+                if isinstance(output_entry, dict):
+                    output_field = output_entry.get("output", output_entry)
+                    if isinstance(output_field, dict):
+                        output_payload = output_field
+
+                container_cm = None
+                try:
+                    container_cm = col.container(border=True)
+                except TypeError:
+                    container_cm = col.container()
+
+                with container_cm:
+                    st.markdown(f"**{model_name}**")
+
+                    if not output_entry:
+                        st.info("No output available for this example.")
+                        continue
+
+                    rendered_any = False
+                    sparql_query = output_payload.get("sparql")
+                    if sparql_query:
+                        prettified = prettify_sparql(sparql_query)
+                        st.markdown("**SPARQL**")
+                        st.code(prettified or sparql_query, language="sparql")
+                        rendered_any = True
+
+                    result_data = output_payload.get("result")
+                    if result_data is not None:
+                        st.markdown("**Result**")
+                        if isinstance(result_data, (dict, list)):
+                            st.json(result_data)
+                        else:
+                            st.code(str(result_data), language="json")
+                        rendered_any = True
+
+                    selections_data = output_payload.get("selections")
+                    if selections_data:
+                        st.markdown("**Selections**")
+                        if isinstance(selections_data, (dict, list)):
+                            st.json(selections_data)
+                        else:
+                            st.write(selections_data)
+                        rendered_any = True
+
+                    answer_text = output_payload.get("answer")
+                    if answer_text:
+                        with st.expander("Answer"):
+                            st.markdown(answer_text)
+                        rendered_any = True
+
+                    if not rendered_any:
+                        fallback_data = (
+                            output_entry.get("output", output_entry)
+                            if isinstance(output_entry, dict)
+                            else output_entry
+                        )
+                        st.info("No structured SPARQL/result/selections/answer available.")
+                        st.write(fallback_data)
 
 
 def show_comprehensive_view(available_data):
