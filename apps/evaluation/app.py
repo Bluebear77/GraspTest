@@ -1417,11 +1417,16 @@ def show_ranking_view(ranking_data):
         print(f"Failed to load test file {test_file}: {exc}")
         ground_truth_examples = []
 
-    id_to_question = {
-        example.get("id"): example.get("question", "No question provided")
-        for example in ground_truth_examples
-        if isinstance(example, dict)
-    }
+    id_to_question = {}
+    id_to_ground_truth = {}
+    for example in ground_truth_examples:
+        if not isinstance(example, dict):
+            continue
+        example_id = example.get("id")
+        if example_id is None:
+            continue
+        id_to_question[example_id] = example.get("question", "No question provided")
+        id_to_ground_truth[example_id] = example
 
     sorted_ids = natsort.natsorted(evaluations.keys())
     if not sorted_ids:
@@ -1493,6 +1498,16 @@ def show_ranking_view(ranking_data):
     question_text = id_to_question.get(selected_id)
     if question_text:
         st.markdown(f"**Question:** {question_text}")
+
+    ground_truth_entry = id_to_ground_truth.get(selected_id)
+    if ground_truth_entry:
+        ground_truth_sparql = ground_truth_entry.get("sparql")
+        if ground_truth_sparql:
+            with st.expander("Ground Truth SPARQL"):
+                st.code(
+                    prettify_sparql(ground_truth_sparql),
+                    language="sparql",
+                )
 
     st.markdown("**Judge Verdict**")
     if not evaluation_entry:
