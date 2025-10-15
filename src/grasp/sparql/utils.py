@@ -817,10 +817,10 @@ def execute(
     sparql: str,
     endpoint: str,
     request_timeout: float | tuple[float, float] | None = REQUEST_TIMEOUT,
-    max_retries: int = 1,
+    max_retries: int = 0,
     read_timeout: float | None = READ_TIMEOUT,
 ) -> SelectResult | AskResult:
-    max_retries = max(1, max_retries)
+    max_retries = max(0, max_retries)
     for i in range(max_retries):
         try:
             response = requests.post(
@@ -833,22 +833,21 @@ def execute(
                 timeout=request_timeout,
                 stream=True,
             )
+
             response.raise_for_status()
 
             res = _stream_with_timeout(response, read_timeout)
+            if "boolean" in res:
+                return AskResult(res["boolean"])
+            else:
+                return SelectResult.from_json(res)
 
-        except TimeoutError as e:
+        except (TimeoutError, requests.Timeout) as e:
             # retry if not last retry
-            if i < max_retries - 1:
+            if i < max_retries:
                 continue
 
             raise e
-
-        except requests.Timeout as e:
-            if i < max_retries - 1:
-                continue
-
-            raise TimeoutError(str(e)) from e
 
         except requests.RequestException as e:
             # try to get qlever exception
@@ -874,12 +873,6 @@ def execute(
                 raise requests.RequestException(qlever_ex) from e
             else:
                 raise e
-
-        else:
-            if "boolean" in res:
-                return AskResult(res["boolean"])
-            else:
-                return SelectResult.from_json(res)
 
     raise requests.RequestException(f"Maximum retries ({max_retries}) reached")
 

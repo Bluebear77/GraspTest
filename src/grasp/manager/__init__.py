@@ -131,7 +131,7 @@ class KgManager:
         self,
         sparql: str,
         request_timeout: float | tuple[float, float] | None = REQUEST_TIMEOUT,
-        max_retries: int = 1,
+        max_retries: int = 0,
         force_select_result: bool = False,
         read_timeout: float | None = READ_TIMEOUT,
     ) -> SelectResult | AskResult:
@@ -290,7 +290,7 @@ class KgManager:
         self,
         sparql: str,
         request_timeout: float | tuple[float, float] | None = REQUEST_TIMEOUT,
-        max_retries: int = 1,
+        max_retries: int = 0,
         max_rows: int = 10,
         max_columns: int = 10,
     ) -> str:
@@ -651,7 +651,7 @@ class KgManager:
         position: Position,
         max_candidates: int | None = None,
         timeout: float | tuple[float, float] | None = REQUEST_TIMEOUT,
-        max_retries: int = 1,
+        max_retries: int = 0,
     ) -> dict[ObjType, Any]:
         # start with defaults
         search_items = self.get_default_search_items(position)
@@ -668,11 +668,7 @@ class KgManager:
 
         self.logger.debug(f"Getting search items with {sparql}")
         try:
-            result = self.execute_sparql(
-                sparql,
-                timeout,
-                max_retries,
-            )
+            result = self.execute_sparql(sparql, timeout, max_retries)
         except Exception as e:
             self.logger.debug(
                 f"Getting autocompletion result for position {position} "
