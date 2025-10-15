@@ -1,10 +1,9 @@
-import signal
+import json
+import time
 import uuid
-from contextlib import contextmanager
 from copy import deepcopy
-from functools import partial
 from importlib import resources
-from typing import Iterator
+from typing import Any, Iterator
 from urllib.parse import quote_plus, urlparse, urlunparse
 
 import requests
@@ -794,27 +793,24 @@ def set_limit(sparql: str, parser: LR1Parser, limit: int) -> str:
     return parse_to_string(parse)
 
 
-def _timeout(signum, frame, message: str):
-    raise TimeoutError(message)
+def _stream_with_timeout(
+    response: requests.Response,
+    seconds: float | None = None,
+) -> Any:
+    start = time.perf_counter()
+    chunks: list[bytes] = []
+    for chunk in response.iter_content(chunk_size=8192):
+        if not chunk:
+            continue
+        chunks.append(chunk)
+        if seconds and time.perf_counter() - start > seconds:
+            raise TimeoutError(
+                f"Took longer than {seconds} seconds to read SPARQL result"
+            )
 
-
-@contextmanager
-def timeout(seconds: float | None = None, message: str = "Took too long"):
-    if seconds is None:
-        # just yield and return
-        yield
-        return
-
-    seconds = max(0, round(seconds))
-    message = f"Timeout after {seconds} seconds: {message}"
-    original_handler = signal.signal(signal.SIGALRM, partial(_timeout, message=message))
-    signal.alarm(seconds)
-    try:
-        yield
-    finally:
-        # Cancel the alarm and restore original signal handler
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, original_handler)
+    full = b"".join(chunks)
+    decoded = full.decode(response.encoding or "utf-8")
+    return json.loads(decoded)
 
 
 def execute(
@@ -827,17 +823,19 @@ def execute(
     max_retries = max(1, max_retries)
     for i in range(max_retries):
         try:
-            with timeout(read_timeout, message="Took too long to read SPARQL result"):
-                response = requests.post(
-                    endpoint,
-                    headers={
-                        "Accept": "application/sparql-results+json",
-                        "User-Agent": "grasp-bot",
-                    },
-                    data={"query": sparql},
-                    timeout=request_timeout,
-                )
+            response = requests.post(
+                endpoint,
+                headers={
+                    "Accept": "application/sparql-results+json",
+                    "User-Agent": "grasp-bot",
+                },
+                data={"query": sparql},
+                timeout=request_timeout,
+                stream=True,
+            )
             response.raise_for_status()
+
+            res = _stream_with_timeout(response, read_timeout)
 
         except TimeoutError as e:
             # retry if not last retry
@@ -845,6 +843,12 @@ def execute(
                 continue
 
             raise e
+
+        except requests.Timeout as e:
+            if i < max_retries - 1:
+                continue
+
+            raise TimeoutError(str(e)) from e
 
         except requests.RequestException as e:
             # try to get qlever exception
@@ -871,12 +875,11 @@ def execute(
             else:
                 raise e
 
-        res = response.json()
-
-        if "boolean" in res:
-            return AskResult(res["boolean"])
         else:
-            return SelectResult.from_json(res)
+            if "boolean" in res:
+                return AskResult(res["boolean"])
+            else:
+                return SelectResult.from_json(res)
 
     raise requests.RequestException(f"Maximum retries ({max_retries}) reached")
 
