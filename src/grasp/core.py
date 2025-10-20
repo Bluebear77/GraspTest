@@ -17,9 +17,7 @@ from grasp.functions import (
 from grasp.manager import KgManager, find_embedding_model, format_kgs, load_kg_manager
 from grasp.manager.utils import describe_index
 from grasp.model import Message, Response, call_model
-from grasp.tasks import (
-    rules as general_rules,
-)
+from grasp.tasks import rules as general_rules
 from grasp.tasks import (
     task_done,
     task_functions,
@@ -385,7 +383,9 @@ def generate(
 
     out_msg = Message(
         role="output",
-        content="No output" if output is None else output["formatted"],
+        content="No output"
+        if output is None
+        else output.get("formatted", json.dumps(output)),
     )
     logger.info(format_message(out_msg))
 

@@ -165,7 +165,10 @@ def is_error(message: dict) -> bool:
     return message["role"] == "error"
 
 
-def is_invalid_model_output(model_output: dict | None) -> bool:
+def is_invalid_model_output(
+    model_output: dict | None,
+    none_output_invalid: bool = False,
+) -> bool:
     if model_output is None:
         return True
 
@@ -173,10 +176,10 @@ def is_invalid_model_output(model_output: dict | None) -> bool:
     if has_error:
         return True
 
-    if "messages" not in model_output:
-        return False
+    if none_output_invalid and model_output.get("output", None) is None:
+        return True
 
-    for message in model_output["messages"]:
+    for message in model_output.get("messages", []):
         try:
             # new format
             msg = Message(**message)

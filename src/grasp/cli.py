@@ -206,6 +206,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Retry failed inputs (only used with --output-file)",
     )
+    file_parser.add_argument(
+        "--none-output-invalid",
+        action="store_true",
+        help="Consider None outputs as invalid when retrying failed inputs",
+    )
     add_task_arg(file_parser)
     add_overwrite_arg(file_parser)
 
@@ -574,7 +579,10 @@ def run_grasp(args: argparse.Namespace) -> None:
             # overwrite id
             output = outputs[i]
             output["id"] = id
-            if not args.retry_failed or not is_invalid_model_output(output):
+            if not args.retry_failed or not is_invalid_model_output(
+                output,
+                args.none_output_invalid,
+            ):
                 continue
 
         *_, output = generate(
