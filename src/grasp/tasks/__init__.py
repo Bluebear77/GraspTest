@@ -26,6 +26,12 @@ from grasp.tasks.sparql_qa import output as sparql_qa_output
 from grasp.tasks.sparql_qa import rules as sparql_qa_rules
 from grasp.tasks.sparql_qa import system_information as sparql_qa_system_information
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
+from grasp.tasks.wikidata_query_logs import functions as wdql_functions
+from grasp.tasks.wikidata_query_logs import output as wdql_output
+from grasp.tasks.wikidata_query_logs import rules as wdql_rules
+from grasp.tasks.wikidata_query_logs import (
+    system_information as wdql_system_information,
+)
 
 
 # official tasks supported by GRASP, excluding exploration
@@ -34,6 +40,7 @@ class Task(StrEnum):
     SPARQL_QA = "sparql-qa"
     GENERAL_QA = "general-qa"
     CEA = "cea"
+    WDQL = "wikidata-query-logs"
 
 
 def rules() -> list[str]:
@@ -58,6 +65,8 @@ def task_rules(task: str) -> list[str]:
         return general_qa_rules()
     elif task == "cea":
         return cea_rules()
+    elif task == "wikidata-query-logs":
+        return wdql_rules()
     elif task == "exploration":
         return exploration_rules()
 
@@ -71,6 +80,8 @@ def task_system_information(task: str, config: GraspConfig) -> str:
         return general_qa_system_information()
     elif task == "cea":
         return cea_system_information()
+    elif task == "wikidata-query-logs":
+        return wdql_system_information(config)
     elif task == "exploration":
         return exploration_system_information(config)
 
@@ -91,6 +102,8 @@ def task_functions(
     elif task == "cea":
         # cea supports no examples
         return cea_functions(managers)
+    elif task == "wikidata-query-logs":
+        return wdql_functions()
     elif task == "exploration":
         return exploration_functions(managers)
 
@@ -105,6 +118,8 @@ def task_done(task: str, fn_name: str) -> bool:
         return False
     elif task == "cea":
         return fn_name == "stop"
+    elif task == "wikidata-query-logs":
+        return fn_name == "answer" or fn_name == "cancel"
     elif task == "exploration":
         return fn_name == "stop"
 
@@ -119,6 +134,11 @@ def task_setup(task: str, input: Any) -> tuple[str, Any]:
         return input, None
     elif task == "cea":
         return cea_input_and_state(input)
+    elif task == "wikidata-query-logs":
+        assert isinstance(input, str), (
+            "Input for wikidata-query-logs must be a string (SPARQL query)"
+        )
+        return input, None
     elif task == "exploration":
         # exploration has no setup
         assert isinstance(input, ExplorationState), (
@@ -138,6 +158,8 @@ def default_input_field(task: str) -> str | None:
         # input is typically a json dict with a table field and optional
         # metadata fields
         return "table"
+    elif task == "wikidata-query-logs":
+        return "sparql"
     elif task == "exploration":
         return None
 
@@ -162,6 +184,13 @@ def task_output(
         return general_qa_output(messages)
     elif task == "cea":
         return cea_output(task_state)
+    elif task == "wikidata-query-logs":
+        return wdql_output(
+            messages,
+            managers,
+            config.result_max_rows,
+            config.result_max_columns,
+        )
     elif task == "exploration":
         return exploration_output(task_state)
 
