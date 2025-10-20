@@ -3,10 +3,11 @@ import asyncio
 import json
 import os
 import random
-import threading
 import sys
+import threading
 import time
 from logging import INFO, FileHandler, Logger
+from typing import Any
 
 from fastapi import WebSocketDisconnect
 from pydantic import BaseModel, conlist
@@ -629,7 +630,7 @@ class Past(BaseModel):
 
 class Request(BaseModel):
     task: Task
-    input: str
+    input: Any
     knowledge_graphs: conlist(str, min_length=1)  # type: ignore
     past: Past | None = None
 
