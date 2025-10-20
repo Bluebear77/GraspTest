@@ -234,10 +234,10 @@ def find(
     if not last:
         return next(all, None)
     else:
-        last = None
+        last_item = None
         for item in all:
-            last = item
-        return last
+            last_item = item
+        return last_item
 
 
 def find_all(
@@ -318,7 +318,7 @@ def autocomplete_sparql(
     in the WHERE clause. Optionally add a LIMIT clause to the query.
     """
     try:
-        parse, rest = parse_string(sparql, parser)
+        parse, _ = parse_string(sparql, parser)
     except Exception as e:
         raise SPARQLException("SPARQL query is not valid") from e
 
@@ -821,7 +821,7 @@ def execute(
     read_timeout: float | None = READ_TIMEOUT,
 ) -> SelectResult | AskResult:
     max_retries = max(0, max_retries)
-    for i in range(max_retries):
+    for i in range(max_retries + 1):
         try:
             response = requests.post(
                 endpoint,

@@ -152,7 +152,7 @@ def generate(
     else:
         task_handler = None
 
-    input, task_state = task_setup(task, input)
+    input, task_state = task_setup(task, input, managers, config)
 
     if notes is None:
         notes = []

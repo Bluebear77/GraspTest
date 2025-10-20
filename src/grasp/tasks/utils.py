@@ -67,8 +67,9 @@ def format_sparql_result(
 ) -> str:
     fmt = f"SPARQL query over {manager.kg}:\n{result.sparql}"
 
-    if selections:
-        fmt += f"\n\n{manager.format_selections(selections)}"
+    fmt_sel = manager.format_selections(selections)
+    if fmt_sel:
+        fmt += f"\n\n{fmt_sel}"
 
     fmt += f"\n\nExecution result:\n{result.formatted}"
     return fmt

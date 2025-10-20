@@ -27,6 +27,7 @@ from grasp.tasks.sparql_qa import rules as sparql_qa_rules
 from grasp.tasks.sparql_qa import system_information as sparql_qa_system_information
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
 from grasp.tasks.wikidata_query_logs import functions as wdql_functions
+from grasp.tasks.wikidata_query_logs import input_and_state as wdql_input_and_state
 from grasp.tasks.wikidata_query_logs import output as wdql_output
 from grasp.tasks.wikidata_query_logs import rules as wdql_rules
 from grasp.tasks.wikidata_query_logs import (
@@ -47,14 +48,12 @@ def rules() -> list[str]:
     return [
         "Explain your thought process before and after each step \
 and function call.",
-        "Do not just use or make up entity or property identifiers \
-without verifying their existence in the knowledge graphs first.",
-        "Do not ask the user for clarifications without first \
-attempting to complete the task. If the task input is incomplete or \
-ambiguous, try to make reasonable assumptions and document them.",
+        "Do not ask the user for clarification until you have made \
+an initial attempt at completing the task. When the task input is incomplete or \
+ambiguous, proceed based on reasonable assumptions.",
         'Do not use "SERVICE wikibase:label { bd:serviceParam wikibase:language ..." \
-in SPARQL queries. It is not SPARQL standard and unsupported by the used QLever \
-SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.',
+in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. \
+Use rdfs:label or similar properties to get labels instead.',
     ]
 
 
@@ -126,7 +125,12 @@ def task_done(task: str, fn_name: str) -> bool:
     raise ValueError(f"Unknown task {task}")
 
 
-def task_setup(task: str, input: Any) -> tuple[str, Any]:
+def task_setup(
+    task: str,
+    input: Any,
+    managers: list[KgManager],
+    config: GraspConfig,
+) -> tuple[str, Any]:
     if task == "sparql-qa" or task == "general-qa":
         assert isinstance(input, str), (
             f"Input for task {task} must be a string (question)"
@@ -138,7 +142,12 @@ def task_setup(task: str, input: Any) -> tuple[str, Any]:
         assert isinstance(input, str), (
             "Input for wikidata-query-logs must be a string (SPARQL query)"
         )
-        return input, None
+        return wdql_input_and_state(
+            input,
+            managers,
+            config.result_max_rows,
+            config.result_max_columns,
+        )
     elif task == "exploration":
         # exploration has no setup
         assert isinstance(input, ExplorationState), (
