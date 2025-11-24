@@ -15,9 +15,16 @@ from tqdm import tqdm
 # Path to your CSV file
 csv_path = "data/CompMix/compmix-test.csv"
 
-# Automatically derive output directory from CSV path
-out_dir = os.path.join("output", csv_path)
+# Extract folder name and file stem (without extension)
+folder = os.path.basename(os.path.dirname(csv_path))   # "CompMix"
+file_stem = os.path.splitext(os.path.basename(csv_path))[0]  # "compmix-test"
+
+# Build output directory: output/CompMix/compmix-test
+out_dir = os.path.join("output", folder, file_stem)
 os.makedirs(out_dir, exist_ok=True)
+
+print("Output directory:", out_dir)
+
 
 # Open the CSV file for reading
 with open(csv_path, newline='', encoding='utf-8') as f:
