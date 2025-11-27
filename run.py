@@ -21,6 +21,10 @@ Key features:
     * All rows in that batch have been processed and written to disk.
     * A `batch_log.txt` file is appended with a line describing which rows and
       files were produced for that batch.
+    * A Git commit is created and pushed:
+          git add -A
+          git commit -m "finished kth batch, generated X/Y JSON files"
+          git push origin main
 - Uses a tqdm progress bar to show overall processing progress.
 - Prints a concise summary at the end with counts and output directory.
 - The code is structured so that multiple CSVs can be handled in the future:
@@ -40,14 +44,67 @@ from tqdm import tqdm
 
 # In the future, you can process multiple CSVs by uncommenting / adding paths here.
 CSV_FILES: List[str] = [
-    # "data/CompMix/compmix-test.csv",
-     "data/CompMix/dev_set.csv",
-     "data/CompMix/test_set.csv",
-     "data/CompMix/train_set.csv",
+    "data/CompMix/compmix-test.csv",
+    # "data/CompMix/dev_set.csv",
+    # "data/CompMix/test_set.csv",
+    # "data/CompMix/train_set.csv",
 ]
 
 # Batch size for rehearsal of large-scale processing
-BATCH_SIZE = 10
+BATCH_SIZE = 2
+
+
+def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: int) -> None:
+    """
+    After each finished batch, automatically:
+      - git add -A
+      - git commit -m "finished <batch_number>th batch, generated <processed_so_far>/<total_rows> JSON files"
+      - git push origin main
+
+    Any errors in git commands are printed as warnings but do not stop the main processing.
+    """
+    commit_msg = (
+        f"finished {batch_number}th batch, "
+        f"generated {processed_so_far}/{total_rows} JSON files"
+    )
+
+    try:
+        # Stage all changes
+        add_proc = subprocess.run(
+            ["git", "add", "-A"],
+            capture_output=True,
+            text=True,
+        )
+        if add_proc.returncode != 0:
+            sys.stderr.write("[GIT WARN] 'git add -A' failed:\n")
+            sys.stderr.write(add_proc.stderr + "\n")
+            return  # If we can't add, no point committing
+
+        # Commit (may fail if there is nothing to commit)
+        commit_proc = subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            capture_output=True,
+            text=True,
+        )
+        if commit_proc.returncode != 0:
+            # Typically "nothing to commit" – not fatal
+            sys.stderr.write("[GIT INFO] 'git commit' did not create a commit:\n")
+            sys.stderr.write(commit_proc.stderr + "\n")
+            return
+
+        # Push to origin main
+        push_proc = subprocess.run(
+            ["git", "push", "origin", "main"],
+            capture_output=True,
+            text=True,
+        )
+        if push_proc.returncode != 0:
+            sys.stderr.write("[GIT WARN] 'git push origin main' failed:\n")
+            sys.stderr.write(push_proc.stderr + "\n")
+
+    except FileNotFoundError:
+        # git not installed or not in PATH
+        sys.stderr.write("[GIT WARN] 'git' command not found. Skipping git operations.\n")
 
 
 def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
@@ -68,7 +125,9 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
     Batching:
       * Rows are processed in chunks of `batch_size`.
-      * After each batch, a line is appended to batch_log.txt summarizing that batch.
+      * After each batch:
+          - Append a line to batch_log.txt summarizing that batch.
+          - Run git add/commit/push.
     """
 
     # Build output directory: output/<folder>/<file_stem>
@@ -127,7 +186,8 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
     with tqdm(total=total_rows, desc="Processing questions", unit="row") as pbar:
         for batch_start in range(0, total_rows, batch_size):
             batch_rows = rows[batch_start : batch_start + batch_size]
-            batch_index = batch_start // batch_size
+            batch_index = batch_start // batch_size      # 0-based
+            batch_number = batch_index + 1               # 1-based, for human-readable logs
             batch_filenames = []
             batch_row_indices = []
 
@@ -209,15 +269,25 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                 batch_filenames.append(filename)
                 batch_row_indices.append(global_index)
 
-            # ----- End of batch: log batch info ----- #
+            # ----- End of batch: log batch info and run git ----- #
             if batch_row_indices:
-                row_range_str = f"{batch_row_indices[0]}-{batch_row_indices[-1]}" \
-                    if len(batch_row_indices) > 1 else str(batch_row_indices[0])
+                row_range_str = (
+                    f"{batch_row_indices[0]}-{batch_row_indices[-1]}"
+                    if len(batch_row_indices) > 1
+                    else str(batch_row_indices[0])
+                )
                 with open(batch_log_path, "a", encoding="utf-8") as lf:
                     lf.write(
-                        f"batch {batch_index} | rows {row_range_str} | "
+                        f"batch {batch_index} (#{batch_number}) | rows {row_range_str} | "
                         f"files: {', '.join(batch_filenames)}\n"
                     )
+
+                # Run git add/commit/push for this batch
+                run_git_after_batch(
+                    batch_number=batch_number,
+                    processed_so_far=processed_count,
+                    total_rows=total_rows,
+                )
 
     # ---------------- Final Summary ---------------- #
 
