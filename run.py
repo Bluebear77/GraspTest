@@ -40,14 +40,14 @@ from tqdm import tqdm
 
 # In the future, you can process multiple CSVs by uncommenting / adding paths here.
 CSV_FILES: List[str] = [
-    "data/CompMix/compmix-test.csv",
-    # "data/CompMix/dev_set.csv",
-    # "data/CompMix/test_set.csv",
-    # "data/CompMix/train_set.csv",
+    # "data/CompMix/compmix-test.csv",
+     "data/CompMix/dev_set.csv",
+     "data/CompMix/test_set.csv",
+     "data/CompMix/train_set.csv",
 ]
 
 # Batch size for rehearsal of large-scale processing
-BATCH_SIZE = 2
+BATCH_SIZE = 10
 
 
 def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
