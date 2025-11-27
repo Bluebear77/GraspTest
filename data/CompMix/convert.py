@@ -40,7 +40,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm
 
-
 # Input JSON files
 INPUT_FILES = [
     "train_set.json",
@@ -84,11 +83,14 @@ def get_stats(values):
         "median": round(stats.median(values), 3),
         "min": round(min(values), 3),
         "max": round(max(values), 3),
-        "std": round(stats.pstdev(values), 3),
+        "std": round(stats.pstdev(values), 3),  # population std dev
     }
 
 
 def colored_histogram(data, bins, title, xlabel, ylabel, out_path):
+    """
+    Make a histogram where each bar has a different color.
+    """
     counts, bin_edges = np.histogram(data, bins=bins)
     centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
     width = bin_edges[1] - bin_edges[0] if len(bin_edges) > 1 else 1.0
@@ -105,6 +107,7 @@ def colored_histogram(data, bins, title, xlabel, ylabel, out_path):
 
 
 def compute_and_save_statistics(all_records):
+    """Compute basic statistics and generate plots + statistics.md."""
     os.makedirs(STATS_DIR, exist_ok=True)
 
     question_lengths = []
@@ -114,6 +117,7 @@ def compute_and_save_statistics(all_records):
     domain_list = []
     context_scores = []
 
+    # per-domain metric storage
     per_domain = defaultdict(lambda: {
         "question_lengths": [],
         "num_entities": [],
@@ -173,12 +177,13 @@ def compute_and_save_statistics(all_records):
             "context_score": get_stats(dvals["context_scores"]),
         }
 
-    # PLOTS
+    # --- Plots ---
+
     colored_histogram(
         data=question_lengths,
         bins=30,
         title="Question token length distribution",
-        xlabel="Tokens",
+        xlabel="Number of tokens",
         ylabel="Frequency",
         out_path=os.path.join(STATS_DIR, "question token length.png"),
     )
@@ -192,7 +197,7 @@ def compute_and_save_statistics(all_records):
         data=num_entities_list,
         bins=bins_entities,
         title="Number of question entities",
-        xlabel="Entities",
+        xlabel="Number of entities",
         ylabel="Frequency",
         out_path=os.path.join(STATS_DIR, "number of question entities.png"),
     )
@@ -200,8 +205,8 @@ def compute_and_save_statistics(all_records):
     colored_histogram(
         data=answer_text_lengths,
         bins=30,
-        title="Answer length (text) distribution",
-        xlabel="Tokens",
+        title="Answer length (text) in tokens",
+        xlabel="Number of tokens in answer_text",
         ylabel="Frequency",
         out_path=os.path.join(STATS_DIR, "answer length (text).png"),
     )
@@ -215,13 +220,12 @@ def compute_and_save_statistics(all_records):
         data=num_answers_list,
         bins=bins_answers,
         title="Number of answers",
-        xlabel="Count",
+        xlabel="Count of answers",
         ylabel="Frequency",
         out_path=os.path.join(STATS_DIR, "number of answers.png"),
     )
 
     domain_counts = Counter(domain_list)
-
     plt.figure()
     plt.pie(domain_counts.values(), labels=domain_counts.keys(), autopct="%1.1f%%")
     plt.title("Domain distribution")
@@ -233,54 +237,59 @@ def compute_and_save_statistics(all_records):
         data=context_scores,
         bins=30,
         title="Context score distribution",
-        xlabel="Score",
+        xlabel="Context score",
         ylabel="Frequency",
         out_path=os.path.join(STATS_DIR, "context_score_distribution.png"),
     )
 
-    # Write Markdown
+    # --- Write statistics.md (UTF-8 with BOM for full Unicode support) ---
     md_path = os.path.join(STATS_DIR, "statistics.md")
-    with open(md_path, "w", encoding="utf-8") as f:
+    with open(md_path, "w", encoding="utf-8-sig") as f:
         f.write("# Dataset Statistics\n\n")
-        f.write("## Summary Comment\n\n")
-        f.write(f"- Total questions: **{total_questions}**\n\n")
 
-        f.write("## Overall Statistics\n\n")
+        # Summary comment section
+        f.write("## Summary Comment\n\n")
+        f.write(f"- Total questions: **{total_questions}**\n")
+        f.write(f"- Average question length: **{overall_stats['question_length']['avg']} tokens**\n")
+        f.write(f"- Average number of entities per question: **{overall_stats['num_entities']['avg']}**\n")
+        f.write(f"- Average context score: **{overall_stats['context_score']['avg']}**\n")
+        f.write("- Domains covered: **" + ", ".join(sorted(per_domain_stats.keys())) + "**\n\n")
+
+        # Overall stats table
+        f.write("## Overall Statistics (All Domains)\n\n")
         f.write("| Metric | Avg | Median | Min | Max | Std |\n")
         f.write("| --- | --- | --- | --- | --- | --- |\n")
-
-        names = {
-            "question_length": "Question length",
-            "num_entities": "Entities",
-            "answer_length": "Answer length",
+        metric_names = {
+            "question_length": "Question length (tokens)",
+            "num_entities": "Number of entities",
+            "answer_length": "Answer length (tokens)",
             "num_answers": "Number of answers",
             "context_score": "Context score",
         }
-
-        for key, label in names.items():
+        for key, label in metric_names.items():
             s = overall_stats[key]
             f.write(f"| {label} | {s['avg']} | {s['median']} | {s['min']} | {s['max']} | {s['std']} |\n")
+        f.write("\n")
 
-        f.write("\n## Per-Domain Statistics\n")
-        for metric_key, label in names.items():
-            f.write(f"\n### {label}\n")
+        # Per-domain stats tables
+        f.write("## Per-Domain Statistics\n\n")
+        for metric_key, metric_label in metric_names.items():
+            f.write(f"### {metric_label}\n\n")
             f.write("| Domain | Avg | Median | Min | Max | Std |\n")
             f.write("| --- | --- | --- | --- | --- | --- |\n")
             for domain in sorted(per_domain_stats.keys()):
                 s = per_domain_stats[domain][metric_key]
                 f.write(f"| {domain} | {s['avg']} | {s['median']} | {s['min']} | {s['max']} | {s['std']} |\n")
+            f.write("\n")
 
-        f.write("\n## Plots\n\n")
-        plots = [
-            "question token length.png",
-            "number of question entities.png",
-            "answer length (text).png",
-            "number of answers.png",
-            "domain_distribution_piechart.png",
-            "context_score_distribution.png",
-        ]
-        for p in plots:
-            f.write(f"![{p}]({p})\n\n")
+        # Plots section
+        f.write("## Distributions\n\n")
+        f.write("![Question token length](question%20token%20length.png)\n\n")
+        f.write("![Number of question entities](number%20of%20question%20entities.png)\n\n")
+        f.write("![Answer length (text)](answer%20length%20(text).png)\n\n")
+        f.write("![Number of answers](number%20of%20answers.png)\n\n")
+        f.write("![Domain distribution](domain_distribution_piechart.png)\n\n")
+        f.write("![Context score distribution](context_score_distribution.png)\n\n")
 
 
 def main():
@@ -292,7 +301,7 @@ def main():
     w1 = float(input("Enter w1 (weight for number of entities): "))
     w2 = float(input("Enter w2 (weight for question length): "))
 
-    # Load
+    # Load all records (UTF-8 JSON)
     all_records = []
     for fname in INPUT_FILES:
         all_records.extend(load_questions_from_file(fname))
@@ -303,13 +312,17 @@ def main():
         num_entities = len(rec.get("entities", []) or [])
         rec["context_score"] = compute_context_score(num_entities, q_len, w1, w2)
 
-    # Sort descending
-    all_records.sort(key=lambda r: r["context_score"], reverse=True)
+    # Sort by context_score descending
+    all_records.sort(key=lambda r: r.get("context_score", 0.0), reverse=True)
 
-    # Determine max entities
-    max_entities = max(len(rec.get("entities", [])) for rec in all_records)
+    # Determine max number of entities
+    max_entities = 0
+    for rec in all_records:
+        entities = rec.get("entities", [])
+        if len(entities) > max_entities:
+            max_entities = len(entities)
 
-    # Build CSV header
+    # Build CSV header (UTF-8-safe, but just ASCII here anyway)
     header = ["question_id", "question"]
     for i in range(1, max_entities + 1):
         header.append(f"entity_id{i}")
@@ -325,8 +338,8 @@ def main():
         "context_score",
     ])
 
-    # Write CSV
-    with open(OUTPUT_FILE, "w", encoding="utf-8", newline="") as csvfile:
+    # Write CSV as UTF-8 with BOM (for Excel and multi-language safety)
+    with open(OUTPUT_FILE, "w", encoding="utf-8-sig", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(header)
 
@@ -341,8 +354,9 @@ def main():
 
             for i in range(max_entities):
                 if i < nents:
-                    row.append(entities[i].get("id", ""))
-                    row.append(entities[i].get("label", ""))
+                    ent = entities[i] or {}
+                    row.append(ent.get("id", ""))
+                    row.append(ent.get("label", ""))
                 else:
                     row.append("")
                     row.append("")
@@ -351,8 +365,9 @@ def main():
 
             answers = rec.get("answers", []) or []
             if answers:
-                row.append(answers[0].get("id", ""))
-                row.append(answers[0].get("label", ""))
+                first_answer = answers[0] or {}
+                row.append(first_answer.get("id", ""))
+                row.append(first_answer.get("label", ""))
             else:
                 row.append("")
                 row.append("")
@@ -367,6 +382,7 @@ def main():
 
             writer.writerow(row)
 
+    # Stats + plots
     compute_and_save_statistics(all_records)
 
 
