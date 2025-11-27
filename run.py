@@ -6,15 +6,14 @@ This script runs GRASP (or another LLM-based pipeline) over one or more CSV data
 and writes one JSON output file per row.
 
 Key features:
-- Supports the new CSV schema with at least:
-      question_id, question, entity_id, ...
+- Supports the CompMix CSV schema with at least:
+      question_id, question, entity_id1, ...
 - For each row, builds the LLM input by concatenating:
-      input_text = "<question> <entity_id>"
-  so that the entity ID is explicitly included as a token for the model.
-- Output filenames start with `question_id`, followed by the entity_id (when it
-  looks like a Wikidata ID such as Q260725). Example:
-      question_id = 8750, entity_id = Q260725
-      -> filename: 8750_Q260725.json
+      input_text = "<question> <entity_id1>"
+  so that the (first) entity ID is explicitly included as a token for the model.
+- Output filenames are:
+      <question_id>.json
+  e.g. question_id = 97 -> filename: 97.json
 - Processes rows in batches to rehearse large-scale workflow:
       BATCH_SIZE = 2
   After each batch:
@@ -29,13 +28,15 @@ Key features:
 - Prints a concise summary at the end with counts and output directory.
 - The code is structured so that multiple CSVs can be handled in the future:
       compmix-test.csv, dev_set.csv, test_set.csv, train_set.csv
-  For now only compmix-test.csv is active, others are sketched as comments.
+  For now only top1000.csv is active.
 """
 
 import csv
+import json
 import os
 import subprocess
 import sys
+import time
 from typing import List
 
 from tqdm import tqdm
@@ -45,7 +46,7 @@ from tqdm import tqdm
 # In the future, you can process multiple CSVs by uncommenting / adding paths here.
 CSV_FILES: List[str] = [
     # "data/CompMix/compmix-test.csv",
-     "data/CompMix/top1000.csv",
+    "data/CompMix/top1000.csv",
     # "data/CompMix/test_set.csv",
     # "data/CompMix/train_set.csv",
 ]
@@ -111,17 +112,18 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
     """
     Process a single CSV file with the expected CompMix schema:
 
-        question_id, question, entity_id, entity_label, answer_id, ...
+        question_id, question, entity_id1, entity_label1, ...
 
     For each row:
-      * Build input_text = "<question> <entity_id>".
+      * Build input_text = "<question> <entity_id1>" (if entity_id1 exists).
       * Run GRASP, feeding input_text via stdin.
       * Save GRASP stdout as a JSON file in:
             output/<parent_folder>/<file_stem>/
         with filename:
-            <question_id>_<entity_id>.json   (if entity_id looks like Qxxxx)
-        or:
-            <question_id>.json               (fallback if no valid entity_id)
+            <question_id>.json
+
+      * The script also measures per-row elapsed time and overwrites the `elapsed`
+        field in the JSON output (rounded to 3 decimals).
 
     Batching:
       * Rows are processed in chunks of `batch_size`.
@@ -132,7 +134,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
     # Build output directory: output/<folder>/<file_stem>
     folder = os.path.basename(os.path.dirname(csv_path))          # e.g. "CompMix"
-    file_stem = os.path.splitext(os.path.basename(csv_path))[0]   # e.g. "compmix-test"
+    file_stem = os.path.splitext(os.path.basename(csv_path))[0]   # e.g. "top1000"
     out_dir = os.path.join("output", folder, file_stem)
     os.makedirs(out_dir, exist_ok=True)
 
@@ -143,29 +145,55 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
     # ---------------- Load CSV ---------------- #
 
-    with open(csv_path, newline="", encoding="utf-8") as f:
+  
+    
+    with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
-        header = next(reader, None)  # read header row
+        raw_header = next(reader, None)
+
+        if raw_header is None:
+            raise ValueError(f"CSV file '{csv_path}' appears to be empty or missing a header row.")
+
+        # Normalize header cells: strip whitespace + BOM
+        header = [h.strip().lstrip("\ufeff") for h in raw_header]
+
+
+
+
+
+
+
+
+
+
 
         if header is None:
             raise ValueError(f"CSV file '{csv_path}' appears to be empty or missing a header row.")
 
-        # Locate relevant columns by name
-        try:
-            question_idx = header.index("question")
-        except ValueError:
-            # Fallback for legacy format (no "question" header, just a single column).
-            question_idx = 0
-
+        # Locate relevant columns by name, robust to column order changes.
+        # question_id must exist by name.
         try:
             question_id_idx = header.index("question_id")
         except ValueError:
-            question_id_idx = None
+            raise ValueError(
+                f"'question_id' column not found in CSV header: {header}"
+            )
 
+        # question should exist by name; if not, we bail out (better than silently breaking).
         try:
-            entity_id_idx = header.index("entity_id")
+            question_idx = header.index("question")
         except ValueError:
-            entity_id_idx = None
+            raise ValueError(
+                f"'question' column not found in CSV header: {header}"
+            )
+
+        # Entity: your CSV has entity_id1, entity_id2, ...
+        # Pick the first entity_id* column if it exists.
+        entity_id_idx = None
+        for i, col_name in enumerate(header):
+            if col_name.startswith("entity_id"):
+                entity_id_idx = i
+                break
 
         rows = list(reader)
 
@@ -185,7 +213,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
     with tqdm(total=total_rows, desc="Processing questions", unit="row") as pbar:
         for batch_start in range(0, total_rows, batch_size):
-            batch_rows = rows[batch_start : batch_start + batch_size]
+            batch_rows = rows[batch_start: batch_start + batch_size]
             batch_index = batch_start // batch_size      # 0-based
             batch_number = batch_index + 1               # 1-based, for human-readable logs
             batch_filenames = []
@@ -209,51 +237,59 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                     pbar.update(1)
                     continue
 
-                # Extract question_id if available; otherwise fall back to zero-padded index
-                if question_id_idx is not None and len(row) > question_id_idx:
+                # Extract question_id from its named column
+                if len(row) > question_id_idx:
                     question_id = row[question_id_idx].strip()
                 else:
+                    # Fallback: zero-padded index if something is weird
                     question_id = f"{global_index:03d}"
 
-                # Extract entity_id if available
+                if not question_id:
+                    # If the cell is empty, also fallback to index
+                    question_id = f"{global_index:03d}"
+
+                # Extract first entity_id* if present
                 entity_id = ""
                 if entity_id_idx is not None and len(row) > entity_id_idx:
                     entity_id = row[entity_id_idx].strip()
 
-                # Build input text: "question entity_id"
-                # Example:
-                #   "Where was Megan Rapinoe born? Q260725"
+                # Build input text: "question entity_id" (if entity_id exists)
                 if entity_id:
                     input_text = f"{question} {entity_id}"
                 else:
                     input_text = question
 
-                # Determine QID for filename (prefer entity_id when it looks like Qxxxx)
-                qid_for_filename = ""
-                if entity_id.startswith("Q") and entity_id[1:].isdigit():
-                    qid_for_filename = entity_id
-
-                # Build filename:
-                #   <question_id>_<qid>.json  (when qid_for_filename is set)
-                #   <question_id>.json       (fallback)
-                if qid_for_filename:
-                    filename = f"{question_id}.json"
-                else:
-                    filename = f"{question_id}.json"
-
+                # Build filename: <question_id>.json
+                filename = f"{question_id}.json"
                 out_file = os.path.join(out_dir, filename)
 
                 # Run GRASP (or your LLM pipeline), feeding `input_text` via stdin
+                start_time = time.perf_counter()
                 proc = subprocess.run(
                     ["bash", "-lc", "grasp run configs/run.yaml"],
                     input=input_text,
                     capture_output=True,
                     text=True,
                 )
+                elapsed = time.perf_counter() - start_time
 
-                # Write stdout to JSON file
+                stdout_text = proc.stdout
+
+                # Try to parse the output as JSON and fix/overwrite "elapsed"
+                try:
+                    data = json.loads(stdout_text)
+
+                    # Overwrite elapsed with our per-row measurement (in seconds, rounded)
+                    data["elapsed"] = round(elapsed, 3)
+
+                    json_text = json.dumps(data, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    # If it's not valid JSON for some reason, just dump raw stdout
+                    json_text = stdout_text
+
+                # Write final JSON text to file
                 with open(out_file, "w", encoding="utf-8") as out:
-                    out.write(proc.stdout)
+                    out.write(json_text)
 
                 # If non-zero exit code, log warning and stderr
                 if proc.returncode != 0:
@@ -301,7 +337,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
 
 if __name__ == "__main__":
-    # For now, we only run on compmix-test.csv.
+    # For now, we only run on top1000.csv.
     # In the future, you can uncomment additional CSVs in CSV_FILES above.
     for csv_path in CSV_FILES:
         if not os.path.exists(csv_path):
