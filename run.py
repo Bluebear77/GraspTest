@@ -237,7 +237,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                 #   <question_id>_<qid>.json  (when qid_for_filename is set)
                 #   <question_id>.json       (fallback)
                 if qid_for_filename:
-                    filename = f"{question_id}_{qid_for_filename}.json"
+                    filename = f"{question_id}.json"
                 else:
                     filename = f"{question_id}.json"
 
