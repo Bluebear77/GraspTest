@@ -66,7 +66,7 @@ from tqdm import tqdm
 # In the future, you can process multiple CSVs by uncommenting / adding paths here.
 CSV_FILES: List[str] = [
     # "data/CompMix/compmix-test.csv",
-    "data/CompMix/top1000.csv",
+    # "data/CompMix/top1000.csv",
     "data/CompMix/bottom1000.csv",
     # "data/CompMix/train_set.csv",
 ]
