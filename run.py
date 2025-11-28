@@ -31,28 +31,24 @@ Key features:
       compmix-test.csv, dev_set.csv, test_set.csv, train_set.csv
   For now only top1000.csv is active.
 
-Resume & “already generated?” behavior:
+Resume & quality checks:
 - On each run, the script checks the output dir and `batch_log.txt`.
   * If it finds that all rows are already processed, it prompts:
         "file already generated, do you want to update them? [y/n]"
     If you answer:
         - 'n': the script skips re-processing that CSV.
         - 'y': the script re-processes from scratch (overwriting outputs).
-  * If it finds that only part of the CSV was processed, it resumes from
-    the first unprocessed row, based on `batch_log.txt`.
-
-Bad-output scanning:
-- Before deciding resume/finished, the script scans every JSON file in the output dir.
-- A JSON is treated as a bad execution if:
-    * It contains the pattern:
-          {"type": "output", "task": "sparql-qa", "output": null
-      OR
-    * It is invalid JSON (truncated, etc.)
-      OR
-    * It is a dict with `type == "output"` and `task == "sparql-qa"` and:
-          - `output` is None, OR
-          - `output` is a dict without a "sparql" key.
-- Any rows with bad outputs are logged and automatically re-run in this run.
+  * If it finds that only part of the CSV was processed, it resumes from the
+    first unprocessed row, based on `batch_log.txt`.
+- It also scans all processed JSON outputs to detect "bad executions", defined as:
+    - JSON missing / invalid, or
+    - JSON object with type="output", task="sparql-qa", and output is null.
+  * These are logged to `bad_executions.csv`.
+  * You are asked:
+        "Detected N bad executions (...) Do you want to re-run them? [y/n]"
+    If:
+        - 'y': those rows are treated as unprocessed and will be re-run.
+        - 'n': they are ignored and the script continues from the last row.
 """
 
 import csv
@@ -61,16 +57,17 @@ import os
 import subprocess
 import sys
 import time
-from typing import Dict, List, Set, Tuple
+from typing import List, Set, Tuple
 
 from tqdm import tqdm
 
 # ---------------- Configuration ---------------- #
 
+# In the future, you can process multiple CSVs by uncommenting / adding paths here.
 CSV_FILES: List[str] = [
     # "data/CompMix/compmix-test.csv",
     "data/CompMix/top1000.csv",
-    # "data/CompMix/test_set.csv",
+    "data/CompMix/bottom1000.csv",
     # "data/CompMix/train_set.csv",
 ]
 
@@ -134,6 +131,98 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
     except FileNotFoundError:
         # git not installed or not in PATH
         sys.stderr.write("[GIT WARN] 'git' command not found. Skipping git operations.\n")
+
+
+# ---------------- Helpers ---------------- #
+
+def get_question_id_for_row(row: List[str], global_index: int, question_id_idx: int) -> str:
+    """
+    Compute the question_id for a given row, using the same logic everywhere:
+      - If the question_id column exists and is non-empty, use it (stripped).
+      - Otherwise, fall back to a zero-padded row index.
+    """
+    if len(row) > question_id_idx:
+        question_id = row[question_id_idx].strip()
+    else:
+        question_id = f"{global_index:03d}"
+
+    if not question_id:
+        question_id = f"{global_index:03d}"
+
+    return question_id
+
+
+def detect_bad_outputs(
+    rows: List[List[str]],
+    question_id_idx: int,
+    out_dir: str,
+    processed_indices: Set[int],
+) -> Tuple[Set[int], str]:
+    """
+    Examine outputs for rows in processed_indices, read the corresponding JSON file
+    for each, and classify as "bad execution" if:
+
+        - The JSON file is missing, OR
+        - The JSON cannot be parsed, OR
+        - The JSON is an object with:
+              type == "output", task == "sparql-qa", and output is None
+
+    Returns:
+        bad_indices: set of row indices with bad outputs
+        csv_path:    path to a CSV file listing them (if any bad found),
+                    or an empty string if no bad rows were found.
+    """
+    bad_indices: Set[int] = set()
+    records = []
+
+    if not processed_indices:
+        return bad_indices, ""
+
+    for idx in sorted(processed_indices):
+        if idx < 0 or idx >= len(rows):
+            continue
+
+        row = rows[idx]
+        question_id = get_question_id_for_row(row, idx, question_id_idx)
+        filename = f"{question_id}.json"
+        out_file = os.path.join(out_dir, filename)
+
+        reason = None
+
+        if not os.path.exists(out_file):
+            reason = "missing_output_file"
+        else:
+            try:
+                with open(out_file, "r", encoding="utf-8") as jf:
+                    data = json.load(jf)
+            except Exception as e:
+                reason = f"invalid_json: {e.__class__.__name__}"
+            else:
+                if isinstance(data, dict):
+                    # Detect the explicit "bad execution" pattern:
+                    # {"type": "output", "task": "sparql-qa", "output": null, ...}
+                    if (
+                        data.get("type") == "output"
+                        and data.get("task") == "sparql-qa"
+                        and data.get("output") is None
+                    ):
+                        reason = "null_output"
+
+        if reason is not None:
+            bad_indices.add(idx)
+            records.append((idx, question_id, filename, reason))
+
+    if not records:
+        return bad_indices, ""
+
+    bad_csv_path = os.path.join(out_dir, "bad_executions.csv")
+    with open(bad_csv_path, "w", newline="", encoding="utf-8") as cf:
+        writer = csv.writer(cf)
+        writer.writerow(["row_index", "question_id", "filename", "reason"])
+        for rec in records:
+            writer.writerow(rec)
+
+    return bad_indices, bad_csv_path
 
 
 # ---------------- Batch log / resume helpers ---------------- #
@@ -206,88 +295,6 @@ def ensure_batch_log_header(batch_log_path: str, csv_path: str) -> None:
         lf.write("# Each line: batch_index | row_indices | filenames\n\n")
 
 
-# ---------------- Bad-output detection ---------------- #
-
-def is_bad_output_file(path: str) -> bool:
-    """
-    Return True if the JSON at `path` looks like a bad execution.
-
-    Rules:
-    - If file cannot be read or parsed as JSON -> bad.
-    - If text contains the specific pattern
-          {"type": "output", "task": "sparql-qa", "output": null
-      -> bad.
-    - If parsed JSON is a dict with:
-          type == "output", task == "sparql-qa"
-      and either:
-          output is None, or
-          output is a dict that does NOT contain a "sparql" key
-      -> bad.
-    """
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            text = f.read()
-    except OSError as e:
-        sys.stderr.write(f"[CHECK WARN] Could not read JSON file {path}: {e}\n")
-        return True  # treat unreadable as bad
-
-    # Quick textual check for your exact "bad execution" pattern
-    if (
-        '"type": "output"' in text
-        and '"task": "sparql-qa"' in text
-        and '"output": null' in text
-    ):
-        return True
-
-    # Try to parse as JSON
-    try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        # Truncated or invalid JSON – treat as bad
-        return True
-
-    if not isinstance(data, dict):
-        # Unexpected structure; be conservative and treat non-dicts as bad
-        return True
-
-    if data.get("type") == "output" and data.get("task") == "sparql-qa":
-        out = data.get("output", None)
-        if out is None:
-            return True
-        if isinstance(out, dict) and "sparql" not in out:
-            return True
-
-    return False
-
-
-def find_bad_outputs(
-    out_dir: str,
-    index_to_filename: Dict[int, str],
-) -> Set[int]:
-    """
-    Scan every output JSON in out_dir (based on index_to_filename) and
-    return the set of row indices whose JSON is considered a bad execution.
-    """
-    bad_indices: Set[int] = set()
-
-    for idx, fname in index_to_filename.items():
-        json_path = os.path.join(out_dir, fname)
-        if not os.path.exists(json_path):
-            # Missing file is not "bad output" – it just hasn't been created yet.
-            continue
-
-        if is_bad_output_file(json_path):
-            bad_indices.add(idx)
-
-    if bad_indices:
-        sys.stderr.write(
-            f"[CHECK INFO] Detected {len(bad_indices)} bad output JSON file(s) "
-            f"in {out_dir}. They will be re-run.\n"
-        )
-
-    return bad_indices
-
-
 # ---------------- Main CSV processing ---------------- #
 
 def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
@@ -318,9 +325,11 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
         resumes from the first unprocessed row.
       * If all rows were processed, the script asks whether to re-run and update.
 
-    Bad-output behavior:
-      * Before deciding resume/finished, scan every output JSON and mark
-        "bad" executions to be re-run automatically in this run.
+    Bad execution handling:
+      * For all currently processed rows, JSON outputs are scanned.
+      * Bad executions (missing/invalid JSON, or null output for sparql-qa)
+        are logged to bad_executions.csv.
+      * You can choose to re-run just those rows or ignore them.
     """
 
     # Build output directory: output/<folder>/<file_stem>
@@ -381,49 +390,61 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
         print("No data rows found in CSV. Skipping.")
         return
 
-    # Precompute filename mapping for all rows based on question_id
-    index_to_filename: Dict[int, str] = {}
-    for global_index, row in enumerate(rows):
-        if not row:
-            # We'll handle empty rows later; filename still based on index fallback.
-            qid = f"{global_index:03d}"
-        else:
-            if len(row) > question_id_idx:
-                qid = row[question_id_idx].strip() or f"{global_index:03d}"
-            else:
-                qid = f"{global_index:03d}"
-        index_to_filename[global_index] = f"{qid}.json"
-
     # Make sure batch log has a header if it doesn't exist
     ensure_batch_log_header(batch_log_path, csv_path)
 
-    # ---------------- Check existing progress from log ---------------- #
+    # ---------------- Check existing progress ---------------- #
 
-    processed_indices, is_completed = parse_batch_log(batch_log_path, total_rows)
+    processed_indices, is_completed_from_log = parse_batch_log(batch_log_path, total_rows)
 
-    # ---------------- Scan for bad outputs and mark them for re-run ---------------- #
+    # 1) Scan for bad executions among already processed rows
+    bad_indices: Set[int] = set()
+    bad_csv_path = ""
 
-    bad_indices = find_bad_outputs(out_dir, index_to_filename)
+    if processed_indices:
+        bad_indices, bad_csv_path = detect_bad_outputs(
+            rows=rows,
+            question_id_idx=question_id_idx,
+            out_dir=out_dir,
+            processed_indices=processed_indices,
+        )
 
-    if bad_indices:
-        # Bad outputs should be re-run: remove them from the "already processed" set
-        processed_indices -= bad_indices
-
-        # If we had previously thought the run was completed, but now see bad outputs,
-        # we must treat it as NOT completed.
-        if len(processed_indices) < total_rows:
-            is_completed = False
-
-        # Log which indices are being re-run
-        with open(batch_log_path, "a", encoding="utf-8") as lf:
-            lf.write(
-                f"# Detected {len(bad_indices)} bad outputs; "
-                f"rows {min(bad_indices)}-{max(bad_indices)} will be re-run.\n"
+        if bad_indices:
+            print(
+                f"[CHECK INFO] Detected {len(bad_indices)} bad output JSON file(s) in {out_dir}."
             )
+            print(f"[CHECK INFO] Details logged to: {bad_csv_path}")
+            answer_bad = ""
+            try:
+                while answer_bad not in ("y", "n"):
+                    answer_bad = input(
+                        "Do you want to re-run these bad executions? [y/n]: "
+                    ).strip().lower()
+            except EOFError:
+                print(
+                    "[CHECK INFO] No interactive input available; defaulting to 'n' "
+                    "(not re-running bad executions)."
+                )
+                answer_bad = "n"
 
-    # ---------------- Decide whether to resume, restart, or skip ---------------- #
+            if answer_bad == "y":
+                # Treat bad rows as not processed; they will be re-run.
+                processed_indices = processed_indices - bad_indices
+                print(
+                    f"[CHECK INFO] {len(bad_indices)} bad execution(s) will be re-run in this run."
+                )
+            else:
+                # Ignore bad executions and just continue from the last row.
+                print(
+                    "[CHECK INFO] Bad executions will be left as-is and ignored in this run."
+                )
 
-    if is_completed and len(processed_indices) == total_rows:
+    # 2) Effective completion status after possibly unmarking bad rows
+    is_completed_effective = (
+        is_completed_from_log and processed_indices and max(processed_indices) >= total_rows - 1
+    )
+
+    if is_completed_effective:
         # Already processed all rows before; ask user if they want to update.
         print("Detected that this CSV appears to be fully processed based on batch_log.txt.")
         answer = ""
@@ -452,7 +473,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                 f"(based on batch_log.txt and bad-output scan: processed rows up to {last_idx})."
             )
         else:
-            print("No previous progress found for this CSV (or everything needs re-run). Starting from row 0.")
+            print("No previous progress found for this CSV. Starting from row 0.")
 
     # ---------------- Processing Loop (Batched) ---------------- #
 
@@ -475,7 +496,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
             for i, row in enumerate(batch_rows):
                 global_index = batch_start + i  # row index within the full CSV
 
-                # Skip rows that were already processed and not marked as bad
+                # Skip rows that were already processed in a previous run
                 if global_index in processed_indices:
                     pbar.update(1)
                     continue
@@ -494,16 +515,8 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                     pbar.update(1)
                     continue
 
-                # Extract question_id from its named column
-                if len(row) > question_id_idx:
-                    question_id = row[question_id_idx].strip()
-                else:
-                    # Fallback: zero-padded index if something is weird
-                    question_id = f"{global_index:03d}"
-
-                if not question_id:
-                    # If the cell is empty, also fallback to index
-                    question_id = f"{global_index:03d}"
+                # Determine question_id using helper
+                question_id = get_question_id_for_row(row, global_index, question_id_idx)
 
                 # Extract first entity_id* if present
                 entity_id = ""
