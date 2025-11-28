@@ -24,11 +24,35 @@ Key features:
           git add -A
           git commit -m "finished kth batch, generated X/Y JSON files"
           git push origin main
+      Any git errors are logged but DO NOT stop the main processing.
 - Uses a tqdm progress bar to show overall processing progress.
 - Prints a concise summary at the end with counts and output directory.
 - The code is structured so that multiple CSVs can be handled in the future:
       compmix-test.csv, dev_set.csv, test_set.csv, train_set.csv
   For now only top1000.csv is active.
+
+Resume & “already generated?” behavior:
+- On each run, the script checks the output dir and `batch_log.txt`.
+  * If it finds that all rows are already processed, it prompts:
+        "file already generated, do you want to update them? [y/n]"
+    If you answer:
+        - 'n': the script skips re-processing that CSV.
+        - 'y': the script re-processes from scratch (overwriting outputs).
+  * If it finds that only part of the CSV was processed, it resumes from
+    the first unprocessed row, based on `batch_log.txt`.
+
+Bad-output scanning:
+- Before deciding resume/finished, the script scans every JSON file in the output dir.
+- A JSON is treated as a bad execution if:
+    * It contains the pattern:
+          {"type": "output", "task": "sparql-qa", "output": null
+      OR
+    * It is invalid JSON (truncated, etc.)
+      OR
+    * It is a dict with `type == "output"` and `task == "sparql-qa"` and:
+          - `output` is None, OR
+          - `output` is a dict without a "sparql" key.
+- Any rows with bad outputs are logged and automatically re-run in this run.
 """
 
 import csv
@@ -37,13 +61,12 @@ import os
 import subprocess
 import sys
 import time
-from typing import List
+from typing import Dict, List, Set, Tuple
 
 from tqdm import tqdm
 
 # ---------------- Configuration ---------------- #
 
-# In the future, you can process multiple CSVs by uncommenting / adding paths here.
 CSV_FILES: List[str] = [
     # "data/CompMix/compmix-test.csv",
     "data/CompMix/top1000.csv",
@@ -55,6 +78,8 @@ CSV_FILES: List[str] = [
 BATCH_SIZE = 2
 
 
+# ---------------- Git helper ---------------- #
+
 def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: int) -> None:
     """
     After each finished batch, automatically:
@@ -62,7 +87,7 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
       - git commit -m "finished <batch_number>th batch, generated <processed_so_far>/<total_rows> JSON files"
       - git push origin main
 
-    Any errors in git commands are printed as warnings but do not stop the main processing.
+    Any errors in git commands are printed as warnings but do NOT stop the main processing.
     """
     commit_msg = (
         f"finished {batch_number}th batch, "
@@ -78,7 +103,8 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
         )
         if add_proc.returncode != 0:
             sys.stderr.write("[GIT WARN] 'git add -A' failed:\n")
-            sys.stderr.write(add_proc.stderr + "\n")
+            if add_proc.stderr:
+                sys.stderr.write(add_proc.stderr + "\n")
             return  # If we can't add, no point committing
 
         # Commit (may fail if there is nothing to commit)
@@ -90,7 +116,8 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
         if commit_proc.returncode != 0:
             # Typically "nothing to commit" – not fatal
             sys.stderr.write("[GIT INFO] 'git commit' did not create a commit:\n")
-            sys.stderr.write(commit_proc.stderr + "\n")
+            if commit_proc.stderr:
+                sys.stderr.write(commit_proc.stderr + "\n")
             return
 
         # Push to origin main
@@ -101,12 +128,167 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
         )
         if push_proc.returncode != 0:
             sys.stderr.write("[GIT WARN] 'git push origin main' failed:\n")
-            sys.stderr.write(push_proc.stderr + "\n")
+            if push_proc.stderr:
+                sys.stderr.write(push_proc.stderr + "\n")
 
     except FileNotFoundError:
         # git not installed or not in PATH
         sys.stderr.write("[GIT WARN] 'git' command not found. Skipping git operations.\n")
 
+
+# ---------------- Batch log / resume helpers ---------------- #
+
+def parse_batch_log(batch_log_path: str, total_rows: int) -> Tuple[Set[int], bool]:
+    """
+    Parse an existing batch_log.txt (if any) and return:
+        processed_indices: set of 0-based row indices that are already done
+        is_completed: whether the log indicates the run was completed
+
+    Completion is detected either by a '# COMPLETED' line, or by seeing
+    that the highest index in the log is >= total_rows - 1.
+    """
+    processed_indices: Set[int] = set()
+    is_completed = False
+
+    if not os.path.exists(batch_log_path):
+        return processed_indices, is_completed
+
+    with open(batch_log_path, "r", encoding="utf-8") as lf:
+        for line in lf:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                # Comments or blank lines
+                if "COMPLETED" in stripped.upper():
+                    is_completed = True
+                continue
+
+            # Typical line format:
+            # "batch 338 (#339) | rows 676-677 | files: 3609.json, 1376.json"
+            parts = [p.strip() for p in stripped.split("|")]
+            for part in parts:
+                if part.startswith("rows "):
+                    range_str = part[len("rows "):].strip()
+                    if "-" in range_str:
+                        start_s, end_s = range_str.split("-", 1)
+                        try:
+                            start_i = int(start_s)
+                            end_i = int(end_s)
+                        except ValueError:
+                            continue
+                        for idx in range(start_i, end_i + 1):
+                            processed_indices.add(idx)
+                    else:
+                        try:
+                            idx = int(range_str)
+                        except ValueError:
+                            continue
+                        processed_indices.add(idx)
+
+    # If there is no explicit COMPLETED marker, but we have processed
+    # indices up to the last row, consider it complete.
+    if not is_completed and processed_indices:
+        if max(processed_indices) >= total_rows - 1:
+            is_completed = True
+
+    return processed_indices, is_completed
+
+
+def ensure_batch_log_header(batch_log_path: str, csv_path: str) -> None:
+    """
+    Create batch_log.txt with a standard header if it doesn't exist.
+    If it already exists, leave it alone.
+    """
+    if os.path.exists(batch_log_path):
+        return
+
+    with open(batch_log_path, "w", encoding="utf-8") as lf:
+        lf.write(f"# Batch log for {csv_path}\n")
+        lf.write("# Each line: batch_index | row_indices | filenames\n\n")
+
+
+# ---------------- Bad-output detection ---------------- #
+
+def is_bad_output_file(path: str) -> bool:
+    """
+    Return True if the JSON at `path` looks like a bad execution.
+
+    Rules:
+    - If file cannot be read or parsed as JSON -> bad.
+    - If text contains the specific pattern
+          {"type": "output", "task": "sparql-qa", "output": null
+      -> bad.
+    - If parsed JSON is a dict with:
+          type == "output", task == "sparql-qa"
+      and either:
+          output is None, or
+          output is a dict that does NOT contain a "sparql" key
+      -> bad.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+    except OSError as e:
+        sys.stderr.write(f"[CHECK WARN] Could not read JSON file {path}: {e}\n")
+        return True  # treat unreadable as bad
+
+    # Quick textual check for your exact "bad execution" pattern
+    if (
+        '"type": "output"' in text
+        and '"task": "sparql-qa"' in text
+        and '"output": null' in text
+    ):
+        return True
+
+    # Try to parse as JSON
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        # Truncated or invalid JSON – treat as bad
+        return True
+
+    if not isinstance(data, dict):
+        # Unexpected structure; be conservative and treat non-dicts as bad
+        return True
+
+    if data.get("type") == "output" and data.get("task") == "sparql-qa":
+        out = data.get("output", None)
+        if out is None:
+            return True
+        if isinstance(out, dict) and "sparql" not in out:
+            return True
+
+    return False
+
+
+def find_bad_outputs(
+    out_dir: str,
+    index_to_filename: Dict[int, str],
+) -> Set[int]:
+    """
+    Scan every output JSON in out_dir (based on index_to_filename) and
+    return the set of row indices whose JSON is considered a bad execution.
+    """
+    bad_indices: Set[int] = set()
+
+    for idx, fname in index_to_filename.items():
+        json_path = os.path.join(out_dir, fname)
+        if not os.path.exists(json_path):
+            # Missing file is not "bad output" – it just hasn't been created yet.
+            continue
+
+        if is_bad_output_file(json_path):
+            bad_indices.add(idx)
+
+    if bad_indices:
+        sys.stderr.write(
+            f"[CHECK INFO] Detected {len(bad_indices)} bad output JSON file(s) "
+            f"in {out_dir}. They will be re-run.\n"
+        )
+
+    return bad_indices
+
+
+# ---------------- Main CSV processing ---------------- #
 
 def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
     """
@@ -129,7 +311,16 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
       * Rows are processed in chunks of `batch_size`.
       * After each batch:
           - Append a line to batch_log.txt summarizing that batch.
-          - Run git add/commit/push.
+          - Run git add/commit/push (non-fatal if it fails).
+
+    Resume behavior:
+      * If batch_log.txt indicates some rows were already processed, the script
+        resumes from the first unprocessed row.
+      * If all rows were processed, the script asks whether to re-run and update.
+
+    Bad-output behavior:
+      * Before deciding resume/finished, scan every output JSON and mark
+        "bad" executions to be re-run automatically in this run.
     """
 
     # Build output directory: output/<folder>/<file_stem>
@@ -145,8 +336,6 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
     # ---------------- Load CSV ---------------- #
 
-  
-    
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         raw_header = next(reader, None)
@@ -156,16 +345,6 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
         # Normalize header cells: strip whitespace + BOM
         header = [h.strip().lstrip("\ufeff") for h in raw_header]
-
-
-
-
-
-
-
-
-
-
 
         if header is None:
             raise ValueError(f"CSV file '{csv_path}' appears to be empty or missing a header row.")
@@ -179,7 +358,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                 f"'question_id' column not found in CSV header: {header}"
             )
 
-        # question should exist by name; if not, we bail out (better than silently breaking).
+        # question should exist by name; if not, we bail out.
         try:
             question_idx = header.index("question")
         except ValueError:
@@ -202,16 +381,89 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
         print("No data rows found in CSV. Skipping.")
         return
 
-    # Clear or initialize the batch log for this CSV
-    with open(batch_log_path, "w", encoding="utf-8") as lf:
-        lf.write(f"# Batch log for {csv_path}\n")
-        lf.write("# Each line: batch_index | row_indices | filenames\n\n")
+    # Precompute filename mapping for all rows based on question_id
+    index_to_filename: Dict[int, str] = {}
+    for global_index, row in enumerate(rows):
+        if not row:
+            # We'll handle empty rows later; filename still based on index fallback.
+            qid = f"{global_index:03d}"
+        else:
+            if len(row) > question_id_idx:
+                qid = row[question_id_idx].strip() or f"{global_index:03d}"
+            else:
+                qid = f"{global_index:03d}"
+        index_to_filename[global_index] = f"{qid}.json"
+
+    # Make sure batch log has a header if it doesn't exist
+    ensure_batch_log_header(batch_log_path, csv_path)
+
+    # ---------------- Check existing progress from log ---------------- #
+
+    processed_indices, is_completed = parse_batch_log(batch_log_path, total_rows)
+
+    # ---------------- Scan for bad outputs and mark them for re-run ---------------- #
+
+    bad_indices = find_bad_outputs(out_dir, index_to_filename)
+
+    if bad_indices:
+        # Bad outputs should be re-run: remove them from the "already processed" set
+        processed_indices -= bad_indices
+
+        # If we had previously thought the run was completed, but now see bad outputs,
+        # we must treat it as NOT completed.
+        if len(processed_indices) < total_rows:
+            is_completed = False
+
+        # Log which indices are being re-run
+        with open(batch_log_path, "a", encoding="utf-8") as lf:
+            lf.write(
+                f"# Detected {len(bad_indices)} bad outputs; "
+                f"rows {min(bad_indices)}-{max(bad_indices)} will be re-run.\n"
+            )
+
+    # ---------------- Decide whether to resume, restart, or skip ---------------- #
+
+    if is_completed and len(processed_indices) == total_rows:
+        # Already processed all rows before; ask user if they want to update.
+        print("Detected that this CSV appears to be fully processed based on batch_log.txt.")
+        answer = ""
+        try:
+            while answer not in ("y", "n"):
+                answer = input("file already generated, do you want to update them? [y/n]: ").strip().lower()
+        except EOFError:
+            # Non-interactive environment; be conservative and skip updating.
+            print("No interactive input available; defaulting to 'n' (not updating).")
+            answer = "n"
+
+        if answer != "y":
+            print("User chose not to update existing outputs. Skipping this CSV.")
+            return
+
+        # User wants to re-run everything.
+        print("User requested to update existing outputs: re-running all rows from scratch.")
+        processed_indices.clear()
+        with open(batch_log_path, "a", encoding="utf-8") as lf:
+            lf.write("\n# Restarting processing: user requested update.\n")
+    else:
+        if processed_indices:
+            last_idx = max(processed_indices)
+            print(
+                f"Resuming from row {last_idx + 1} "
+                f"(based on batch_log.txt and bad-output scan: processed rows up to {last_idx})."
+            )
+        else:
+            print("No previous progress found for this CSV (or everything needs re-run). Starting from row 0.")
 
     # ---------------- Processing Loop (Batched) ---------------- #
 
-    processed_count = 0
+    processed_count = len(processed_indices)
 
-    with tqdm(total=total_rows, desc="Processing questions", unit="row") as pbar:
+    with tqdm(
+        total=total_rows,
+        desc="Processing questions",
+        unit="row",
+        initial=processed_count,
+    ) as pbar:
         for batch_start in range(0, total_rows, batch_size):
             batch_rows = rows[batch_start: batch_start + batch_size]
             batch_index = batch_start // batch_size      # 0-based
@@ -222,6 +474,11 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
             # Process each row within the current batch
             for i, row in enumerate(batch_rows):
                 global_index = batch_start + i  # row index within the full CSV
+
+                # Skip rows that were already processed and not marked as bad
+                if global_index in processed_indices:
+                    pbar.update(1)
+                    continue
 
                 if not row:
                     pbar.update(1)
@@ -280,7 +537,8 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                     data = json.loads(stdout_text)
 
                     # Overwrite elapsed with our per-row measurement (in seconds, rounded)
-                    data["elapsed"] = round(elapsed, 3)
+                    if isinstance(data, dict):
+                        data["elapsed"] = round(elapsed, 3)
 
                     json_text = json.dumps(data, ensure_ascii=False)
                 except json.JSONDecodeError:
@@ -304,6 +562,7 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
 
                 batch_filenames.append(filename)
                 batch_row_indices.append(global_index)
+                processed_indices.add(global_index)
 
             # ----- End of batch: log batch info and run git ----- #
             if batch_row_indices:
@@ -318,14 +577,21 @@ def process_csv(csv_path: str, batch_size: int = BATCH_SIZE) -> None:
                         f"files: {', '.join(batch_filenames)}\n"
                     )
 
-                # Run git add/commit/push for this batch
+                # Run git add/commit/push for this batch (non-fatal on failure)
                 run_git_after_batch(
                     batch_number=batch_number,
                     processed_so_far=processed_count,
                     total_rows=total_rows,
                 )
 
-    # ---------------- Final Summary ---------------- #
+    # ---------------- Final Summary + completion marker ---------------- #
+
+    # If we reached here, we finished iterating over all rows in this run.
+    with open(batch_log_path, "a", encoding="utf-8") as lf:
+        lf.write(
+            f"\n# COMPLETED: processed {processed_count}/{total_rows} rows at "
+            f"{time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        )
 
     print("\nProcessing complete for this CSV.")
     print(f"  CSV path        : {csv_path}")
