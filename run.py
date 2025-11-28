@@ -72,7 +72,9 @@ CSV_FILES: List[str] = [
 ]
 
 # Batch size for rehearsal of large-scale processing
-BATCH_SIZE = 2
+BATCH_SIZE = 50
+
+
 
 
 # ---------------- Git helper ---------------- #
