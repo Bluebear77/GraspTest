@@ -1,31 +1,16 @@
 from typing import Any
 
 from grasp.configs import GraspConfig
-from grasp.functions import TaskFunctions
+from grasp.functions import ExecutionResult
 from grasp.manager import KgManager
 from grasp.model import Message, Response
 from grasp.sparql.utils import find, find_all, parse_string, parse_to_string
+from grasp.tasks.base import GraspTask
 from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
 from grasp.utils import format_list
 
 
-def call_function(
-    config: GraspConfig,
-    managers: list[KgManager],
-    fn_name: str,
-    fn_args: dict,
-    known: set[str],
-    state: Any | None = None,
-    example_indices: dict | None = None,
-) -> str:
-    if fn_name == "answer" or fn_name == "cancel":
-        return "Stopping"
-
-    else:
-        raise ValueError(f"Unknown function {fn_name}")
-
-
-def functions() -> TaskFunctions:
+def functions() -> list[dict]:
     fns = [
         {
             "name": "answer",
@@ -68,7 +53,7 @@ def functions() -> TaskFunctions:
             "strict": True,
         },
     ]
-    return fns, call_function
+    return fns
 
 
 def rules() -> list[str]:
@@ -163,7 +148,7 @@ def prepare_sparql(
     max_rows: int = 10,
     max_columns: int = 10,
     remove_known: bool = False,
-) -> str:
+) -> tuple[ExecutionResult, str]:
     assert len(managers) == 1, "Only one kg manager expected"
     manager = managers[0]
     result, selections = prepare_sparql_result(
@@ -184,7 +169,7 @@ def prepare_sparql(
         except Exception:
             pass
 
-    return format_sparql_result(manager, result, selections)
+    return result, format_sparql_result(manager, result, selections)
 
 
 def input_and_state(
@@ -194,13 +179,14 @@ def input_and_state(
     max_columns: int,
 ) -> tuple[str, None]:
     sparql = clean_sparql(sparql, managers)
-    return prepare_sparql(
+    _, formatted = prepare_sparql(
         sparql,
         managers,
         max_rows,
         max_columns,
         remove_known=True,
-    ), None
+    )
+    return formatted, None
 
 
 def output(
@@ -218,15 +204,22 @@ def output(
             output["type"] = "answer"
             questions = tool_call.args["questions"]
             output["formatted"] = f"Questions:\n{format_list(questions)}\n\n"
-            output["formatted"] += prepare_sparql(
+
+            result, formatted = prepare_sparql(
                 tool_call.args["sparql"],
                 managers,
                 max_rows,
                 max_columns,
             )
 
+            output["sparql_fixed"] = result.sparql
+            output["sparql_result"] = result.formatted
+
+            output["formatted"] += formatted
+
         elif tool_call.name == "cancel":
             output["type"] = "cancel"
+            output["reason"] = tool_call.args["reason"]
             output["formatted"] = f"Cancelled:\n{tool_call.args['reason']}"
 
         else:
@@ -236,3 +229,56 @@ def output(
 
     except Exception:
         return None
+
+
+class WdqlTask(GraspTask):
+    name = "wikidata-query-logs"
+
+    def system_information(self) -> str:
+        return system_information(self.config)
+
+    def rules(self) -> list[str]:
+        return rules()
+
+    def function_definitions(self) -> list[dict]:
+        return functions()
+
+    def call_function(
+        self,
+        fn_name: str,
+        fn_args: dict,
+        known: set[str],
+        example_indices: dict | None,
+    ) -> str:
+        if fn_name == "answer" or fn_name == "cancel":
+            return "Stopping"
+
+        else:
+            raise ValueError(f"Unknown function {fn_name}")
+
+    def done(self, fn_name: str) -> bool:
+        return fn_name in {"answer", "cancel"}
+
+    def setup(self, input: Any) -> str:
+        assert isinstance(input, str), (
+            "Input for wikidata-query-logs must be a string (SPARQL query)"
+        )
+        formatted, _ = input_and_state(
+            input,
+            self.managers,
+            self.config.result_max_rows,
+            self.config.result_max_columns,
+        )
+        return formatted
+
+    def output(self, messages: list[Message]) -> dict | None:
+        return output(
+            messages,
+            self.managers,
+            self.config.result_max_rows,
+            self.config.result_max_columns,
+        )
+
+    @property
+    def default_input_field(self) -> str | None:
+        return "sparql"

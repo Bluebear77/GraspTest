@@ -1,120 +1,227 @@
+import logging
 import os
 import time
-from pathlib import Path
-from typing import Any, Type
+from dataclasses import dataclass
+from io import BytesIO
 
-from search_index import IndexData, PrefixIndex, SearchIndex, SimilarityIndex
-from universal_ml_utils.io import dump_json, load_json
+import numpy as np
+import requests
+from PIL import Image
+from search_rdf import Data, EmbeddingIndex, FuzzyIndex, KeywordIndex
+from search_rdf.model import (
+    HuggingFaceImageModel,
+    OpenClipModel,
+    SentenceTransformerModel,
+)
+from universal_ml_utils.configuration import load_config
+from universal_ml_utils.io import dump_json, load_json, load_text
 from universal_ml_utils.logging import get_logger
 
-from grasp.manager.mapping import Mapping, WikidataPropertyMapping
-from grasp.sparql.utils import get_endpoint, load_qlever_prefixes
+from grasp.manager.cache import Cache
+from grasp.manager.normalizer import Normalizer, WikidataPropertyNormalizer
+from grasp.sparql.types import ObjType
+from grasp.sparql.utils import find_longest_prefix, get_endpoint, load_qlever_prefixes
 from grasp.utils import get_index_dir
 
+SearchIndex = KeywordIndex | EmbeddingIndex | FuzzyIndex
+EmbeddingModel = HuggingFaceImageModel | OpenClipModel | SentenceTransformerModel
 
-def load_data_and_mapping(
-    index_dir: str,
-    mapping_cls: Type[Mapping] | None = None,
-) -> tuple[IndexData, Mapping]:
+
+@dataclass
+class Index:
+    description: str
+    index: SearchIndex
+    info_sparql: str | None = None
+    cache: Cache | None = None
+
+
+def load_data(index_dir: str) -> Data:
     try:
-        data = IndexData.load(
-            os.path.join(index_dir, "data.tsv"),
-            os.path.join(index_dir, "offsets.bin"),
-        )
+        data = Data.load(os.path.join(index_dir, "data"))
     except Exception as e:
         raise ValueError(f"Failed to load index data from {index_dir}") from e
 
-    if mapping_cls is None:
-        mapping_cls = Mapping
-
-    try:
-        mapping = mapping_cls.load(
-            data,
-            os.path.join(index_dir, "mapping.bin"),
-        )
-    except Exception as e:
-        raise ValueError(f"Failed to load mapping from {index_dir}") from e
-
-    return data, mapping
+    return data
 
 
-def load_index_and_mapping(
-    index_dir: str,
-    index_type: str,
-    mapping_cls: Type[Mapping] | None = None,
-    **kwargs: Any,
-) -> tuple[SearchIndex, Mapping]:
+def load_index(index_dir: str, index_type: str) -> SearchIndex | None:
     logger = get_logger("KG INDEX LOADING")
     start = time.perf_counter()
 
-    if index_type == "prefix":
-        index_cls = PrefixIndex
-    elif index_type == "similarity":
-        index_cls = SimilarityIndex
+    try:
+        data = load_data(index_dir)
+    except Exception as e:
+        logger.warning(f"Failed to load data from {index_dir}: {e}")
+        return None
+
+    index_dir = os.path.join(index_dir, index_type)
+    load_kwargs = {"data": data, "index_dir": index_dir}
+
+    if index_type == "keyword":
+        index_cls = KeywordIndex
+    elif index_type == "fuzzy":
+        index_cls = FuzzyIndex
+    elif index_type == "embedding":
+        index_cls = EmbeddingIndex
+        load_kwargs["embedding_path"] = os.path.join(index_dir, "embedding.safetensors")
     else:
         raise ValueError(f"Unknown index type {index_type}")
 
-    data, mapping = load_data_and_mapping(index_dir, mapping_cls)
-
     try:
-        index = index_cls.load(
-            data,
-            os.path.join(index_dir, index_type),
-            **kwargs,
-        )
+        index = index_cls.load(**load_kwargs)
     except Exception as e:
-        raise ValueError(f"Failed to load {index_type} index from {index_dir}") from e
+        logger.warning(f"Failed to load {index_type} index from {index_dir}: {e}")
+        return None
 
     end = time.perf_counter()
 
     logger.debug(f"Loading {index_type} index from {index_dir} took {end - start:.2f}s")
 
-    return index, mapping
+    return index
 
 
-def load_entity_index_and_mapping(
-    kg: str,
-    index_type: str | None = None,
-    **kwargs: Any,
-) -> tuple[SearchIndex, Mapping]:
-    index_dir = os.path.join(get_index_dir(), kg, "entities")
-
-    return load_index_and_mapping(
-        index_dir,
-        # for entities use prefix index by default
-        index_type or "prefix",
-        **kwargs,
-    )
+def load_entity_index(kg: str, index_type: str) -> SearchIndex | None:
+    index_dir = os.path.join(get_index_dir(kg), "entities")
+    return load_index(index_dir, index_type)
 
 
-def load_property_index_and_mapping(
-    kg: str,
-    index_type: str | None = None,
-    **kwargs: Any,
-) -> tuple[SearchIndex, Mapping]:
-    index_dir = os.path.join(get_index_dir(), kg, "properties")
+def load_property_index(kg: str, index_type: str) -> SearchIndex | None:
+    index_dir = os.path.join(get_index_dir(kg), "properties")
+    return load_index(index_dir, index_type)
 
-    mapping_cls = WikidataPropertyMapping if kg.startswith("wikidata") else None
 
-    return load_index_and_mapping(
-        index_dir,
-        # for properties use similarity index by default
-        index_type or "similarity",
-        mapping_cls,
-        **kwargs,
-    )
+def load_info_sparql(
+    index_dir: str,
+    logger: logging.Logger | None = None,
+) -> str | None:
+    info_sparql_path = os.path.join(index_dir, "info.sparql")
+    if os.path.exists(info_sparql_path):
+        if logger is not None:
+            logger.debug(f"Loaded info.sparql from {index_dir}")
+        return load_text(info_sparql_path)
+
+    if logger is not None:
+        logger.debug(f"No info.sparql found at {index_dir}")
+    return None
+
+
+def load_info_cache(
+    index_dir: str,
+    logger: logging.Logger | None = None,
+) -> Cache | None:
+    cache_dir = os.path.join(index_dir, "info.cache", "db")
+    if not os.path.exists(cache_dir):
+        if logger is not None:
+            logger.debug(f"No info cache found at {cache_dir}")
+        return None
+
+    try:
+        start = time.perf_counter()
+        cache = Cache.load(cache_dir)
+        end = time.perf_counter()
+        if logger is not None:
+            logger.debug(f"Loaded cache from {cache_dir} in {end - start:.2f}s")
+        return cache
+    except Exception as e:
+        if logger is not None:
+            logger.warning(f"Failed to load cache from {cache_dir}: {e}")
+        return None
+
+
+def load_other_indices(kg: str, indices: list[str]) -> dict[str, Index]:
+    logger = get_logger("KG OTHER INDICES LOADING")
+    base_index_dir = get_index_dir(kg)
+    config_path = os.path.join(base_index_dir, "indices.yaml")
+    if not os.path.exists(config_path):
+        logger.debug(f"No indices.yaml found at {config_path}, skipping other indices")
+        return {}
+
+    config = load_config(config_path)
+
+    others = {}
+    for cfg in config["indices"]:
+        name = cfg["name"]
+        if name not in indices:
+            logger.debug(
+                f"Skipping index {name} as it's not in the specified indices list"
+            )
+            continue
+
+        desc = cfg.get("description", "No description provided")
+
+        sub_index_dir = os.path.join(base_index_dir, name)
+
+        # normalize embedding index type, which is called embedding-with-data
+        # in search-rdf, but embedding in the search-rdf python interface
+        if cfg["type"].startswith("embedding"):
+            cfg["type"] = "embedding"
+
+        index = load_index(sub_index_dir, cfg["type"])
+        if index is None:
+            continue
+
+        info_sparql = load_info_sparql(sub_index_dir, logger)
+        info_cache = load_info_cache(sub_index_dir, logger)
+
+        others[name] = Index(desc, index, info_sparql, info_cache)
+
+    return others
+
+
+def get_embedding_model_key(index: EmbeddingIndex) -> str:
+    assert index.model is not None, "Embedding index must have model metadata"
+    provider = index.provider or "sentence-transformer"
+    return f"{provider}/{index.model}"
+
+
+def load_embedding_model(
+    index: SearchIndex,
+    models: dict[str, EmbeddingModel],
+) -> dict[str, EmbeddingModel]:
+    if not index.index_type == "embedding":
+        return models
+
+    assert isinstance(index, EmbeddingIndex), "Expected an EmbeddingIndex"
+    assert index.model is not None, "Embedding index must have model metadata"
+
+    key = get_embedding_model_key(index)
+    if key in models:
+        return models
+
+    provider = index.provider or "sentence-transformer"
+    if provider == "sentence-transformer":
+        model = SentenceTransformerModel(index.model)
+    elif provider == "open-clip":
+        model = OpenClipModel(index.model)
+    elif provider == "huggingface-image":
+        model = HuggingFaceImageModel(index.model)
+    else:
+        raise ValueError(f"Unknown embedding model provider {provider}")
+
+    models[key] = model
+    return models
+
+
+def load_kg_normalizers(kg: str) -> tuple[Normalizer, Normalizer]:
+    ent_normalizer = Normalizer()
+    prop_normalizer = ent_normalizer
+    if kg.startswith("wikidata"):
+        prop_normalizer = WikidataPropertyNormalizer()
+    return ent_normalizer, prop_normalizer
 
 
 def load_kg_prefixes(kg: str, endpoint: str | None = None) -> dict[str, str]:
-    index_dir = get_index_dir()
-    prefix_file = Path(index_dir, kg, "prefixes.json")
-    if prefix_file.exists():
-        prefixes = load_json(prefix_file.as_posix())
+    kg_index_dir = get_index_dir(kg)
+    prefix_file = os.path.join(kg_index_dir, "prefixes.json")
+    if os.path.exists(prefix_file):
+        prefixes = load_json(prefix_file)
+        # compatibility: strip leading < from old-format prefix files
+        prefixes = {k: v.lstrip("<") for k, v in prefixes.items()}
     else:
         try:
             prefixes = load_qlever_prefixes(endpoint or get_endpoint(kg))
             # save for future use
-            dump_json(prefixes, prefix_file.as_posix(), indent=2)
+            dump_json(prefixes, prefix_file, indent=2)
         except Exception:
             prefixes = {}
 
@@ -133,101 +240,114 @@ def load_kg_prefixes(kg: str, endpoint: str | None = None) -> dict[str, str]:
 
 
 def load_kg_info_sparqls(kg: str) -> tuple[str | None, str | None]:
-    index_dir = get_index_dir()
-    ent_info_file = Path(index_dir, kg, "entities", "info.sparql")
-    prop_info_file = Path(index_dir, kg, "properties", "info.sparql")
-
-    if ent_info_file.exists():
-        ent_info = ent_info_file.read_text()
-    else:
-        ent_info = None
-
-    if prop_info_file.exists():
-        prop_info = prop_info_file.read_text()
-    else:
-        prop_info = None
-
+    logger = get_logger("KG INFO SPARQL LOADING")
+    kg_index_dir = get_index_dir(kg)
+    ent_info = load_info_sparql(os.path.join(kg_index_dir, "entities"), logger)
+    prop_info = load_info_sparql(os.path.join(kg_index_dir, "properties"), logger)
     return ent_info, prop_info
+
+
+def load_kg_info_caches(kg: str) -> tuple[Cache | None, Cache | None]:
+    logger = get_logger("KG INFO CACHE LOADING")
+    kg_index_dir = get_index_dir(kg)
+    ent_cache = load_info_cache(os.path.join(kg_index_dir, "entities"), logger)
+    prop_cache = load_info_cache(os.path.join(kg_index_dir, "properties"), logger)
+    return ent_cache, prop_cache
 
 
 def load_kg_indices(
     kg: str,
-    entities_type: str | None = None,
-    entities_kwargs: dict[str, Any] | None = None,
-    properties_type: str | None = None,
-    properties_kwargs: dict[str, Any] | None = None,
-) -> tuple[SearchIndex, SearchIndex, Mapping, Mapping]:
-    if entities_type != "similarity" and entities_kwargs:
-        # entities kwargs only used for similarity index
-        entities_kwargs.clear()
-
-    ent_index, ent_mapping = load_entity_index_and_mapping(
-        kg,
-        entities_type,
-        **(entities_kwargs or {}),
-    )
-
-    if properties_type == "prefix" and properties_kwargs:
-        # properties kwargs only used for prefix index
-        properties_kwargs.clear()
-
-    # try to share embedding model between entities and properties
-    # if entities also use a similarity index
-    if entities_type == "similarity" and (
-        not properties_kwargs or properties_kwargs.get("model") is None
-    ):
-        properties_kwargs = properties_kwargs or {}
-        properties_kwargs["model"] = ent_index.model
-
-    prop_index, prop_mapping = load_property_index_and_mapping(
-        kg,
-        properties_type,
-        **(properties_kwargs or {}),
-    )
-
-    return ent_index, prop_index, ent_mapping, prop_mapping
+    entities_type: str,
+    properties_type: str,
+) -> tuple[SearchIndex | None, SearchIndex | None]:
+    ent_index = load_entity_index(kg, entities_type)
+    prop_index = load_property_index(kg, properties_type)
+    return ent_index, prop_index
 
 
 def get_common_sparql_prefixes() -> dict[str, str]:
     return {
-        "rdf": "<http://www.w3.org/1999/02/22-rdf-syntax-ns#",
-        "rdfs": "<http://www.w3.org/2000/01/rdf-schema#",
-        "owl": "<http://www.w3.org/2002/07/owl#",
-        "xsd": "<http://www.w3.org/2001/XMLSchema#",
-        "foaf": "<http://xmlns.com/foaf/0.1/",
-        "skos": "<http://www.w3.org/2004/02/skos/core#",
-        "dct": "<http://purl.org/dc/terms/",
-        "dc": "<http://purl.org/dc/elements/1.1/",
-        "prov": "<http://www.w3.org/ns/prov#",
-        "schema": "<http://schema.org/",
-        "geo": "<http://www.opengis.net/ont/geosparql#",
-        "geosparql": "<http://www.opengis.net/ont/geosparql#",
-        "gn": "<http://www.geonames.org/ontology#",
-        "bd": "<http://www.bigdata.com/rdf#",
-        "hint": "<http://www.bigdata.com/queryHints#",
-        "wikibase": "<http://wikiba.se/ontology#",
-        "qb": "<http://purl.org/linked-data/cube#",
-        "void": "<http://rdfs.org/ns/void#",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "foaf": "http://xmlns.com/foaf/0.1/",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
+        "dct": "http://purl.org/dc/terms/",
+        "dc": "http://purl.org/dc/elements/1.1/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "schema": "http://schema.org/",
+        "geo": "http://www.opengis.net/ont/geosparql#",
+        "geosparql": "http://www.opengis.net/ont/geosparql#",
+        "geof": "http://www.opengis.net/def/function/geosparql/",
+        "gn": "http://www.geonames.org/ontology#",
+        "bd": "http://www.bigdata.com/rdf#",
+        "hint": "http://www.bigdata.com/queryHints#",
+        "wikibase": "http://wikiba.se/ontology#",
+        "qb": "http://purl.org/linked-data/cube#",
+        "void": "http://rdfs.org/ns/void#",
     }
 
 
-def is_sim_index(index: SearchIndex) -> bool:
-    return index.get_type() == "similarity"
+def find_obj_type_from_prefixes(
+    iri: str,
+    prefixes: dict[str, str],
+    common_prefixes: dict[str, str],
+) -> ObjType:
+    # we have three cases:
+    # 1. the IRI matches a common prefix but not a known prefix -> COMMON (e.g. rdf:type)
+    # 2. the IRI matches a known prefix -> UNINDEXED (e.g. wd:Q42)
+    # 3. the IRI matches neither -> UNKNOWN (e.g. fb:en.barack_obama in Wikidata)
+    is_common = find_longest_prefix(iri, common_prefixes) is not None
+    is_known = find_longest_prefix(iri, prefixes) is not None
+
+    if is_common:
+        return ObjType.COMMON
+    elif is_known:
+        return ObjType.UNINDEXED
+    else:
+        return ObjType.UNKNOWN
 
 
-def describe_index(index_type: str) -> tuple[str, str]:
-    if index_type == "prefix":
-        title = "Prefix index"
-        desc = "Retrieves items by overlap between query keywords \
-and item words. The query keywords can match item words exactly or \
-as prefixes."
+def load_image_from_url(url: str) -> np.ndarray:
+    try:
+        if url.startswith("file://"):
+            path = url[len("file://") :]
+            image = Image.open(path).convert("RGB")
+        else:
+            response = requests.get(url, headers={"User-Agent": "grasp-rdf"})
+            response.raise_for_status()
+            image = Image.open(BytesIO(response.content)).convert("RGB")
+        return np.array(image)
+    except Exception as e:
+        raise IOError(f"Failed to load image from {url}: {e}") from e
 
-    elif index_type == "similarity":
-        title = "Similarity index"
-        desc = "Retrieves items by cosine similarity between their embeddings and \
-the query embedding."
+
+def format_index_meta(index: SearchIndex) -> str:
+    parts = [f'type="{index.index_type}"']
+    if isinstance(index, EmbeddingIndex):
+        modalities = index.modality or ["text"]
+        parts.append(f'modalities="{"+".join(modalities)}"')
+    return ", ".join(parts)
+
+
+def describe_index_type(index_type: str) -> str:
+    if index_type == "keyword":
+        return "Retrieves items by overlap between their label words and \
+the query keywords. The query keywords can match label words exactly or \
+as prefixes. No special query operators like AND/OR are supported."
+
+    elif index_type == "fuzzy":
+        return "Retrieves items by overlap between their label words and \
+the query keywords. The query keywords must not match label words exactly, but \
+some fuzziness is allowed. The longer a query keyword is, the more it can deviate \
+from a label word and still be considered a match, though it will also contribute \
+less to the overall score. No special query operators like AND/OR are supported."
+
+    elif index_type == "embedding":
+        return "Retrieves items by cosine similarity between their \
+embeddings and the query embedding. The embedding model used depends on the \
+index and may support text, images, or both."
 
     else:
         raise ValueError(f"Unknown index type {index_type}")
-
-    return title, desc

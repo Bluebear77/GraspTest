@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import string
@@ -9,12 +10,20 @@ from universal_ml_utils.io import dump_json, load_json, load_jsonl
 from universal_ml_utils.logging import get_logger
 
 from grasp.configs import ModelConfig
+from grasp.manager.utils import load_kg_prefixes
 from grasp.model import Message, call_model
 from grasp.sparql.metrics import f1_score
 from grasp.sparql.types import AskResult, SelectResult
-from grasp.sparql.utils import execute, get_endpoint
+from grasp.sparql.utils import (
+    execute,
+    get_endpoint,
+    load_sparql_parser,
+)
+from grasp.sparql.utils import (
+    fix_prefixes as fix_sparql_prefixes,
+)
 from grasp.tasks.sparql_qa.examples import SparqlQaSample
-from grasp.utils import format_message, is_invalid_evaluation, is_invalid_model_output
+from grasp.utils import format_message, is_invalid_evaluation, is_invalid_output
 
 
 def get_evaluation_file(prediction_file: str) -> str:
@@ -82,12 +91,26 @@ def evaluate_f1(
     timeout: float = 300.0,
     retry_failed: bool = False,
     exact_after: int = 1024,
+    fix_prefixes: bool = False,
     log_level: str | int | None = None,
 ) -> None:
     logger = get_logger("GRASP EVALUATION", log_level)
 
     if endpoint is None:
         endpoint = get_endpoint(kg)
+
+    parser = load_sparql_parser()
+    prefixes = load_kg_prefixes(kg, endpoint)
+
+    def fix(sparql: str) -> str | None:
+        if not fix_prefixes:
+            return sparql
+
+        try:
+            return fix_sparql_prefixes(sparql, parser, prefixes)
+        except Exception as e:
+            logger.warning(f"Error fixing prefixes:\n{e}\n\nSPARQL:\n{sparql}")
+            return None
 
     evaluation_file = get_evaluation_file(prediction_file)
     predictions, evaluations = load_predictions_and_evaluations(
@@ -98,11 +121,13 @@ def evaluate_f1(
     inputs = load_inputs(input_file)
 
     logger.info(
-        f"Evaluating {len(predictions):,} predictions "
+        f"Evaluating {len(predictions):,} predictions from {prediction_file} "
         f"for {len(inputs):,} inputs from {input_file} "
         f"against SPARQL endpoint {endpoint}"
     )
 
+    num_invalid_outputs = 0
+    num_invalid_evaluations = 0
     for pred in tqdm(
         predictions,
         desc="Evaluating",
@@ -111,7 +136,8 @@ def evaluate_f1(
         assert pred.get("task", "sparql-qa") == "sparql-qa", (
             "Only SPARQL QA task is supported for evaluation"
         )
-        if is_invalid_model_output(pred):
+        if is_invalid_output(pred):
+            num_invalid_outputs += 1
             continue
 
         id = pred["id"]
@@ -120,7 +146,7 @@ def evaluate_f1(
             if not retry_failed or not is_invalid_evaluation(evaluation):
                 continue
 
-        sparql = inputs[id].sparql
+        sparql = fix(inputs[id].sparql) or inputs[id].sparql
         target_result, target_err = get_result_or_error(sparql, endpoint, timeout)
         evaluations[id] = {
             "target": {
@@ -130,16 +156,18 @@ def evaluate_f1(
         }
 
         if target_result is None:
+            num_invalid_evaluations += 1
             dump_json(evaluations, evaluation_file)
             continue
 
         output = pred["output"]
-        sparql = None if output is None else output["sparql"]
-
+        sparql = None
         score = 0.0
         pred_err = "No prediction"
         pred_result = None
-        if sparql is not None:
+
+        if output is not None and output["sparql"] is not None:
+            sparql = fix(output["sparql"]) or output["sparql"]
             pred_result, pred_err = get_result_or_error(sparql, endpoint, timeout)
 
         if pred_result is not None:
@@ -154,8 +182,11 @@ def evaluate_f1(
         }
         dump_json(evaluations, evaluation_file)
 
+        if pred_result is None:
+            num_invalid_evaluations += 1
+
     dump_json(evaluations, evaluation_file)
-    logger.info(f"Evaluation results saved to {evaluation_file}")
+    logger.info(f"{len(evaluations):,} evaluation results saved to {evaluation_file}")
     f1_scores = [
         eval["prediction"]["score"]
         for eval in evaluations.values()
@@ -163,6 +194,8 @@ def evaluate_f1(
     ]
     f1_avg = sum(f1_scores) / len(f1_scores) if f1_scores else 0.0
     logger.info(f"Average F1 score (ignoring empty targets): {f1_avg:.2%}")
+    logger.info(f"Invalid outputs: {num_invalid_outputs:,}")
+    logger.info(f"Invalid evaluations: {num_invalid_evaluations:,}")
 
 
 def judge_candidates(
@@ -215,7 +248,12 @@ You are an expert judge for evaluating SPARQL queries.
 You are given a question and two or more SPARQL query candidates \
 that attempt to answer the question. Your task is to determine \
 which of the candidate queries is the best answer to the question, \
-or whether they are all equally good.
+or whether they are all equally good. The query logic and correctness \
+should be your primary criteria for judgement, while other factors such as \
+additional information or human readability should be secondary. \
+Note that some candidates might indicate that no SPARQL query \
+has been generated/found, which should not automatically be considered worse \
+than a generated SPARQL query that is incorrect or irrelevant to the question.
 
 Think before you finalize your answer with the provided judge function.""",
         ),
@@ -268,11 +306,8 @@ def evaluate_with_judge(
         grouped: dict = {}
         for pred in predictions:
             assert pred.get("task", "sparql-qa") == "sparql-qa", (
-                "Only SPARQL QA task is supported for evaluation"
+                "Only SPARQL QA task is supported for judge evaluation"
             )
-
-            if is_invalid_model_output(pred):
-                continue
 
             id = pred["id"]
             assert id not in grouped, f"Duplicate prediction for id {id}"
@@ -285,6 +320,9 @@ def evaluate_with_judge(
         group_predictions(load_jsonl(prediction_file))
         for prediction_file in prediction_files
     ]
+
+    for preds, pred_file in zip(predictions, prediction_files):
+        logger.info(f"Loaded {len(preds):,} valid predictions from {pred_file}")
 
     evaluations = {
         "prediction_files": prediction_files,
@@ -339,28 +377,38 @@ def evaluate_with_judge(
                 continue
 
         candidates = []
-        for preds in predictions:
+        for preds, pred_file in zip(predictions, prediction_files):
             if id not in preds:
+                logger.debug(f"Skipping missing prediction in {pred_file} for id {id}")
                 break
 
             pred = preds[id]
-            if is_invalid_model_output(pred):
+            if is_invalid_output(pred):
+                logger.debug(
+                    f"Skipping invalid prediction in {pred_file} for id {id}:"
+                    f"\n{json.dumps(pred, indent=2)}"
+                )
                 break
 
-            output = pred["output"]
-            if output is None or output["sparql"] is None:
-                break
-
-            candidates.append(output["formatted"])
+            candidates.append(pred)
 
         if len(candidates) != len(prediction_files):
             # not every prediction file has a prediction for this id
             continue
 
         # shuffle candidates to avoid position bias in judging
-        indices = list(range(len(candidates)))
-        random.shuffle(indices)
-        candidates = [candidates[i] for i in indices]
+        indices = [
+            i for i in range(len(candidates)) if not is_invalid_output(candidates[i])
+        ]
+
+        if not indices:
+            # if not output is valid, skip judging and make it a tie
+            evaluation = {
+                "exaplanation": "No valid output",
+                "verdict": None,
+                "err": None,
+            }
+            continue
 
         evaluation: dict = {
             "explanation": None,
@@ -368,9 +416,17 @@ def evaluate_with_judge(
             "err": None,
         }
         try:
+            random.shuffle(indices)
+            formatted = [
+                candidates[i]["output"]["formatted"]
+                if candidates[i].get("output") is not None
+                else "No SPARQL query generated or found"
+                for i in indices
+            ]
+
             explanation, verdict = judge_candidates(
                 sample.question,
-                candidates,
+                formatted,
                 judge_config,
                 logger,
             )

@@ -41,8 +41,8 @@ def assignment_f1_score(
     rows, cols = linear_sum_assignment(scores, maximize=True)
     assert len(rows) == len(cols) == min(len(pred), len(target))
     assignment_scores = scores[rows, cols]
-    tp = assignment_scores.sum()
-    fn = (1 - assignment_scores).sum() + len(target) - len(rows)
+    tp = float(assignment_scores.sum())
+    fn = float((1 - assignment_scores).sum()) + len(target) - len(rows)
     fp = len(pred) - len(rows)
     if tp <= 0.0:
         return 0.0

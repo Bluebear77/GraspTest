@@ -1,16 +1,17 @@
-import re
 from dataclasses import dataclass
 from enum import StrEnum
 from itertools import groupby
 from typing import Any, Iterator
 
-from grasp.utils import clip
+from grasp.utils import clip, format_list
 
 
 class ObjType(StrEnum):
     ENTITY = "entity"
     PROPERTY = "property"
-    OTHER = "other"
+    COMMON = "common"
+    UNINDEXED = "unindexed"
+    UNKNOWN = "unknown"
     LITERAL = "literal"
 
     def __repr__(self) -> str:
@@ -18,11 +19,6 @@ class ObjType(StrEnum):
 
     def __str__(self) -> str:
         return self.value
-
-
-def obj_types_before(obj_type: ObjType) -> list[ObjType]:
-    values = list(ObjType)
-    return values[: values.index(obj_type)]
 
 
 class Position(StrEnum):
@@ -89,7 +85,7 @@ class Binding:
         assert self.typ in ["uri", "literal", "bnode"]
         match self.typ:
             case "uri":
-                return f"<{self.value}>"
+                return self.value
             case "literal":
                 if self.datatype is not None:
                     return f'"{self.value}"^^<{self.datatype}>'
@@ -185,10 +181,10 @@ class Alternative:
         identifier: str,
         short_identifier: str | None = None,
         label: str | None = None,
-        variants: set[str] | None = None,
+        variants: list[str] | None = None,
         aliases: list[str] | None = None,
         infos: list[str] | None = None,
-        matched_alias: int | None = None,
+        matched_label: str | None = None,
     ) -> None:
         self.identifier = identifier
         self.short_identifier = short_identifier
@@ -196,7 +192,7 @@ class Alternative:
         self.aliases = aliases
         self.variants = variants
         self.infos = infos
-        self.matched_alias = matched_alias
+        self.matched_label = matched_label
 
     def __hash__(self) -> int:
         # hash identifier
@@ -226,8 +222,9 @@ class Alternative:
     def get_selection_string(
         self,
         max_aliases: int = 5,
+        show_matched_label: bool = True,
         add_infos: bool = True,
-        include_variants: set[str] | None = None,
+        include_variants: list[str] | None = None,
     ) -> str:
         s = self.get_label() or self.get_identifier()
 
@@ -240,9 +237,12 @@ class Alternative:
         elif self.has_label() and variants:
             parts.append(f"{self.get_identifier()} as {'/'.join(variants)}")
 
-        if self.aliases and self.matched_alias is not None:
-            alias = clip(self.aliases[self.matched_alias])
-            parts.append(f"matched via {alias}")
+        if (
+            show_matched_label
+            and self.matched_label is not None
+            and self.matched_label != self.label
+        ):
+            parts.append(f'matched via "{clip(self.matched_label)}"')
 
         if parts:
             s += " ("
@@ -250,35 +250,22 @@ class Alternative:
             s += ")"
 
         if add_infos and self.aliases and max_aliases > 0:
-            show_aliases = [clip(a) for a in self.aliases[:max_aliases]]
-            s += ", also known as " + ", ".join(show_aliases)
+            s += ", "
+            if self.has_label():
+                s += "also "
+            s += "known as " + ", ".join(
+                f'"{clip(a)}"' for a in self.aliases[:max_aliases]
+            )
             if len(self.aliases) > max_aliases:
                 s += ", etc."
 
         if add_infos and self.infos:
-            s += ": " + " / ".join(clip(info) for info in self.infos)
-
-        return s
-
-    def get_selection_target(self, variant: str | None = None) -> str:
-        s = self.get_label() or self.get_identifier()
-        if variant:
-            s += f" ({variant})"
-        return s
-
-    def get_selection_regex(self) -> str:
-        # matches format of selection label above
-        r = re.escape(self.get_label() or self.get_identifier())
-        if self.variants:
-            r += (
-                re.escape(" (")
-                + "(?:"
-                + "|".join(map(re.escape, self.variants))
-                + ")"
-                + re.escape(")")
+            s += ":\n" + format_list(
+                (clip(info) for info in self.infos),
+                indent=2,
             )
 
-        return r
+        return s
 
 
 class Selection:
@@ -294,10 +281,6 @@ class Selection:
     ) -> None:
         self.alternative = alternative
         self.obj_type = obj_type
-        if variant:
-            assert alternative.has_variants() and variant in alternative.variants, (  # type: ignore
-                f"Variant {variant} not in {alternative.variants}"
-            )
         self.variant = variant
 
     def __repr__(self) -> str:
@@ -340,7 +323,7 @@ class Selection:
 
 def group_selections(
     selections: list[Selection],
-) -> dict[ObjType, list[tuple[Alternative, set[str]]]]:
+) -> dict[ObjType, list[tuple[Alternative, list[str]]]]:
     def _key(sel: Selection) -> tuple[str, str]:
         return sel.alternative.identifier, sel.obj_type.name
 
@@ -348,10 +331,13 @@ def group_selections(
     for _, group in groupby(sorted(selections, key=_key), key=_key):
         selections = list(group)
         obj_type = selections[0].obj_type
+
         if obj_type not in grouped:
             grouped[obj_type] = []
 
-        variants = {selection.variant for selection in selections if selection.variant}
+        variants = sorted(
+            set(selection.variant for selection in selections if selection.variant)
+        )
         alt = selections[0].alternative
         grouped[obj_type].append((alt, variants))
 

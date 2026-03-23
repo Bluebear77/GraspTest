@@ -1,29 +1,28 @@
-import csv
+import json
 import os
 from logging import Logger
 from pathlib import Path
 from typing import Iterator
 from urllib.parse import unquote_plus
 
+import ijson
 import requests
-from search_index import IndexData, Mapping
+from search_rdf import Data
 from tqdm import tqdm
-from universal_ml_utils.io import dump_lines, dump_text
+from universal_ml_utils.io import dump_jsonl, dump_text, load_jsonl
 from universal_ml_utils.logging import get_logger
 
 from grasp.manager.utils import (
     get_common_sparql_prefixes,
-    load_data_and_mapping,
     load_kg_prefixes,
 )
 from grasp.sparql.utils import (
     find_longest_prefix,
     get_endpoint,
-    is_iri,
     load_entity_index_sparql,
     load_property_index_sparql,
 )
-from grasp.utils import get_index_dir
+from grasp.utils import get_index_dir, ordered_unique
 
 
 def download_data(
@@ -33,11 +32,10 @@ def download_data(
     logger: Logger,
     prefixes: dict[str, str],
     params: dict[str, str] | None = None,
-    add_id_as_label: bool = False,
+    add_id_as_label: None | str = None,
     overwrite: bool = False,
-    disable_id_fallback: bool = False,
 ) -> None:
-    data_file = Path(out_dir, "data.tsv")
+    data_file = Path(out_dir, "data.jsonl")
     if data_file.exists() and not overwrite:
         logger.info(f"Data already exists at {data_file}, skipping download")
         return
@@ -47,9 +45,9 @@ def download_data(
         f"with parameters {params or {}} and SPARQL:\n{sparql}"
     )
 
-    stream = stream_csv(endpoint, sparql, params)
-    dump_lines(
-        prepare_csv(stream, prefixes, logger, add_id_as_label, disable_id_fallback),
+    stream = stream_json(endpoint, sparql, params)
+    dump_jsonl(
+        prepare_json_items(stream, prefixes, logger, add_id_as_label),
         data_file.as_posix(),
     )
 
@@ -59,24 +57,14 @@ def build_data_and_mapping(
     logger: Logger,
     overwrite: bool = False,
 ) -> None:
-    data_file = Path(index_dir, "data.tsv")
-    offsets_file = data_file.with_name("offsets.bin")
-    mapping_file = data_file.with_name("mapping.bin")
-    if not offsets_file.exists() or overwrite:
+    data_file = Path(index_dir, "data.jsonl")
+    data_dir = Path(index_dir, "data")
+    if not data_dir.exists() or overwrite:
         # build index data
-        logger.info(f"Building offsets file at {offsets_file}")
-        IndexData.build(data_file.as_posix(), offsets_file.as_posix())
+        logger.info(f"Building data at {data_dir}")
+        Data.build_from_jsonl(data_file.as_posix(), data_dir.as_posix())
     else:
-        logger.info(f"Offsets file already exists at {offsets_file}, skipping build")
-
-    data = IndexData.load(data_file.as_posix(), offsets_file.as_posix())
-
-    if not mapping_file.exists() or overwrite:
-        # build mapping
-        logger.info(f"Building mapping file at {mapping_file}")
-        Mapping.build(data, mapping_file.as_posix())  # type: ignore
-    else:
-        logger.info(f"Mapping file already exists at {mapping_file}, skipping build")
+        logger.info(f"Data already exists at {data_dir}, skipping build")
 
 
 def get_data(
@@ -86,7 +74,7 @@ def get_data(
     property_query: str | None = None,
     query_params: dict[str, str] | None = None,
     overwrite: bool = False,
-    disable_id_fallback: bool = False,
+    add_id_as_label: str | None = None,
     log_level: str | int | None = None,
 ) -> None:
     logger = get_logger("GRASP DATA", log_level)
@@ -101,6 +89,8 @@ def get_data(
     prefixes = get_common_sparql_prefixes()
     prefixes.update(load_kg_prefixes(kg))
 
+    logger.info(f"Using prefixes:\n{json.dumps(prefixes, indent=2)}")
+
     kg_dir = get_index_dir(kg)
 
     # entities
@@ -114,8 +104,8 @@ def get_data(
         logger,
         prefixes,
         query_params,
-        overwrite=overwrite,
-        disable_id_fallback=disable_id_fallback,
+        add_id_as_label,
+        overwrite,
     )
     dump_text(ent_sparql, os.path.join(ent_dir, "index.sparql"))
     build_data_and_mapping(ent_dir, logger, overwrite)
@@ -131,22 +121,32 @@ def get_data(
         logger,
         prefixes,
         query_params,
-        add_id_as_label=True,  # for properties we also want to search via id
+        add_id_as_label="always",  # for properties we also want to search via id
         overwrite=overwrite,
-        disable_id_fallback=disable_id_fallback,
     )
     dump_text(prop_sparql, os.path.join(prop_dir, "index.sparql"))
     build_data_and_mapping(prop_dir, logger, overwrite)
 
 
-def stream_csv(
+class Stream:
+    def __init__(self, response: requests.Response) -> None:
+        self.stream = response.iter_content(chunk_size=None)
+
+    def read(self, n: int) -> bytes:
+        if n == 0:
+            return b""
+
+        return next(self.stream, b"")
+
+
+def stream_json(
     endpoint: str,
     sparql: str,
     query_params: dict[str, str] | None = None,
-) -> Iterator[list[str]]:
+) -> Stream:
     try:
         headers = {
-            "Accept": "text/csv",
+            "Accept": "application/sparql-results+json",
             "Content-Type": "application/sparql-query",
             "User-Agent": "grasp-data-bot",
         }
@@ -159,20 +159,14 @@ def stream_csv(
             stream=True,
         )
         response.raise_for_status()
-
-        lines = (line.decode("utf-8") for line in response.iter_lines())
-        for row in csv.reader(lines):
-            # pad to 3 columns
-            while len(row) < 3:
-                row.append("")
-            yield row
+        return Stream(response)  # type: ignore
 
     except Exception as e:
-        raise ValueError(f"Failed to stream csv: {e}") from e
+        raise ValueError(f"Failed to stream SPARQL results as JSON: {e}") from e
 
 
 def split_iri(iri: str) -> tuple[str, str]:
-    if not is_iri(iri):
+    if "://" not in iri:
         return "", iri
 
     # split iri into prefix and last part after final / or #
@@ -180,9 +174,9 @@ def split_iri(iri: str) -> tuple[str, str]:
     last_slash = iri.rfind("/")
     last = max(last_hashtag, last_slash)
     if last == -1:
-        return "", iri[1:-1]
+        return "", iri
     else:
-        return iri[1:last], iri[last + 1 : -1]
+        return iri[:last], iri[last + 1 :]
 
 
 def camel_case_split(s: str) -> str:
@@ -208,13 +202,13 @@ def get_object_name_from_id(obj_id: str, prefixes: dict[str, str]) -> str:
         _, obj_name = split_iri(obj_id)
     else:
         _, long = pfx
-        obj_name = obj_id[len(long) : -1]
+        obj_name = obj_id[len(long) :]
 
     # url decode the object name
     return unquote_plus(obj_name)
 
 
-def get_label_from_id(obj_id: str, prefixes: dict[str, str]) -> str:
+def get_value_from_id(obj_id: str, prefixes: dict[str, str]) -> str:
     obj_name = get_object_name_from_id(obj_id, prefixes)
     label = " ".join(camel_case_split(part) for part in split_at_punctuation(obj_name))
     return label.strip()
@@ -237,77 +231,90 @@ def split_at_punctuation(s: str) -> Iterator[str]:
         yield s[start:]
 
 
-def ordered_unique(lst: list[str]) -> list[str]:
-    seen = set()
-    unique = []
-    for item in lst:
-        if item in seen:
-            continue
-        seen.add(item)
-        unique.append(item)
-    return unique
-
-
-def prepare_csv(
-    lines: Iterator[list[str]],
+def prepare_json_items(
+    stream: Stream,
     prefixes: dict[str, str],
     logger: Logger,
-    add_id_as_label: bool = False,
-    disable_id_fallback: bool = False,
-) -> Iterator[str]:
-    num = 0
+    add_id_as_label: None | str = None,
+) -> Iterator[dict]:
+    # iteratore over bindings with ijson
+    bindings = ijson.items(stream, "results.bindings.item")
 
-    # skip original header
-    next(lines)
-
-    # yield own header
-    yield "id\tlabels"
-
-    for line in lines:
-        assert len(line) == 3, f"Expected 3 columns, got {len(line)}: {line}"
-
-        id, label, synonyms = line
-
-        # wrap id with brackets
-        id = f"<{id}>"
-
-        # filter out empty label and synonyms
-        labels = []
-        if label:
-            labels.append(label)
-        for syn in synonyms.split(";;;"):
-            if syn:
-                labels.append(syn)
-
-        if not labels and not disable_id_fallback:
-            # label is empty, try to get it from the object id
-            labels.append(get_label_from_id(id, prefixes))
-
-        if add_id_as_label and not disable_id_fallback:
-            # add id of item to labels
-            object_name = get_object_name_from_id(id, prefixes)
-            labels.append(object_name)
-
-        # make sure no duplicates are in the labels
-        labels = ordered_unique(labels)
-        yield "\t".join([id] + labels)
-
-        num += 1
+    # collect all labels for an id (which are consecutive in the stream)
+    last_id = None
+    fields = []
+    for num, binding in enumerate(bindings, start=1):
         if num % 1_000_000 == 0:
-            logger.info(f"Processed {num:,} items so far")
+            logger.info(f"Processed {num:,} bindings so far")
+
+        logger.debug(f"Processing binding #{num:,}:\n{json.dumps(binding, indent=2)}")
+
+        id = binding["id"]["value"]
+        value = binding["value"]["value"] if "value" in binding else ""
+
+        tag_binding = binding.get("tag", binding.get("tags", None))
+        if tag_binding is not None:
+            tags = tag_binding["value"].split(",")
+        else:
+            tags = []
+
+        # use plain IRI as identifier
+
+        if last_id is not None and id != last_id:
+            # yield previous item
+            if add_id_as_label == "always" or (
+                add_id_as_label == "empty" and not fields
+            ):
+                # add label from id
+                fields.append(
+                    {
+                        "type": "text",
+                        "value": get_value_from_id(last_id, prefixes),
+                        "tags": [],
+                    }
+                )
+
+            yield {
+                "identifier": last_id,
+                "fields": ordered_unique(fields, key=lambda f: f["value"]),
+            }
+
+            fields = []
+
+        last_id = id
+        if value:
+            fields.append({"type": "text", "value": value, "tags": tags})
+
+    if last_id is None:
+        # only happens if there are no bindings
+        return
+
+    # dont forget final item
+    if add_id_as_label == "always" or (add_id_as_label == "empty" and not fields):
+        # add label from id
+        fields.append(
+            {
+                "type": "text",
+                "value": get_value_from_id(last_id, prefixes),
+                "tags": [],
+            }
+        )
+
+    yield {
+        "identifier": last_id,
+        "fields": ordered_unique(fields, key=lambda f: f["value"]),
+    }
 
 
 def merge_data(
     kgs: list[str],
     sub_dir: str,
     out_dir: str,
-    prefixes: dict[str, str],
     logger: Logger,
     overwrite: bool = False,
-    add_id_as_label: bool = False,
 ):
     out_dir = os.path.join(out_dir, sub_dir)
-    data_file = os.path.join(out_dir, "data.tsv")
+    data_file = os.path.join(out_dir, "data.jsonl")
     kg_info = ", ".join(kgs)
     if os.path.exists(data_file) and not overwrite:
         logger.info(
@@ -322,45 +329,43 @@ def merge_data(
 
     os.makedirs(out_dir, exist_ok=True)
 
-    index_data = {}
-    index_mappings = {}
-    for kg in kgs:
-        index_dir = os.path.join(get_index_dir(kg), sub_dir)
+    others = []
 
-        data, mapping = load_data_and_mapping(index_dir)
-        index_data[kg] = data
-        index_mappings[kg] = mapping
+    for kg in tqdm(kgs[1:], desc="Building mappings for data to merge"):
+        kg_data_file = os.path.join(get_index_dir(kg), sub_dir, "data.jsonl")
+
+        items = load_jsonl(kg_data_file)
+        others.append({item["identifier"]: item for item in items})
 
     # first kg is the main one, to which we add data from the others
     kg = kgs[0]
+    kg_data_file = os.path.join(get_index_dir(kg), sub_dir, "data.jsonl")
 
     def merge() -> Iterator[str]:
-        yield "id\tlabels"  # header
+        with open(kg_data_file, "r") as f:
+            for line in tqdm(f, desc="Merging data"):
+                item = json.loads(line)
 
-        for row in tqdm(index_data[kg], f"Merging data for {sub_dir}"):
-            id, *labels = row
+                identifier = item["identifier"]
 
-            for i in range(1, len(kgs)):
-                data = index_data[kgs[i]]
-                mapping = index_mappings[kgs[i]]
-                index = mapping.get(id)
-                if index is None:
-                    continue
+                # collect fields from other kgs and add them
+                # to the current item
+                seen = set(field["value"] for field in item["fields"])
+                for mapping in others:
+                    if identifier not in mapping:
+                        continue
 
-                _, *other_labels = data.get_row(index)
-                labels.extend(other_labels)
+                    other_item = mapping[identifier]
+                    for field in other_item["fields"]:
+                        if field["value"] in seen:
+                            continue
 
-            if not labels:
-                labels.append(get_label_from_id(id, prefixes))
+                        item["fields"].append(field)
+                        seen.add(field["value"])
 
-            if add_id_as_label:
-                object_name = get_object_name_from_id(id, prefixes)
-                labels.append(object_name)
+                yield item
 
-            labels = ordered_unique(labels)
-            yield "\t".join([id] + labels)
-
-    dump_lines(merge(), data_file)
+    dump_jsonl(merge(), data_file)
 
 
 def merge_kgs(
@@ -373,26 +378,14 @@ def merge_kgs(
 
     logger = get_logger("GRASP MERGE", log_level)
 
-    prefixes = get_common_sparql_prefixes()
-    for kg in kgs:
-        prefixes.update(load_kg_prefixes(kg))
-
     out_dir = get_index_dir(out_kg)
 
-    merge_data(kgs, "entities", out_dir, prefixes, logger, overwrite)
+    merge_data(kgs, "entities", out_dir, logger, overwrite)
 
     ent_dir = os.path.join(out_dir, "entities")
     build_data_and_mapping(ent_dir, logger, overwrite)
 
-    merge_data(
-        kgs,
-        "properties",
-        out_dir,
-        prefixes,
-        logger,
-        overwrite,
-        add_id_as_label=True,
-    )
+    merge_data(kgs, "properties", out_dir, logger, overwrite)
 
     prop_dir = os.path.join(out_dir, "properties")
     build_data_and_mapping(prop_dir, logger, overwrite)

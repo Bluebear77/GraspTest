@@ -1,26 +1,21 @@
-import random
 import sys
 from dataclasses import dataclass
 from itertools import chain
 from typing import Optional
 
-from search_index import SearchIndex
-
 from grasp.manager import KgManager
-from grasp.manager.mapping import Mapping
+from grasp.manager.utils import find_obj_type_from_prefixes, get_common_sparql_prefixes
 from grasp.sparql.types import Alternative, ObjType, Position, Selection
 from grasp.sparql.utils import (
     autocomplete_prefix,
     find_all,
-    find_longest_prefix,
-    normalize,
     parse_into_binding,
     parse_string,
 )
 
 __all__ = [
     "Item",
-    "get_sparql_items",
+    "extract_sparql_items",
     "natural_sparql_from_items",
     "selections_from_items",
 ]
@@ -36,7 +31,6 @@ class Item:
     alternative: Alternative
     obj_type: ObjType
     variant: str | None
-    invalid: bool = False
 
     def same_as(self, other: "Item") -> bool:
         return self.alternative.identifier == other.alternative.identifier
@@ -46,12 +40,28 @@ class Item:
         return self.prefix + self.item
 
     @property
-    def is_other_or_literal(self) -> bool:
-        return self.obj_type == ObjType.OTHER or self.obj_type == ObjType.LITERAL
+    def is_literal(self) -> bool:
+        return self.obj_type == ObjType.LITERAL
+
+    @property
+    def is_unindexed(self) -> bool:
+        return self.obj_type == ObjType.UNINDEXED
+
+    @property
+    def is_unknown(self) -> bool:
+        return self.obj_type == ObjType.UNKNOWN
+
+    @property
+    def is_common(self) -> bool:
+        return self.obj_type == ObjType.COMMON
+
+    @property
+    def has_label(self) -> bool:
+        return self.alternative.has_label()
 
     @property
     def is_entity_or_property(self) -> bool:
-        return not self.is_other_or_literal
+        return self.obj_type == ObjType.ENTITY or self.obj_type == ObjType.PROPERTY
 
     @property
     def selection(self) -> Selection:
@@ -79,29 +89,13 @@ def _byte_span(parse: dict, start: int = sys.maxsize, end: int = 0) -> tuple[int
     return min(start, f), max(end, t)
 
 
-def _mapping(manager: KgManager, obj_type: ObjType) -> Mapping:
-    if obj_type == ObjType.ENTITY:
-        return manager.entity_mapping
-    elif obj_type == ObjType.PROPERTY:
-        return manager.property_mapping
-    else:
-        raise ValueError(f"Invalid object type: {obj_type}")
-
-
-def _index(manager: KgManager, obj_type: ObjType) -> SearchIndex:
-    if obj_type == ObjType.ENTITY:
-        return manager.entity_index
-    elif obj_type == ObjType.PROPERTY:
-        return manager.property_index
-    else:
-        raise ValueError(f"Invalid object type: {obj_type}")
+COMMON_PREFIXES = get_common_sparql_prefixes()
 
 
 def _get_item(
     parse: dict,
     manager: KgManager,
     sparql_encoded: bytes,
-    indexed_prefixes: dict[str, str] | None = None,
 ) -> Item | None:
     # return tuple with identifier, variant, label, synonyms
     # and additional info
@@ -112,7 +106,7 @@ def _get_item(
     start = len(prefix)
     end = start + len(item)
 
-    infos = {
+    kwargs = {
         "parse": parse,
         "item": item,
         "item_span": (start, end),
@@ -126,7 +120,7 @@ def _get_item(
 
     if binding.typ == "literal":
         if binding.datatype is not None:
-            info = manager.format_iri("<" + binding.datatype + ">")
+            info = manager.format_iri(binding.datatype)
         elif binding.lang is not None:
             info = binding.lang
         else:
@@ -141,18 +135,14 @@ def _get_item(
             ),
             obj_type=ObjType.LITERAL,
             variant=None,
-            **infos,
+            **kwargs,
         )
 
     # we have an iri
     iri = binding.identifier()
 
-    # check that it is in known prefixes
-    if manager.find_longest_prefix(iri) is None:
-        return None
-
     try:
-        _, position = autocomplete_prefix(prefix, manager.sparql_parser)
+        *_, position = autocomplete_prefix(prefix, manager.sparql_parser)
         if position in [Position.SUBJECT, Position.OBJECT]:
             obj_types = [ObjType.ENTITY]
         else:
@@ -162,56 +152,79 @@ def _get_item(
 
     # check whether the iri is a valid entity or property
     for obj_type in obj_types:
-        map = _mapping(manager, obj_type)
-        norm = map.normalize(iri)
+        norm = manager.normalize(iri, obj_type)
         if norm is None:
             continue
 
-        norm_iri, variant = norm
-        if norm_iri not in map:
+        identifier, variant = norm
+        if not manager.check_identifier(identifier, obj_type):
             continue
 
-        id = map[norm_iri]
-
-        identifier, *labels = _index(manager, obj_type).get_row(id)
-        label, *synonyms = labels
-
-        alternative = manager.build_alternative(
+        infos = manager.get_infos_for_identifiers_of_type([identifier], obj_type)
+        alternative = manager.build_alternative_with_infos(
             identifier,
-            label,
-            synonyms,
-            variants={variant} if variant else None,
+            infos.get(identifier, {}),
+            variants=[variant] if variant else None,
         )
 
         return Item(
             alternative=alternative,
             obj_type=obj_type,
             variant=variant,
-            **infos,
+            **kwargs,
         )
 
-    # we know that it is an IRI of another known prefix,
-    # e.g. rdfs:label or schema:about, or a unknown entity or property
-    # of a known prefix, e.g. wd:Q123456789
-    invalid = False
-    if indexed_prefixes is not None:
-        # check whether iri has an indexed prefix (was expected to be indexed)
-        invalid = find_longest_prefix(iri, indexed_prefixes) is None
+    item_obj_type = find_obj_type_from_prefixes(iri, manager.prefixes, COMMON_PREFIXES)
+
+    variant = None
+    if item_obj_type == ObjType.UNINDEXED:
+        # try to get infos from live endpoint
+        infos = {}
+        for obj_type in obj_types:
+            norm = manager.normalize(iri, obj_type)
+            if norm is None:
+                continue
+
+            identifier, obj_type_variant = norm
+            if obj_type_variant:
+                variant = obj_type_variant
+
+            obj_type_infos = manager.get_infos_for_identifiers_of_type(
+                [identifier], obj_type
+            )
+            # merge infos across types
+            for key, value in obj_type_infos.get(identifier, {}).items():
+                if key not in infos or not isinstance(infos[key], list):
+                    infos[key] = value
+                else:
+                    assert isinstance(value, list)
+                    infos[key].extend(value)
+
+    else:
+        infos = None
 
     return Item(
-        alternative=Alternative(
+        alternative=manager.build_alternative_with_infos(
             identifier=iri,
-            short_identifier=manager.format_iri(iri),
+            infos=infos,
+            variants=[variant] if variant else None,
         ),
-        obj_type=ObjType.OTHER,
+        obj_type=item_obj_type,
         variant=None,
-        invalid=invalid,
-        **infos,
+        **kwargs,
     )
 
 
 def selections_from_items(item: list[Item]) -> list[Selection]:
     return [item.selection for item in item]
+
+
+def selections_from_sparql(
+    sparql: str,
+    manager: KgManager,
+) -> list[Selection]:
+    _, items = extract_sparql_items(sparql, manager)
+    return selections_from_items(items)
 
 
 def natural_sparql_from_items(
@@ -229,22 +242,13 @@ def natural_sparql_from_items(
     return prefix
 
 
-def get_sparql_items(
+def extract_sparql_items(
     sparql: str,
     manager: KgManager,
-    normalized: bool = False,
     is_prefix: bool = False,
 ) -> tuple[str, list[Item]]:
-    sparql = manager.fix_prefixes(
-        sparql,
-        is_prefix=is_prefix,
-        remove_known=True,
-    )
-
-    if normalized:
-        sparql = normalize(sparql, manager.sparql_parser, is_prefix=is_prefix)
-
     sparql_encoded = sparql.encode()
+
     parse, _ = parse_string(
         sparql,
         manager.sparql_parser,
@@ -277,45 +281,3 @@ def get_sparql_items(
 
     # by occurence position in the query
     return sparql, sorted(items, key=lambda item: item.item_span)  # type: ignore
-
-
-def drop_sparql_items(
-    items: list[Item],
-    p: float,
-    other_or_literal_only: bool = False,
-) -> list[Item]:
-    # drop items that can be dropped with the given probability
-    # dropped items are either:
-    # - literals
-    # - iris that are not entities or properties, e.g. rdfs:label
-    # - entities or properties that occurr earlier in the query
-    #   and can therefore be predicted directly
-
-    def matches(item: Item, other: Item) -> bool:
-        # if any of the two items is invalid, they should not match
-        if item.invalid or other.invalid:
-            return False
-
-        # only check for identifiers here, not the variant because
-        # we want to allow to directly predict other variants of
-        # already seen items, e.g. if there is wdt:P31 earlier in the query
-        # allow to predict p:P31 as well
-        return item.alternative.identifier == other.alternative.identifier
-
-    drop_mask = []
-    for item in items:
-        in_prefix = not other_or_literal_only and any(
-            not dropped and matches(item, other)
-            for dropped, other in zip(drop_mask, items[: len(drop_mask)])
-        )
-
-        # only drop valid items, e.g. rdfs:label
-        # if they are not valid, it means they should be known
-        # but are not covered by the index
-        droppable = not item.invalid and (item.is_other_or_literal or in_prefix)
-
-        drop = droppable and random.random() < p
-
-        drop_mask.append(drop)
-
-    return [item for item, drop in zip(items, drop_mask) if not drop]

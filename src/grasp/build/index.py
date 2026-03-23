@@ -2,10 +2,13 @@ import os
 import time
 from logging import Logger
 
-from search_index import PrefixIndex, SimilarityIndex
+from safetensors.numpy import save_file
+from search_rdf import Data, EmbeddingIndex, FuzzyIndex, KeywordIndex
+from search_rdf.model import SentenceTransformerModel
 from universal_ml_utils.logging import get_logger
+from universal_ml_utils.ops import flatten
 
-from grasp.manager.utils import load_data_and_mapping
+from grasp.manager.utils import load_data
 from grasp.utils import get_index_dir
 
 
@@ -14,39 +17,72 @@ def build_index(
     index_type: str,
     logger: Logger,
     overwrite: bool = False,
-    sim_precision: str | None = None,
-    sim_batch_size: int = 256,
-    sim_embedding_dim: int | None = None,
+    embedding_model: str | None = None,
+    embedding_device: str | None = None,
+    embedding_batch_size: int = 256,
+    embedding_dim: int | None = None,
 ) -> None:
-    data, _ = load_data_and_mapping(index_dir)
+    data = load_data(index_dir)
 
-    out_dir = os.path.join(index_dir, index_type)
-    if os.path.exists(out_dir) and not overwrite:
+    index_dir = os.path.join(index_dir, index_type)
+    if os.path.exists(index_dir) and not overwrite:
         logger.info(
-            f"Index of type {index_type} already exists at {out_dir}. Skipping build."
+            f"Index of type {index_type} already exists at {index_dir}. Skipping build."
         )
         return
 
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(index_dir, exist_ok=True)
     start = time.perf_counter()
-    logger.info(f"Building {index_type} index at {out_dir}")
+    logger.info(f"Building {index_type} index at {index_dir} from {len(data):,} items")
 
-    if index_type == "prefix":
-        PrefixIndex.build(data, out_dir)
-    elif index_type == "similarity":
-        SimilarityIndex.build(
-            data,
-            out_dir,
-            batch_size=sim_batch_size,
-            embedding_dim=sim_embedding_dim,
-            precision=sim_precision,
-            show_progress=True,
+    if index_type == "keyword":
+        KeywordIndex.build(data, index_dir)
+
+    elif index_type == "fuzzy":
+        FuzzyIndex.build(data, index_dir)
+
+    elif index_type == "embedding":
+        assert embedding_model is not None, (
+            "Embedding model must be specified for embedding index"
         )
+        embedding_path = os.path.join(index_dir, "embedding.safetensors")
+
+        generate_embeddings(
+            data,
+            embedding_path,
+            model_name=embedding_model,
+            device=embedding_device,
+            batch_size=embedding_batch_size,
+            dim=embedding_dim,
+        )
+
+        EmbeddingIndex.build(data, embedding_path, index_dir)
+
     else:
         raise ValueError(f"Unknown index type: {index_type}")
 
     end = time.perf_counter()
     logger.info(f"Index build took {end - start:.2f} seconds")
+
+
+def generate_embeddings(
+    data: Data,
+    embedding_path: str,
+    model_name: str,
+    device: str | None = None,
+    batch_size: int = 256,
+    dim: int | None = None,
+) -> None:
+    model = SentenceTransformerModel(model_name, device)
+
+    texts = list(flatten(fields for _, fields in data))
+    embedding = model.embed(texts, dim, batch_size, show_progress=True)
+
+    save_file(
+        {"embedding": embedding},
+        filename=embedding_path,
+        metadata={"model": model_name},
+    )
 
 
 def build_indices(
@@ -55,9 +91,10 @@ def build_indices(
     properties_type: str,
     overwrite: bool = False,
     log_level: str | int | None = None,
-    sim_precision: str | None = None,
-    sim_batch_size: int = 256,
-    sim_embedding_dim: int | None = None,
+    embedding_model: str | None = None,
+    embedding_device: str | None = None,
+    embedding_batch_size: int = 256,
+    embedding_dim: int | None = None,
 ) -> None:
     logger = get_logger("GRASP INDEX", log_level)
 
@@ -70,9 +107,10 @@ def build_indices(
         entities_type,
         logger,
         overwrite,
-        sim_precision,
-        sim_batch_size,
-        sim_embedding_dim,
+        embedding_model,
+        embedding_device,
+        embedding_batch_size,
+        embedding_dim,
     )
 
     # properties
@@ -82,7 +120,8 @@ def build_indices(
         properties_type,
         logger,
         overwrite,
-        sim_precision,
-        sim_batch_size,
-        sim_embedding_dim,
+        embedding_model,
+        embedding_device,
+        embedding_batch_size,
+        embedding_dim,
     )

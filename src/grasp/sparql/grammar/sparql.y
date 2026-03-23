@@ -937,11 +937,16 @@ String
 iri
     : 'IRIREF' 
     | PrefixedName
+    | QleverIri
     ;
 
 PrefixedName
     : 'PNAME_LN' 
     | 'PNAME_NS'
+    ;
+
+QleverIri
+    : 'QLEVER_LANGTAG' iri
     ;
 
 BlankNode

@@ -1,0 +1,19 @@
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?id ?value ?tags WHERE {
+  # Get ids and their frequencies for score
+  {
+    SELECT ?id (SUM(?freq) AS ?score) WHERE {
+      { SELECT ?id ("SUB" AS ?pos) (COUNT(?id) AS ?freq) WHERE { ?id ?p ?o } GROUP BY ?id }
+      UNION
+      { SELECT ?id ("OBJ" AS ?pos) (COUNT(?id) AS ?freq) WHERE { ?s ?p ?id . FILTER(ISIRI(?id)) } GROUP BY ?id }
+    } GROUP BY ?id
+  }
+
+  # Get label, mark as main field
+  ?id rdfs:label ?value
+  BIND("main" AS ?tags)
+}
+ORDER BY DESC(?score) ?id DESC(?tags)

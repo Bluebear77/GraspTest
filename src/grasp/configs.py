@@ -6,10 +6,15 @@ from pydantic import BaseModel, conlist
 class KgConfig(BaseModel):
     kg: str
     endpoint: str | None = None
-    entities_type: str | None = None
-    properties_type: str | None = None
+    entities_type: str = "fuzzy"
+    properties_type: str = "embedding"
     notes_file: str | None = None
     example_index: str | None = None
+
+    # additional indices to load
+    # built via search-rdf and exposed
+    # via $GRASP_INDEX_DIR/{kg}/indices.yaml
+    indices: list[str] = []
 
 
 class ModelConfig(BaseModel):
@@ -40,6 +45,9 @@ class GraspConfig(ModelConfig):
     notes_file: str | None = None
 
     knowledge_graphs: list[KgConfig] = [KgConfig(kg="wikidata")]
+
+    # for embedding indices and example indices
+    embedding_model: str = "Qwen/Qwen3-Embedding-0.6B"
 
     # optional task specific parameters
     # map[task_name, map[param_name, param_value]]
@@ -76,7 +84,10 @@ class ServerConfig(GraspConfig):
     max_generation_time: int = 300
     max_idle_time: int = 300
     log_outputs: str | None = None
+    log_file: str | None = None
     share: str | None = None
+    rate_limit: int | None = None
+    rate_limit_window: int = 60
 
 
 class NotesConfig(GraspConfig):

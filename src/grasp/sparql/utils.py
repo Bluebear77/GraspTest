@@ -8,6 +8,7 @@ from urllib.parse import quote_plus, urlparse, urlunparse
 
 import requests
 from grammar_utils.parse import LR1Parser
+from requests.exceptions import JSONDecodeError
 
 from grasp.sparql.types import AskResult, Binding, Position, SelectResult
 
@@ -17,8 +18,8 @@ from grasp.sparql.types import AskResult, Binding, Position, SelectResult
 REQUEST_TIMEOUT = (6, 30)
 
 # default read timeout
-# 60 seconds for everything (including receiving the response)
-READ_TIMEOUT = 60
+# if you cannot read the full response in 10 seconds, it is likely too large
+READ_TIMEOUT = 10
 
 QLEVER_API = "https://qlever.dev/api"
 
@@ -28,7 +29,9 @@ def get_endpoint(kg: str) -> str:
 
 
 class SPARQLException(Exception):
-    pass
+    def __init__(self, message: str, query: str | None = None) -> None:
+        super().__init__(message)
+        self.query = query
 
 
 def load_sparql_grammar() -> tuple[str, str]:
@@ -100,7 +103,7 @@ def parse_into_binding(
             if pfx not in prefixes:
                 return None
 
-            uri = prefixes[pfx][1:] + name
+            uri = prefixes[pfx] + name
 
             # prefixed IRI
             return Binding(
@@ -168,7 +171,7 @@ def parse_into_binding(
                     if pfx not in prefixes:
                         return None
 
-                    datatype = prefixes[pfx][1:] + name
+                    datatype = prefixes[pfx] + name
 
                 return Binding(
                     typ="literal",
@@ -306,89 +309,11 @@ def has_iri(sparql: str, parser: LR1Parser) -> bool:
     )
 
 
-def autocomplete_sparql(
-    sparql: str,
-    parser: LR1Parser,
-    var: str,
-    limit: int | None = None,
-) -> tuple[str, Position]:
-    """
-    Autocomplete the SPARQL by checking that the target variable is
-    selected with SELECT DISTINCT and that it occurrs at least once
-    in the WHERE clause. Optionally add a LIMIT clause to the query.
-    """
-    try:
-        parse, _ = parse_string(sparql, parser)
-    except Exception as e:
-        raise SPARQLException("SPARQL query is not valid") from e
-
-    # check if query is a select query
-    query = find(parse, "QueryType")
-    assert query is not None, "SPARQL query has no type"
-
-    query = query["children"][0]
-    if query["name"] != "SelectQuery":
-        raise SPARQLException("SPARQL query is not a select query")
-
-    select_clause = query["children"][0]
-    select_clause["children"][1:] = [
-        {"name": "DISTINCT", "value": "DISTINCT", "byte_span": (0, 0)},
-        {"name": "VAR1", "value": f"?{var}", "byte_span": (0, 0)},
-    ]
-
-    body = query["children"][2]
-    autocomp_vars = list(
-        filter(
-            lambda x: x["value"] == f"?{var}",
-            find_all(body, "VAR1", skip={"SubSelect"}),
-        )
-    )
-    if not autocomp_vars:
-        raise SPARQLException(
-            f"Variable ?{var} must occurr in the WHERE clause at least once"
-        )
-
-    for autocomp_var in autocomp_vars:
-        autocomp_start, _ = autocomp_var["byte_span"]
-
-        # set autocomp var and all values after it to empty string
-        autocomp_parse = deepcopy(parse)
-        for p in find_terminals(autocomp_parse):
-            start, _ = p["byte_span"]
-            if start >= autocomp_start:
-                p["value"] = ""
-
-        prefix = parse_to_string(autocomp_parse)
-
-        try:
-            _, position = autocomplete_prefix(prefix, parser)
-        except Exception:
-            continue
-
-        if limit is not None:
-            # set limit
-            lim_off_clause = find(
-                parse,
-                "LimitOffsetClausesOptional",
-                skip={"SubSelect"},
-            )
-            assert lim_off_clause is not None, "Failed to find limit clause"
-            lim_off_clause.pop("children", None)
-            lim_off_clause["value"] = f"LIMIT {limit}"
-
-        return parse_to_string(parse), position
-
-    raise SPARQLException(
-        f"Failed to determine position (subject, property, or object) "
-        f"of ?{var} in the query"
-    )
-
-
 def autocomplete_prefix(
     prefix: str,
     parser: LR1Parser,
     limit: int | None = None,
-) -> tuple[str, Position]:
+) -> tuple[str, str, Position]:
     """
     Autocomplete the SPARQL prefix by running
     it against the SPARQL grammar parser.
@@ -435,21 +360,15 @@ def autocomplete_prefix(
                 s += " )"
         return s
 
-    def fix_last_subselect(parse: dict, var: str):
-        subsel = find(parse, "SubSelect", last=True)
-        if not subsel:
-            return
-
-        selclause = find(subsel, "SelectClause")
-        if selclause is None or len(selclause["children"]) != 3:
-            return
-
-        selclause["children"][-1] = {"name": "Var", "value": f"?{var}"}
-        whereclause = find(subsel, "WhereClause")
-        if whereclause is None:
-            return
-
-        fix_last_subselect(whereclause, var)
+    def find_top_level_triples(parse: dict) -> list[str]:
+        blocks = []
+        for triples in find_all(
+            parse,
+            "TriplesSameSubjectPath",
+            skip={"GraphPatternNotTriples"},
+        ):
+            blocks.append(parse_to_string(triples))
+        return blocks
 
     for i, position in enumerate(Position):
         vars = [uuid.uuid4().hex for _ in range(3 - i)]
@@ -457,48 +376,38 @@ def autocomplete_prefix(
         full_query = prefix.strip() + " " + " ".join(f"?{v}" for v in vars)
         full_query = close_brackets(full_query)
 
+        # check if query is valid now
         try:
             parse, _ = parse_string(full_query, parser)
+            query_type = find(parse, "QueryType")
+            assert query_type is not None
+            query_type = query_type["children"][0]
+            # strip "Query" suffix
+            query_type = query_type["name"][:-5].lower()
         except Exception:
             continue
 
-        # replace all select vars with the last one
         select_var = vars[0]
 
-        # replace first select or ask with select var
-        query = find(parse, "QueryType")
-        assert query is not None
-        query = query["children"][0]
-        if query["name"] == "SelectQuery":
-            select_clause = query["children"][0]
-            select_clause["children"][1:] = [
-                {"name": "DISTINCT", "value": "DISTINCT"},
-                {"name": "VAR1", "value": f"?{select_var}"},
-            ]
-        elif query["name"] == "AskQuery":
-            # ask to select here
-            query["name"] = "SelectQuery"
-            query["children"][0] = {
-                "name": "SelectClause",
-                "children": [
-                    {"name": "SELECT", "value": "SELECT"},
-                    {"name": "DISTINCT", "value": "DISTINCT"},
-                    {"name": "VAR1", "value": f"?{select_var}"},
-                ],
-            }
-        else:
-            continue
+        triple_blocks = find_top_level_triples(parse)
+        if not any(select_var in block for block in triple_blocks):
+            # reset to empty query if selected var is not in triple blocks
+            # because then the result wouuld always be empty
+            triple_blocks = []
 
-        # fix subselects
-        fix_last_subselect(parse, select_var)
-
-        final_query = parse_to_string(parse)
+        final_query = (
+            "SELECT DISTINCT ?"
+            + select_var
+            + " WHERE { "
+            + " . ".join(triple_blocks)
+            + " }"
+        )
         if limit is not None:
             final_query += f" LIMIT {limit}"
 
-        return final_query, position
+        return final_query, query_type, position
 
-    raise SPARQLException("Failed to autocomplete prefix")
+    raise SPARQLException("Failed to autocomplete prefix", prefix)
 
 
 def query_type(sparql: str, parser: LR1Parser, is_prefix: bool = False) -> str:
@@ -513,17 +422,7 @@ def query_type(sparql: str, parser: LR1Parser, is_prefix: bool = False) -> str:
 
     query_type = query_type["children"][0]
     name = query_type["name"]
-    match name:
-        case "SelectQuery":
-            return "select"
-        case "ConstructQuery":
-            return "construct"
-        case "DescribeQuery":
-            return "describe"
-        case "AskQuery":
-            return "ask"
-        case _:
-            raise SPARQLException(f'Unknown SPARQL query type "{name}"')
+    return name[:-5].lower()  # remove "Query" suffix
 
 
 def ask_to_select(
@@ -624,7 +523,7 @@ def fix_prefixes(
         second = prefix_decl["children"][2]["value"]
 
         short = first.split(":", 1)[0]
-        long = second[:-1]
+        long = second[1:-1]
         exist[short] = long
 
     base_decl = find(parse, "BaseDecl", last=True)
@@ -678,7 +577,7 @@ def fix_prefixes(
                 "children": [
                     {"name": "PREFIX", "value": "PREFIX"},
                     {"name": "PNAME_NS", "value": f"{pfx}:"},
-                    {"name": "IRIREF", "value": f"{long}>"},
+                    {"name": "IRIREF", "value": wrap_iri(long)},
                 ],
             }
         )
@@ -705,7 +604,6 @@ def prettify(
         sparql + " " * is_prefix,
         parser,
         skip_empty=True,
-        collapse_single=True,
         is_prefix=is_prefix,
     )
 
@@ -718,11 +616,18 @@ def prettify(
     assert indent > 0, "indent step must be positive"
     current_indent = 0
     s = ""
+    last = None
 
     def _pretty(parse: dict) -> bool:
         nonlocal current_indent
         nonlocal s
+        nonlocal last
         newline = False
+
+        if parse["name"] == "(" or (last and last["name"] == "("):
+            s = s.rstrip()
+        elif parse["name"] == ")":
+            s = s.rstrip()
 
         if "value" in parse:
             if parse["name"] in ["UNION", "MINUS"]:
@@ -743,7 +648,7 @@ def prettify(
 
         else:
             for i, child in enumerate(parse["children"]):
-                if i > 0 and not newline and child["name"] != "(":
+                if i > 0 and not newline:  # and child["name"] != "(":
                     s += " "
 
                 newline = _pretty(child)
@@ -755,15 +660,17 @@ def prettify(
             "PrefixDecl",
             "BaseDecl",
             "TriplesBlock",
+            "GraphPatternNotTriples",
             "GroupClause",
             "HavingClause",
             "OrderClause",
             "LimitClause",
             "OffsetClause",
-            "GraphPatternNotTriples",
         ]:
             s += "\n" + " " * current_indent
             newline = True
+
+        last = parse
 
         return newline
 
@@ -793,7 +700,31 @@ def set_limit(sparql: str, parser: LR1Parser, limit: int) -> str:
     return parse_to_string(parse)
 
 
+class SPARQLExecuteException(SPARQLException):
+    def __init__(
+        self,
+        message: str,
+        query: str,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message, query)
+        self.status_code = status_code
+
+    @property
+    def is_other_error(self) -> bool:
+        return self.status_code is None
+
+    @property
+    def is_client_error(self) -> bool:
+        return self.status_code is not None and int(self.status_code / 100) == 4
+
+    @property
+    def is_server_error(self) -> bool:
+        return self.status_code is not None and int(self.status_code / 100) == 5
+
+
 def _stream_with_timeout(
+    sparql: str,
     response: requests.Response,
     seconds: float | None = None,
 ) -> Any:
@@ -804,8 +735,9 @@ def _stream_with_timeout(
             continue
         chunks.append(chunk)
         if seconds and time.perf_counter() - start > seconds:
-            raise TimeoutError(
-                f"Took longer than {seconds} seconds to read SPARQL result"
+            raise SPARQLExecuteException(
+                f"Took longer than {seconds} seconds to read SPARQL result",
+                sparql,
             )
 
     full = b"".join(chunks)
@@ -819,6 +751,7 @@ def execute(
     request_timeout: float | tuple[float, float] | None = REQUEST_TIMEOUT,
     max_retries: int = 0,
     read_timeout: float | None = READ_TIMEOUT,
+    **kwargs: Any,
 ) -> SelectResult | AskResult:
     max_retries = max(0, max_retries)
     for i in range(max_retries + 1):
@@ -827,62 +760,95 @@ def execute(
                 endpoint,
                 headers={
                     "Accept": "application/sparql-results+json",
-                    "User-Agent": "grasp-bot",
+                    "User-Agent": "grasp-rdf",
                 },
                 data={"query": sparql},
                 timeout=request_timeout,
                 stream=True,
+                **kwargs,
             )
 
             response.raise_for_status()
 
-            res = _stream_with_timeout(response, read_timeout)
+            res = _stream_with_timeout(sparql, response, read_timeout)
             if "boolean" in res:
                 return AskResult(res["boolean"])
             else:
                 return SelectResult.from_json(res)
 
-        except (TimeoutError, requests.Timeout) as e:
+        except SPARQLExecuteException as e:
             # retry if not last retry
             if i < max_retries:
                 continue
 
             raise e
 
+        except requests.Timeout as e:
+            # retry if not last retry
+            if i < max_retries:
+                continue
+
+            raise SPARQLExecuteException(
+                f"SPARQL query timed out after {request_timeout} seconds",
+                sparql,
+            ) from e
+
         except requests.RequestException as e:
             # try to get qlever exception
-            try:
-                status = e.response.status_code
-                body = e.response.json()
-            except Exception:
-                status = None
-                body = None
+            status = None
+            body = None
+            qlever_ex = None
+            if e.response is not None:
+                status = e.response.status_code  # type: ignore
+                try:
+                    body = e.response.json()  # type: ignore
+                    qlever_ex = body["exception"] if "exception" in body else None
+                except JSONDecodeError:
+                    body = e.response.text
 
             client_error = status and int(status / 100) == 4
-            qlever_ex = body["exception"] if body and "exception" in body else None
 
             # immediately return on client error
             if client_error and qlever_ex:
-                raise requests.RequestException(qlever_ex) from e
+                raise SPARQLExecuteException(
+                    qlever_ex,
+                    sparql,
+                    status_code=status,
+                ) from e
             elif client_error:
-                raise e
+                raise SPARQLExecuteException(
+                    body if body else "Client error",
+                    sparql,
+                    status_code=status,
+                ) from e
             # retry on server error if not last retry
             elif i < max_retries - 1:
                 continue
             elif qlever_ex:
-                raise requests.RequestException(qlever_ex) from e
+                raise SPARQLExecuteException(
+                    qlever_ex,
+                    sparql,
+                    status_code=status,
+                ) from e
             else:
-                raise e
+                raise SPARQLExecuteException(
+                    body if body else "Server error",
+                    sparql,
+                    status_code=status,
+                ) from e
 
-    raise requests.RequestException(f"Maximum retries ({max_retries}) reached")
+    raise SPARQLExecuteException(
+        f"Maximum retries reached ({max_retries})",
+        sparql,
+    )
 
 
 def is_iri(iri: str) -> bool:
     return iri.startswith("<") and iri.endswith(">")
 
 
-# def is_fq_iri(iri: str) -> bool:
-#     return is_iri(iri) and validators.url(iri[1:-1])  # type: ignore
+def wrap_iri(iri: str) -> str:
+    return f"<{iri}>"
 
 
 def format_iri(
@@ -890,30 +856,27 @@ def format_iri(
     prefixes: dict[str, str],
     base_uri: str | None = None,
 ) -> str:
-    if not is_iri(iri):
-        return iri
+    # strip angle brackets if present (e.g. from SPARQL parse tree IRIREF nodes)
+    wrapped = is_iri(iri)
+    if wrapped:
+        iri = iri[1:-1]
 
-    # disabled for now because base is almost never needed
-    # elif not is_fq_iri(iri):
-    #     assert base_uri is not None, (
-    #         f"Could not find a scheme in the IRI {iri}, it seems "
-    #         f"you provided a relative IRI without a BASE URI"
-    #     )
-    #     iri = "<" + urljoin(base_uri[1:-1], iri[1:-1]) + ">"
+    if "://" not in iri:
+        return wrap_iri(iri) if wrapped else iri
 
     longest = find_longest_prefix(iri, prefixes)
     if longest is None:
-        return iri
+        return wrap_iri(iri) if wrapped else iri
 
     short, long = longest
-    val = iri[len(long) : -1]
+    val = iri[len(long):]
 
     # check if no bad characters are in the short form
     # by url encoding it and checking if it is still the same
     if quote_plus(val) == val:
         return short + ":" + val
     else:
-        return iri
+        return wrap_iri(iri) if wrapped else iri
 
 
 def load_qlever_prefixes(endpoint: str) -> dict[str, str]:
@@ -936,7 +899,10 @@ def load_qlever_prefixes(endpoint: str) -> dict[str, str]:
         assert line.startswith("PREFIX "), "Each line must start with 'PREFIX '"
         _, rest = line.split(" ", 1)
         prefix, uri = rest.split(":", 1)
-        prefixes[prefix.strip()] = uri.strip()[:-1]
+        uri = uri.strip()
+        assert is_iri(uri), "Prefix must be in IRI format"
+        prefixes[prefix.strip()] = uri[1:-1]
+
     return prefixes
 
 

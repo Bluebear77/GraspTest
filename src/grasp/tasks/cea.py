@@ -5,10 +5,12 @@ from pydantic import BaseModel
 from universal_ml_utils.table import generate_table
 
 from grasp.configs import GraspConfig
-from grasp.functions import TaskFunctions, find_manager
+from grasp.functions import find_manager
 from grasp.manager import KgManager, format_kgs
-from grasp.sparql.types import Alternative
+from grasp.model import Message
+from grasp.sparql.types import Alternative, ObjType
 from grasp.sparql.utils import parse_into_binding
+from grasp.tasks.base import FeedbackTask, GraspTask
 from grasp.tasks.examples import Sample
 from grasp.utils import FunctionCallException, format_list, format_notes
 
@@ -17,7 +19,7 @@ class Annotation(BaseModel):
     identifier: str
     entity: str
     label: str | None = None
-    synonyms: list[str] | None = None
+    aliases: list[str] | None = None
     infos: list[str] | None = None
 
 
@@ -31,6 +33,7 @@ class Table(BaseModel):
     data: list[list[str]]
     annotate_rows: list[int] | None = None
     annotate_columns: list[int] | None = None
+    description: str | None = None
 
     @property
     def width(self) -> int:
@@ -186,7 +189,7 @@ class AnnotationState:
                 annot.identifier,
                 short_identifier=annot.entity,
                 label=annot.label,
-                aliases=annot.synonyms,
+                aliases=annot.aliases,
                 infos=annot.infos,
             )
             entities[annot.identifier] = alternative
@@ -229,7 +232,7 @@ You may need to adapt your annotations based on new insights along the way.
 annotation process."""
 
 
-def functions(managers: list[KgManager]) -> TaskFunctions:
+def functions(managers: list[KgManager]) -> list[dict]:
     kgs = [manager.kg for manager in managers]
     fns = [
         {
@@ -306,42 +309,32 @@ This function overwrites any previous annotation of the cell.""",
             "strict": True,
         },
     ]
-    return fns, call_function
+    return fns
 
 
-def prepare_annotation(
-    manager: KgManager,
-    entity: str,
-    with_infos: bool = True,
-) -> Annotation:
+def prepare_annotation(manager: KgManager, entity: str) -> Annotation:
     binding = parse_into_binding(entity, manager.iri_literal_parser, manager.prefixes)
     if binding is None or binding.typ != "uri":
         raise ValueError(f"Entity {entity} is not a valid IRI")
 
     identifier = binding.identifier()
 
-    label = None
-    synonyms = None
-    infos = None
+    norm = manager.normalize(identifier, ObjType.ENTITY)
+    if norm is not None:
+        identifier, _ = norm
 
-    map = manager.entity_mapping
-    norm = map.normalize(identifier)
-    if norm is not None and norm[0] in map:
-        id = map[norm[0]]
-        _, label, *synonyms = manager.entity_index.get_row(id)
+    infos = manager.get_infos_for_identifiers_of_type([identifier], ObjType.ENTITY)
+    info = infos.get(identifier, {})
 
-    if with_infos:
-        all_infos = manager.get_infos_for_items(
-            [identifier],
-            manager.entity_info_sparql,
-        )
-        infos = all_infos.get(identifier, [])
+    label = info.get("label")
+    aliases = info.get("alias", [])
+    infos = info.get("info", [])
 
     return Annotation(
         identifier=identifier,
         entity=entity,
         label=label,
-        synonyms=synonyms,
+        aliases=aliases,
         infos=infos,
     )
 
@@ -397,6 +390,9 @@ If there already are annotations for some cells, they are shown in parentheses \
 after the cell value.
 
 """
+
+    if state.table.description is not None:
+        instructions += f"Table description:\n{state.table.description}\n\n"
 
     if state.rows is not None and len(state.rows) != state.table.height:
         rows_to_annotate = ", ".join(str(r) for r in sorted(state.rows))
@@ -471,10 +467,6 @@ def call_function(
         raise ValueError(f"Unknown function {fn_name}")
 
 
-def output(state: AnnotationState) -> dict:
-    return state.to_dict()
-
-
 def feedback_system_message(
     managers: list[KgManager],
     kg_notes: dict[str, list[str]],
@@ -510,3 +502,53 @@ def feedback_instructions(inputs: list[str], output: dict) -> str:
     prompt += f"Input:\n{inputs[-1].strip()}"
     prompt += f"\n\nAnnotations:\n{output['formatted']}"
     return prompt
+
+
+class CeaTask(GraspTask, FeedbackTask):
+    name = "cea"
+
+    def system_information(self) -> str:
+        return system_information()
+
+    def rules(self) -> list[str]:
+        return rules()
+
+    def function_definitions(self) -> list[dict]:
+        return functions(self.managers)
+
+    def call_function(
+        self,
+        fn_name: str,
+        fn_args: dict,
+        known: set[str],
+        example_indices: dict | None,
+    ) -> str:
+        return call_function(
+            self.config, self.managers, fn_name, fn_args, known, self.state, example_indices
+        )
+
+    def done(self, fn_name: str) -> bool:
+        return fn_name == "stop"
+
+    def setup(self, input: Any) -> str:
+        instructions, self.state = input_and_state(input, self.config)
+        return instructions
+
+    def output(self, messages: list[Message]) -> dict:
+        return self.state.to_dict()
+
+    @property
+    def default_input_field(self) -> str | None:
+        return "table"
+
+    @classmethod
+    def sample_cls(cls) -> type[CeaSample]:
+        return CeaSample
+
+    def feedback_system_message(
+        self, kg_notes: dict[str, list[str]], notes: list[str]
+    ) -> str:
+        return feedback_system_message(self.managers, kg_notes, notes)
+
+    def feedback_instructions(self, inputs: list[str], output: dict) -> str:
+        return feedback_instructions(inputs, output)

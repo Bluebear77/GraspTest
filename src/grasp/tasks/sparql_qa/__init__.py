@@ -5,19 +5,22 @@ from uuid import uuid4
 from pydantic import BaseModel, ValidationError
 
 from grasp.configs import GraspConfig
-from grasp.functions import TaskFunctions, find_manager
+from grasp.functions import find_manager
 from grasp.manager import KgManager, format_kgs
 from grasp.model import Message, ToolCall
+from grasp.tasks.base import FeedbackTask, GraspTask
 from grasp.tasks.sparql_qa.examples import (
     SparqlQaExampleIndex,
-    find_random_examples,
-    find_similar_examples,
+    SparqlQaSample,
+)
+from grasp.tasks.sparql_qa.examples import (
+    call_function as call_example_function,
 )
 from grasp.tasks.sparql_qa.examples import (
     functions as example_functions,
 )
 from grasp.tasks.utils import format_sparql_result, prepare_sparql_result
-from grasp.utils import FunctionCallException, format_list, format_notes
+from grasp.utils import format_list, format_notes
 
 
 def system_information() -> str:
@@ -57,7 +60,7 @@ should be an ASK query.',
     ]
 
 
-def functions(managers: list[KgManager], config: GraspConfig) -> TaskFunctions:
+def functions(managers: list[KgManager], config: GraspConfig) -> list[dict]:
     kgs = [manager.kg for manager in managers]
     fns = [
         {
@@ -132,7 +135,7 @@ the SPARQL query needs to be executed",
 
     fns.extend(example_functions(config))
 
-    return fns, call_function
+    return fns
 
 
 def call_function(
@@ -141,7 +144,6 @@ def call_function(
     fn_name: str,
     fn_args: dict,
     known: set[str],
-    state: Any = None,
     example_indices: dict[str, SparqlQaExampleIndex] | None = None,
 ) -> str:
     if fn_name == "answer":
@@ -150,30 +152,15 @@ def call_function(
     elif fn_name == "cancel":
         return "Stopping"
 
-    elif fn_name == "find_examples" and example_indices is not None:
-        return find_random_examples(
+    else:
+        return call_example_function(
+            config,
             managers,
-            example_indices,
-            fn_args["kg"],
-            config.num_examples,
+            fn_name,
+            fn_args,
             known,
-            config.result_max_rows,
-            config.result_max_columns,
-        )
-
-    elif fn_name == "find_similar_examples" and example_indices is not None:
-        return find_similar_examples(
-            managers,
             example_indices,
-            fn_args["kg"],
-            fn_args["question"],
-            config.num_examples,
-            known,
-            config.result_max_rows,
-            config.result_max_columns,
         )
-
-    raise FunctionCallException(f"Unknown function: {fn_name}")
 
 
 class AnswerModel(BaseModel):
@@ -493,3 +480,54 @@ Explanation:
 {output["formatted"]}"""
 
     return prompt
+
+
+class SparqlQaTask(GraspTask, FeedbackTask):
+    name = "sparql-qa"
+
+    def system_information(self) -> str:
+        return system_information()
+
+    def rules(self) -> list[str]:
+        return rules()
+
+    def function_definitions(self) -> list[dict]:
+        return functions(self.managers, self.config)
+
+    def call_function(
+        self,
+        fn_name: str,
+        fn_args: dict,
+        known: set[str],
+        example_indices: dict | None,
+    ) -> str:
+        return call_function(
+            self.config, self.managers, fn_name, fn_args, known, example_indices=example_indices
+        )
+
+    def done(self, fn_name: str) -> bool:
+        return fn_name in {"answer", "cancel"}
+
+    def output(self, messages: list[Message]) -> dict | None:
+        return output(
+            messages,
+            self.managers,
+            self.config.result_max_rows,
+            self.config.result_max_columns,
+        )
+
+    @property
+    def default_input_field(self) -> str | None:
+        return "question"
+
+    @classmethod
+    def sample_cls(cls) -> type[SparqlQaSample]:
+        return SparqlQaSample
+
+    def feedback_system_message(
+        self, kg_notes: dict[str, list[str]], notes: list[str]
+    ) -> str:
+        return feedback_system_message(self.managers, kg_notes, notes)
+
+    def feedback_instructions(self, inputs: list[str], output: dict) -> str:
+        return feedback_instructions(inputs, output)

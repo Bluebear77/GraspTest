@@ -9,7 +9,7 @@ from grasp.functions import (
     update_known_from_selections,
 )
 from grasp.manager import KgManager
-from grasp.sparql.item import get_sparql_items, selections_from_items
+from grasp.sparql.item import selections_from_sparql
 from grasp.sparql.types import Selection
 
 
@@ -50,8 +50,7 @@ def prepare_sparql_result(
         ), selections
 
     try:
-        _, items = get_sparql_items(sparql, manager)
-        selections = selections_from_items(items)
+        selections = selections_from_sparql(sparql, manager)
         if known is not None:
             update_known_from_selections(known, selections, manager)
     except Exception:
@@ -65,7 +64,7 @@ def format_sparql_result(
     result: ExecutionResult,
     selections: list[Selection],
 ) -> str:
-    fmt = f"SPARQL query over {manager.kg}:\n{result.sparql}"
+    fmt = f"SPARQL query over {manager.kg}:\n```sparql\n{result.sparql}\n```"
 
     fmt_sel = manager.format_selections(selections)
     if fmt_sel:

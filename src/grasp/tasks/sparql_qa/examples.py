@@ -3,6 +3,7 @@ from typing import Any
 from uuid import uuid4
 
 from grasp.configs import GraspConfig
+from grasp.functions import find_manager
 from grasp.manager import KgManager
 from grasp.model import Message, Response, ToolCall
 from grasp.tasks.examples import ExampleIndex
@@ -24,10 +25,6 @@ class SparqlQaSample(Sample):
 
 class SparqlQaExampleIndex(ExampleIndex):
     sample_cls = SparqlQaSample
-
-
-# similar examples should be at least have this cos sim
-MIN_EXAMPLE_SCORE = 0.5
 
 
 def functions(config: GraspConfig) -> list[dict]:
@@ -105,6 +102,41 @@ Currently, examples are available for the following knowledge graphs:
     return [fn]
 
 
+def call_function(
+    config: GraspConfig,
+    managers: list[KgManager],
+    fn_name: str,
+    fn_args: dict,
+    known: set[str],
+    example_indices: dict[str, SparqlQaExampleIndex] | None = None,
+) -> str:
+    if fn_name == "find_examples" and example_indices is not None:
+        return find_random_examples(
+            managers,
+            example_indices,
+            fn_args["kg"],
+            config.num_examples,
+            known,
+            config.result_max_rows,
+            config.result_max_columns,
+        )
+
+    elif fn_name == "find_similar_examples" and example_indices is not None:
+        return find_similar_examples(
+            managers,
+            example_indices,
+            fn_args["kg"],
+            fn_args["question"],
+            config.num_examples,
+            known,
+            config.result_max_rows,
+            config.result_max_columns,
+        )
+
+    else:
+        raise ValueError(f"Unknown function {fn_name}")
+
+
 def format_examples(
     kg: str,
     managers: list[KgManager],
@@ -113,10 +145,12 @@ def format_examples(
     max_rows: int,
     max_cols: int,
 ) -> str:
+    manager, _ = find_manager(managers, kg)
     exs = []
+
     for example in examples:
         try:
-            sparql, selections, result = prepare_sparql_result(
+            result, selections = prepare_sparql_result(
                 example.sparql,
                 kg,
                 managers,
@@ -128,7 +162,7 @@ def format_examples(
             continue
 
         exs.append(
-            f"Question:\n{example.question}\n\n{format_sparql_result(sparql, kg, selections, result)}"
+            f"Question:\n{example.question}\n\n{format_sparql_result(manager, result, selections)}"
         )
 
     if not exs:
@@ -180,11 +214,7 @@ def find_similar_examples(
 
     example_index = example_indices[kg]
 
-    examples = example_index.find_matches(
-        question,
-        num_examples,
-        min_score=MIN_EXAMPLE_SCORE,
-    )
+    examples = example_index.search(question, num_examples)
 
     return format_examples(
         kg,

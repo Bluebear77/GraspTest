@@ -2,25 +2,22 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-SELECT
-  ?id
-  (SAMPLE(?label) AS ?main_label)
-  (GROUP_CONCAT(DISTINCT ?alias; SEPARATOR=";;;") AS ?aliases)
-WHERE {
+SELECT DISTINCT ?id ?value ?tags WHERE {
   # Get ids and their frequencies for score
-  { SELECT ?id (COUNT(?id) AS ?freq) WHERE { ?s ?id ?o } GROUP BY ?id } 
+  { SELECT ?id (COUNT(?id) AS ?score) WHERE { ?s ?id ?o } GROUP BY ?id } 
 
-  # Get label
+  # Properties often do not have labels, so wrap this in OPTIONAL
   OPTIONAL {
-    ?id rdfs:label ?label
-    FILTER(LANG(?label) = "en" || LANG(?label) = "" || DATATYPE(?label) = xsd:string)
+    {
+      # Get label
+      ?id rdfs:label ?value
+      BIND("main" AS ?tags)
+    } UNION {
+      # Get aliases
+      ?id skos:altLabel ?value
+    }
   }
 
-  # Get aliases
-  OPTIONAL {
-    ?id skos:altLabel ?alias
-    FILTER(LANG(?alias) = "en" || LANG(?alias) = "" || DATATYPE(?alias) = xsd:string)
-  }
+  FILTER(!BOUND(?value) || LANG(?value) = "en")
 }
-GROUP BY ?id
-ORDER BY DESC(MAX(?freq))
+ORDER BY DESC(?score) ?id DESC(?tags)

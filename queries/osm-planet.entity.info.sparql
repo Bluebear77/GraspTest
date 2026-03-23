@@ -1,20 +1,41 @@
 PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-SELECT
-  ?id
-  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
-WHERE {
+SELECT DISTINCT ?id ?value ?type WHERE {
   # Get additional information
   {
     VALUES ?id { {IDS} }
-    ?id osmkey:admin_title ?info
+    ?id osmkey:name ?value
+    BIND("label" AS ?type)
   } UNION {
     VALUES ?id { {IDS} }
-    ?id osmkey:description ?info
+    ?id osmkey:short_name ?value
+    BIND("alias" AS ?type)
   } UNION {
     VALUES ?id { {IDS} }
-    ?id osmkey:amenity ?info
+    ?id osmkey:name:en ?value
+    BIND("alias" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id osmkey:name:de ?value
+    BIND("alias" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id osmkey:admin_title ?value
+    BIND("info" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id osmkey:description ?value
+    BIND("info" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id osmkey:amenity ?value
+    BIND("info" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id osmkey:admin_level ?lvl
+    BIND(CONCAT("has admin level ", STR(?lvl)) AS ?value)
+    BIND("info" AS ?type)
   }
 }
-GROUP BY ?id
+ORDER BY ?id ?type ?value

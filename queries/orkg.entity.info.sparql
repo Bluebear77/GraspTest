@@ -3,18 +3,20 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
-SELECT
-  ?id
-  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
-WHERE {
-  # Get additional information
+SELECT DISTINCT ?id ?value ?type WHERE {
   {
     VALUES ?id { {IDS} }
-    ?id rdf:type/rdfs:label ?type
-    BIND(CONCAT("is a ", ?type) AS ?info)
+    ?id rdfs:label ?value
+    BIND("label" AS ?type)
   } UNION {
     VALUES ?id { {IDS} }
-    ?id orkgp:description ?info 
+    ?id rdf:type/rdfs:label ?typeLabel
+    BIND(CONCAT("is a ", ?typeLabel) AS ?value)
+    BIND("info" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id orkgp:description ?value
+    BIND("info" AS ?type)
   }
 }
-GROUP BY ?id
+ORDER BY ?id ?type ?value

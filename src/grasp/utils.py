@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Iterable
+from typing import Any, Callable, Iterable, TypeVar
 
 from pydantic import BaseModel
 from termcolor import colored
@@ -123,6 +123,59 @@ def format_tool_call(tool_call: ToolCall) -> str:
     return content
 
 
+SKIP_ROLES = {"system", "config", "functions"}
+
+
+def format_trace(output: dict, skip_system: bool = False) -> str:
+    parts = []
+
+    # header
+    task = output.get("task", "unknown")
+    elapsed = output.get("elapsed")
+    error = output.get("error")
+    header = colored(f"TRACE (task={task}", "cyan", attrs=["bold"])
+    if elapsed is not None:
+        header += colored(f", elapsed={elapsed:.2f}s", "cyan", attrs=["bold"])
+    header += colored(")", "cyan", attrs=["bold"])
+    parts.append(header)
+
+    # input
+    ipt = output.get("input")
+    if ipt is not None:
+        ipt_header = colored("INPUT", "magenta")
+        parts.append(f"{ipt_header}\n{ipt}")
+
+    # messages
+    messages = output.get("messages", [])
+    step = 0
+    for msg_dict in messages:
+        msg = Message(**msg_dict)
+
+        if skip_system and msg.role in SKIP_ROLES:
+            continue
+
+        if isinstance(msg.content, Response):
+            step += 1
+            step_header = colored(f"Step {step}", "cyan", attrs=["bold"])
+            parts.append(f"{step_header}\n{format_response(msg.content)}")
+        else:
+            parts.append(format_message(msg))
+
+    # final output
+    final_output = output.get("output")
+    if isinstance(final_output, dict):
+        final_output = final_output.get("formatted")
+    if final_output is not None:
+        out_header = colored("OUTPUT", "green", attrs=["bold"])
+        parts.append(f"{out_header}\n{final_output}")
+
+    # error
+    if error is not None:
+        parts.append(format_error("trace", error))
+
+    return "\n\n".join(parts)
+
+
 def is_server_error(message: str | None) -> bool:
     if message is None:
         return False
@@ -165,21 +218,21 @@ def is_error(message: dict) -> bool:
     return message["role"] == "error"
 
 
-def is_invalid_model_output(
-    model_output: dict | None,
+def is_invalid_output(
+    output: dict | None,
     none_output_invalid: bool = False,
 ) -> bool:
-    if model_output is None:
+    if output is None:
         return True
 
-    has_error = model_output.get("error") is not None
+    has_error = output.get("error") is not None
     if has_error:
         return True
 
-    if none_output_invalid and model_output.get("output", None) is None:
+    if none_output_invalid and output.get("output") is None:
         return True
 
-    for message in model_output.get("messages", []):
+    for message in output.get("messages", []):
         try:
             # new format
             msg = Message(**message)
@@ -241,3 +294,27 @@ def clip(s: str, max_len: int = 128, respect_word_boundaries: bool = True) -> st
         return clip(s, max_len, respect_word_boundaries=False)
 
     return s[:first] + " ... " + s[last:]
+
+
+T = TypeVar("T")
+
+
+def ordered_unique(
+    lst: list[T],
+    key: Callable[[T], Any] | None = None,
+    filter: Callable[[T], bool] | None = None,
+) -> list[T]:
+    seen = set()
+    unique = []
+    for item in lst:
+        if filter is not None and not filter(item):
+            continue
+
+        k = key(item) if key is not None else item
+        if k in seen:
+            continue
+
+        seen.add(k)
+        unique.append(item)
+
+    return unique

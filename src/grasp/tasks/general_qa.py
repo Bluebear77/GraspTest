@@ -1,4 +1,18 @@
+from typing import Any
+
+from grasp.configs import GraspConfig
+from grasp.manager import KgManager
 from grasp.model import Message, Response
+from grasp.tasks.sparql_qa import SparqlQaTask
+from grasp.tasks.sparql_qa.examples import (
+    SparqlQaExampleIndex,
+)
+from grasp.tasks.sparql_qa.examples import (
+    call_function as sparql_qa_example_call_function,
+)
+from grasp.tasks.sparql_qa.examples import (
+    functions as sparql_qa_example_functions,
+)
 
 
 def system_information() -> str:
@@ -20,12 +34,37 @@ possibly multiple times.
 4. Output your final answer to the question and stop."""
 
 
+def functions(config: GraspConfig) -> list[dict]:
+    return sparql_qa_example_functions(config)
+
+
+def call_function(
+    config: GraspConfig,
+    managers: list[KgManager],
+    fn_name: str,
+    fn_args: dict,
+    known: set[str],
+    example_indices: dict[str, SparqlQaExampleIndex] | None = None,
+) -> str:
+    return sparql_qa_example_call_function(
+        config,
+        managers,
+        fn_name,
+        fn_args,
+        known,
+        example_indices,
+    )
+
+
 def rules() -> list[str]:
     return [
         "Your answers preferably should be based on the information available in the \
 knowledge graphs. If you do not need them to answer the question, e.g. if \
 you know the answer by heart, still try to verify it with the knowledge graphs.",
     ]
+
+
+_module_call_function = call_function
 
 
 def output(messages: list[Message]) -> dict | None:
@@ -43,3 +82,33 @@ def output(messages: list[Message]) -> dict | None:
         "output": last_response.message,
         "formatted": last_response.message,
     }
+
+
+class GeneralQaTask(SparqlQaTask):
+    name = "general-qa"
+
+    def system_information(self) -> str:
+        return system_information()
+
+    def rules(self) -> list[str]:
+        return rules()
+
+    def function_definitions(self) -> list[dict]:
+        return functions(self.config)
+
+    def call_function(
+        self,
+        fn_name: str,
+        fn_args: dict,
+        known: set[str],
+        example_indices: dict | None,
+    ) -> str:
+        return _module_call_function(
+            self.config, self.managers, fn_name, fn_args, known, example_indices=example_indices
+        )
+
+    def done(self, fn_name: str) -> bool:
+        return False
+
+    def output(self, messages: list[Message]) -> dict | None:
+        return output(messages)

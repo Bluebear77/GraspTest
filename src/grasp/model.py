@@ -18,7 +18,7 @@ from openai.types.responses.response_output_message import ResponseOutputMessage
 from openai.types.responses.response_reasoning_item import ResponseReasoningItem
 from pydantic import BaseModel
 
-from grasp.configs import GraspConfig, ModelConfig
+from grasp.configs import ModelConfig
 
 
 class ToolCall(BaseModel):
@@ -26,6 +26,7 @@ class ToolCall(BaseModel):
     name: str
     args: dict[str, Any]
     result: str | None = None
+    error: str | None = None
 
 
 class Reasoning(BaseModel):
@@ -52,6 +53,10 @@ class Response(BaseModel):
     reasoning: Reasoning | None = None
     tool_calls: list[ToolCall]
     usage: dict | None = None
+    prompt_token_ids: list[int] | None = None
+    token_ids: list[int] | None = None
+    token_logprobs: list[float] | None = None
+    token_texts: list[str] | None = None
 
     @property
     def is_empty(self) -> bool:
@@ -116,12 +121,39 @@ class Response(BaseModel):
                 )
             )
 
+        # Extract logprobs from choice.logprobs.content (standard OpenAI format)
+        token_logprobs = None
+        token_texts = None
+        logprobs = getattr(choice, "logprobs", None)
+        if logprobs and getattr(logprobs, "content", None):
+            token_logprobs = [entry.logprob for entry in logprobs.content]
+            token_texts = [entry.token for entry in logprobs.content]
+
+        # Extract token_ids and prompt_token_ids from provider_specific_fields (vLLM extension)
+        token_ids = None
+        prompt_token_ids = None
+        if (
+            hasattr(choice, "provider_specific_fields")
+            and choice.provider_specific_fields
+        ):
+            token_ids = choice.provider_specific_fields.get("token_ids")
+            prompt_token_ids = choice.provider_specific_fields.get("prompt_token_ids")
+        # Also check response-level attributes
+        if token_ids is None and hasattr(response, "token_ids"):
+            token_ids = response.token_ids
+        if prompt_token_ids is None and hasattr(response, "prompt_token_ids"):
+            prompt_token_ids = response.prompt_token_ids
+
         return Response(
             id=id,
             message=message,
             reasoning=reasoning,
             tool_calls=tool_calls,
             usage=response.usage.model_dump(exclude_defaults=True),  # type: ignore
+            prompt_token_ids=prompt_token_ids,
+            token_ids=token_ids,
+            token_logprobs=token_logprobs,
+            token_texts=token_texts,
         )
 
     @staticmethod
@@ -331,6 +363,13 @@ def call_model(
         api = config.api
 
     if api == "completions":
+        # Auto-enable logprobs when return_token_ids is requested
+        request_logprobs = (
+            config.model_kwargs.get("return_token_ids", False)
+            if config.model_kwargs
+            else False
+        )
+
         # use old chat completions API
         completions_resp: ModelResponse = completion(
             model=config.model,
@@ -348,6 +387,8 @@ def call_model(
             timeout=config.completion_timeout,
             seed=config.seed,
             extra_body=config.model_kwargs,
+            # logprobs (auto-enabled with return_token_ids for vLLM)
+            logprobs=True if request_logprobs else None,
             # drop unsupported parameters
             drop_params=True,
             num_retries=num_retries,

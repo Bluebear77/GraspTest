@@ -1,20 +1,30 @@
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 PREFIX schema: <http://schema.org/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 
-SELECT
-  ?id
-  (GROUP_CONCAT(DISTINCT ?info; SEPARATOR=";;;") AS ?infos)
-WHERE {
+SELECT DISTINCT ?id ?value ?type WHERE {
   # Get additional information
-  { 
+  {
     VALUES ?id { {IDS} }
-    ?id schema:description ?info
-    FILTER(LANGMATCHES(LANG(?info), "en"))
+    ?id rdfs:label ?value
+    BIND("label" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id skos:altLabel ?value
+    BIND("alias" AS ?type)
+  } UNION {
+    VALUES ?id { {IDS} }
+    ?id schema:description ?value
+    BIND("info" AS ?type)
   } UNION {
     VALUES ?id { {IDS} }
     ?id wdt:P1647/rdfs:label ?supprop
-    FILTER(LANGMATCHES(LANG(?supprop), "en"))
-    BIND(CONCAT("is subproperty of ", ?supprop) AS ?info)
+    FILTER(LANG(?supprop) = "en")
+    BIND(CONCAT("is subproperty of ", ?supprop) AS ?value)
+    BIND("info" AS ?type)
   }
+
+  FILTER(LANG(?value) = "en")
 }
-GROUP BY ?id
+ORDER BY ?id ?type ?value
