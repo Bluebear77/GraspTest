@@ -4,8 +4,8 @@ Flexible CSV runner for GRASP / LLM pipelines.
 
 What changed compared with the original script:
 - Works with both:
-    1) CompMix-style CSVs, e.g. question_id, question, entity_id1, ...
-    2) Simple QA CSVs, e.g. question, answer
+    1) CSV with columns, e.g. question_id, question, entity_id1, ...
+    2) CSV with columns,, e.g. question, answer
 - If question_id is missing, filenames fall back to zero-padded row indices.
 - If entity_id* columns are missing, input_text is just the question.
 - Supports multiple input CSVs at once.
