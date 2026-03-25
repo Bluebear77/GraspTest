@@ -27,9 +27,9 @@ from tqdm import tqdm
 # ---------------- Configuration ---------------- #
 
 CSV_FILES: List[str] = [
-    "data/SimpleQA/CompMix_table_simple_qa.csv",
-    "data/SimpleQA//NQ_table_test_simple.csv",
-    "data/SimpleQA//Qampari_wikitables_simple.csv",
+    #"data/SimpleQA/CompMix_table_simple_qa.csv",
+    #"data/SimpleQA//NQ_table_test_simple.csv",
+    "data/Complex_QA.csv",
 ]
 
 BATCH_SIZE = 50
