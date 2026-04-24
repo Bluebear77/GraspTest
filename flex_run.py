@@ -20,7 +20,11 @@ What the script does:
 - Adds useful metadata to JSON outputs, including:
     elapsed time, source CSV, row index, question, and reference answer
 - Maintains a batch log so interrupted runs can resume.
+- Records every completed row immediately so interrupted runs resume from
+  the exact last unfinished row.
 - Detects missing, invalid, or null outputs from previous runs and can re-run them.
+- Scans existing output files on startup so rows are not re-run unnecessarily
+  even if the program stopped after writing JSON but before updating the log.
 - Shows two progress bars:
     1) overall progress across all CSV files
     2) progress for the current CSV file
@@ -38,14 +42,15 @@ Important behavior:
 - If question_id exists and is non-empty, it is used as the JSON filename.
 - Otherwise, the script uses a zero-padded row index, for example 00042.json.
 - If entity_id* is missing, only the question text is sent to GRASP.
-- If a row has no usable question, the row is skipped safely.
+- If a row has no usable question, the row is skipped safely and logged.
 - If GRASP returns invalid JSON, stdout is still saved so results are not lost.
 - If GRASP exits with a non-zero return code, stderr is saved in a separate file.
+- Output JSON files are written atomically using a temporary file and rename.
 
 Directory assumption:
 Run this script from the parent directory that contains:
-    ComplexQA/
-    SimpleQA/
+    data/ComplexQA/
+    data/SimpleQA/
 """
 
 import csv
@@ -229,6 +234,25 @@ def ask_yes_no(prompt: str, default: str = "n") -> str:
     return answer
 
 
+def write_text_atomic(path: str, text: str) -> None:
+    """
+    Write output safely.
+    First write to a temporary file, flush it, and then atomically replace
+    the final destination file.
+
+    This reduces the chance of leaving a half-written JSON file if the run
+    is interrupted while writing output.
+    """
+    tmp_path = path + ".tmp"
+
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        f.write(text)
+        f.flush()
+        os.fsync(f.fileno())
+
+    os.replace(tmp_path, path)
+
+
 # ---------------- Timing statistics ---------------- #
 
 def summarize_times(times: List[float]) -> Dict[str, Optional[float]]:
@@ -355,6 +379,40 @@ def write_time_summary_json(path: str, title: str, times: List[float]) -> None:
 
 # ---------------- Output validation ---------------- #
 
+def is_good_output_file(path: str) -> Tuple[bool, str]:
+    """
+    Check whether an existing output file is usable.
+
+    A file is considered bad when:
+    - it is missing
+    - it cannot be parsed as JSON
+    - it contains the known GRASP null-output pattern:
+        {"type": "output", "task": "sparql-qa", "output": null}
+
+    Note:
+    Invalid JSON is treated as bad here. The script can still save invalid
+    stdout during a run, but on resume it will offer to re-run that row.
+    """
+    if not os.path.exists(path):
+        return False, "missing_output_file"
+
+    try:
+        with open(path, "r", encoding="utf-8") as jf:
+            data = json.load(jf)
+    except Exception as e:
+        return False, f"invalid_json: {e.__class__.__name__}"
+
+    if isinstance(data, dict):
+        if (
+            data.get("type") == "output"
+            and data.get("task") == "sparql-qa"
+            and data.get("output") is None
+        ):
+            return False, "null_output"
+
+    return True, ""
+
+
 def detect_bad_outputs(
     rows: List[List[str]],
     colmap: Dict[str, Optional[int]],
@@ -375,25 +433,8 @@ def detect_bad_outputs(
         filename = make_output_filename(row, idx, colmap)
         out_file = os.path.join(out_dir, filename)
 
-        reason = None
-        if not os.path.exists(out_file):
-            reason = "missing_output_file"
-        else:
-            try:
-                with open(out_file, "r", encoding="utf-8") as jf:
-                    data = json.load(jf)
-            except Exception as e:
-                reason = f"invalid_json: {e.__class__.__name__}"
-            else:
-                if isinstance(data, dict):
-                    if (
-                        data.get("type") == "output"
-                        and data.get("task") == "sparql-qa"
-                        and data.get("output") is None
-                    ):
-                        reason = "null_output"
-
-        if reason is not None:
+        is_good, reason = is_good_output_file(out_file)
+        if not is_good:
             bad_indices.add(idx)
             records.append((idx, filename, reason))
 
@@ -409,9 +450,47 @@ def detect_bad_outputs(
     return bad_indices, bad_csv_path
 
 
+def scan_existing_good_outputs(
+    rows: List[List[str]],
+    colmap: Dict[str, Optional[int]],
+    out_dir: str,
+) -> Set[int]:
+    """
+    Scan existing output files and mark rows as processed when their output
+    file already exists and passes validation.
+
+    This protects against the small edge case where the program is interrupted
+    after writing the output JSON but before appending the DONE row to the log.
+    """
+    good_indices: Set[int] = set()
+
+    for idx, row in enumerate(rows):
+        filename = make_output_filename(row, idx, colmap)
+        out_file = os.path.join(out_dir, filename)
+
+        is_good, _ = is_good_output_file(out_file)
+        if is_good:
+            good_indices.add(idx)
+
+    return good_indices
+
+
 # ---------------- Batch log / resume helpers ---------------- #
 
 def parse_batch_log(batch_log_path: str, total_rows: int) -> Tuple[Set[int], bool]:
+    """
+    Parse the batch log and return:
+    - the row indices already completed or skipped
+    - whether the file appears completed
+
+    Supported log formats:
+    1) New row-level format:
+       DONE row 73 | file: 00073.json
+       SKIP row 74 | reason: empty_or_missing_question
+
+    2) Old batch-level format, kept for backward compatibility:
+       batch 1 (#2) | rows 50-99 | files: ...
+    """
     processed_indices: Set[int] = set()
     is_completed = False
 
@@ -422,9 +501,17 @@ def parse_batch_log(batch_log_path: str, total_rows: int) -> Tuple[Set[int], boo
         for line in lf:
             stripped = line.strip()
 
-            if not stripped or stripped.startswith("#"):
+            if not stripped:
+                continue
+
+            if stripped.startswith("#"):
                 if "COMPLETED" in stripped.upper():
                     is_completed = True
+                continue
+
+            row_match = re.match(r"^(DONE|SKIP)\s+row\s+(\d+)\b", stripped)
+            if row_match:
+                processed_indices.add(int(row_match.group(2)))
                 continue
 
             parts = [p.strip() for p in stripped.split("|")]
@@ -447,7 +534,7 @@ def parse_batch_log(batch_log_path: str, total_rows: int) -> Tuple[Set[int], boo
                             continue
                         processed_indices.add(idx)
 
-    if not is_completed and processed_indices and max(processed_indices) >= total_rows - 1:
+    if not is_completed and len(processed_indices) >= total_rows:
         is_completed = True
 
     return processed_indices, is_completed
@@ -458,7 +545,47 @@ def ensure_batch_log_header(batch_log_path: str, csv_path: str) -> None:
         return
     with open(batch_log_path, "w", encoding="utf-8") as lf:
         lf.write(f"# Batch log for {csv_path}\n")
-        lf.write("# Each line: batch_index | row_indices | filenames\n\n")
+        lf.write("# Row-level lines:\n")
+        lf.write("# DONE row <row_index> | file: <filename>\n")
+        lf.write("# SKIP row <row_index> | reason: <reason>\n")
+        lf.write("# Batch summary lines are comments only.\n\n")
+
+
+def append_row_done(batch_log_path: str, row_index: int, filename: str) -> None:
+    """
+    Record one successfully completed row immediately.
+
+    This is what allows the script to resume from the exact last unfinished row
+    after an interruption.
+    """
+    with open(batch_log_path, "a", encoding="utf-8") as lf:
+        lf.write(f"DONE row {row_index} | file: {filename}\n")
+        lf.flush()
+        os.fsync(lf.fileno())
+
+
+def append_row_skip(batch_log_path: str, row_index: int, reason: str) -> None:
+    """
+    Record one skipped row immediately.
+
+    This prevents rows with empty or missing questions from being reconsidered
+    every time the script is restarted.
+    """
+    with open(batch_log_path, "a", encoding="utf-8") as lf:
+        lf.write(f"SKIP row {row_index} | reason: {reason}\n")
+        lf.flush()
+        os.fsync(lf.fileno())
+
+
+def find_first_unprocessed_index(total_rows: int, processed_indices: Set[int]) -> Optional[int]:
+    """
+    Find the first row index that has not been processed or skipped.
+    Used only for a clearer resume message.
+    """
+    for idx in range(total_rows):
+        if idx not in processed_indices:
+            return idx
+    return None
 
 
 # ---------------- Main CSV processing ---------------- #
@@ -511,7 +638,19 @@ def process_csv(
     print(f"  total rows  : {total_rows}")
 
     ensure_batch_log_header(batch_log_path, csv_path)
-    processed_indices, is_completed_from_log = parse_batch_log(batch_log_path, total_rows)
+
+    logged_indices, is_completed_from_log = parse_batch_log(batch_log_path, total_rows)
+    existing_good_indices = scan_existing_good_outputs(rows, colmap, out_dir)
+
+    processed_indices = set(logged_indices)
+    processed_indices.update(existing_good_indices)
+
+    if existing_good_indices - logged_indices:
+        recovered_count = len(existing_good_indices - logged_indices)
+        print(
+            f"[RESUME INFO] Recovered {recovered_count} completed row(s) "
+            "from existing output files that were not in the log."
+        )
 
     if processed_indices:
         bad_indices, bad_csv_path = detect_bad_outputs(rows, colmap, out_dir, processed_indices)
@@ -533,11 +672,11 @@ def process_csv(
                 print("[CHECK INFO] Bad executions will be left as-is.")
 
     is_completed_effective = (
-        is_completed_from_log and processed_indices and max(processed_indices) >= total_rows - 1
-    )
+        is_completed_from_log and len(processed_indices) >= total_rows
+    ) or len(processed_indices) >= total_rows
 
     if is_completed_effective:
-        print("Detected that this CSV appears to be fully processed based on batch_log.txt.")
+        print("Detected that this CSV appears to be fully processed based on the log and output files.")
         answer = (
             ask_yes_no(
                 "Files already generated. Do you want to update them? [y/n]: ",
@@ -560,8 +699,9 @@ def process_csv(
         with open(batch_log_path, "a", encoding="utf-8") as lf:
             lf.write("\n# Restarting processing: user requested update.\n")
     else:
-        if processed_indices:
-            print(f"Resuming from row {max(processed_indices) + 1}.")
+        first_unprocessed = find_first_unprocessed_index(total_rows, processed_indices)
+        if first_unprocessed is not None:
+            print(f"Resuming from row {first_unprocessed}.")
         else:
             print("No previous progress found. Starting from row 0.")
 
@@ -593,6 +733,10 @@ def process_csv(
 
                 input_text = build_input_text(row, colmap)
                 if not input_text:
+                    append_row_skip(batch_log_path, global_index, "empty_or_missing_question")
+                    processed_indices.add(global_index)
+                    processed_count += 1
+
                     file_pbar.update(1)
                     overall_pbar.update(1)
                     continue
@@ -635,15 +779,14 @@ def process_csv(
                 except json.JSONDecodeError:
                     json_text = stdout_text
 
-                with open(out_file, "w", encoding="utf-8") as out:
-                    out.write(json_text)
+                write_text_atomic(out_file, json_text)
+                append_row_done(batch_log_path, global_index, filename)
 
                 if proc.returncode != 0:
                     sys.stderr.write(
                         f"[WARN] Row {global_index} ({filename}): grasp returned non-zero exit.\n"
                     )
-                    with open(out_file + ".stderr.txt", "w", encoding="utf-8") as errf:
-                        errf.write(proc.stderr)
+                    write_text_atomic(out_file + ".stderr.txt", proc.stderr)
 
                 processed_count += 1
                 processed_indices.add(global_index)
@@ -668,7 +811,7 @@ def process_csv(
                 )
                 with open(batch_log_path, "a", encoding="utf-8") as lf:
                     lf.write(
-                        f"batch {batch_index} (#{batch_number}) | rows {row_range_str} | "
+                        f"# batch {batch_index} (#{batch_number}) completed rows {row_range_str} | "
                         f"files: {', '.join(batch_filenames)}\n"
                     )
 
