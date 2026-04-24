@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Run a GRASP / LLM pipeline over all CSV datasets in ComplexQA/ and SimpleQA/.
 
@@ -15,7 +16,7 @@ What the script does:
     grasp run configs/run.yaml
   once for each valid row.
 - Saves one output file per processed row as JSON in:
-    QuantTrio/Qwen3-235B-A22B-Thinking-2507-AWQ/<csv_name>/
+    output/<csv_name>/
 - Adds useful metadata to JSON outputs, including:
     elapsed time, source CSV, row index, question, and reference answer
 - Maintains a batch log so interrupted runs can resume.
@@ -43,8 +44,8 @@ Important behavior:
 
 Directory assumption:
 Run this script from the parent directory that contains:
-    data/ComplexQA/
-    data/SimpleQA/
+    ComplexQA/
+    SimpleQA/
 """
 
 import csv
@@ -61,18 +62,14 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from tqdm import tqdm
 
-
 # ---------------- Configuration ---------------- #
 
 INPUT_DIRS: List[str] = [
-    "data/ComplexQA",
     "data/SimpleQA",
+    "data/ComplexQA",
 ]
 
-OUTPUT_ROOT = "output/QuantTrio-Qwen3-235B-A22B-Thinking-2507-AWQ"
-
 BATCH_SIZE = 50
-
 GRASP_COMMAND = ["bash", "-lc", "grasp run configs/run.yaml"]
 
 # Set True only if you really want git add/commit/push after each batch.
@@ -104,9 +101,7 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
             return
 
         commit_proc = subprocess.run(
-            ["git", "commit", "-m", commit_msg],
-            capture_output=True,
-            text=True,
+            ["git", "commit", "-m", commit_msg], capture_output=True, text=True
         )
         if commit_proc.returncode != 0:
             sys.stderr.write("[GIT INFO] 'git commit' did not create a commit:\n")
@@ -115,9 +110,7 @@ def run_git_after_batch(batch_number: int, processed_so_far: int, total_rows: in
             return
 
         push_proc = subprocess.run(
-            ["git", "push", GIT_REMOTE, GIT_BRANCH],
-            capture_output=True,
-            text=True,
+            ["git", "push", GIT_REMOTE, GIT_BRANCH], capture_output=True, text=True
         )
         if push_proc.returncode != 0:
             sys.stderr.write(f"[GIT WARN] 'git push {GIT_REMOTE} {GIT_BRANCH}' failed:\n")
@@ -135,14 +128,11 @@ def discover_csv_files(input_dirs: List[str]) -> List[str]:
     Find all .csv files inside the given input directories.
     """
     csv_files: List[str] = []
-
     for folder in input_dirs:
         if not os.path.isdir(folder):
             print(f"[INFO] Input directory not found, skipping: {folder}")
             continue
-
         csv_files.extend(sorted(glob.glob(os.path.join(folder, "*.csv"))))
-
     return csv_files
 
 
@@ -152,21 +142,16 @@ def count_total_rows(csv_files: List[str]) -> int:
     Assumes one header row per non-empty CSV.
     """
     total = 0
-
     for csv_path in csv_files:
         try:
             with open(csv_path, newline="", encoding="utf-8-sig") as f:
                 reader = csv.reader(f)
                 header = next(reader, None)
-
                 if header is None:
                     continue
-
                 total += sum(1 for _ in reader)
-
         except Exception as e:
             print(f"[WARN] Could not count rows in {csv_path}: {e}")
-
     return total
 
 
@@ -176,18 +161,12 @@ def safe_slug(text: str, max_len: int = 80) -> str:
     text = re.sub(r"\s+", "_", text.strip())
     text = re.sub(r"[^A-Za-z0-9._-]", "", text)
     text = text.strip("._-")
-
     if not text:
         text = "row"
-
     return text[:max_len]
 
 
-def make_output_filename(
-    row: List[str],
-    global_index: int,
-    colmap: Dict[str, Optional[int]],
-) -> str:
+def make_output_filename(row: List[str], global_index: int, colmap: Dict[str, Optional[int]]) -> str:
     question_id_idx = colmap.get("question_id")
 
     if question_id_idx is not None and len(row) > question_id_idx:
@@ -229,7 +208,6 @@ def build_input_text(row: List[str], colmap: Dict[str, Optional[int]]) -> Option
         return None
 
     question = row[question_idx].strip()
-
     if not question:
         return None
 
@@ -242,14 +220,12 @@ def build_input_text(row: List[str], colmap: Dict[str, Optional[int]]) -> Option
 
 def ask_yes_no(prompt: str, default: str = "n") -> str:
     answer = ""
-
     try:
         while answer not in ("y", "n"):
             answer = input(prompt).strip().lower()
     except EOFError:
         print(f"No interactive input available; defaulting to '{default}'.")
         answer = default
-
     return answer
 
 
@@ -278,17 +254,13 @@ def summarize_times(times: List[float]) -> Dict[str, Optional[float]]:
     def percentile(values: List[float], p: float) -> float:
         if len(values) == 1:
             return values[0]
-
         k = (len(values) - 1) * p
         f = math.floor(k)
         c = math.ceil(k)
-
         if f == c:
             return values[int(k)]
-
         d0 = values[f] * (c - k)
         d1 = values[c] * (k - f)
-
         return d0 + d1
 
     mean_v = statistics.mean(sorted_times)
@@ -306,10 +278,7 @@ def summarize_times(times: List[float]) -> Dict[str, Optional[float]]:
     }
 
 
-def build_time_histogram(
-    times: List[float],
-    bin_edges: Optional[List[float]] = None,
-) -> List[Tuple[str, int]]:
+def build_time_histogram(times: List[float], bin_edges: Optional[List[float]] = None) -> List[Tuple[str, int]]:
     """
     Build a simple human-readable histogram.
     Default bins are in seconds.
@@ -324,23 +293,19 @@ def build_time_histogram(
 
     for t in times:
         placed = False
-
         for i, edge in enumerate(bin_edges):
             if t <= edge:
                 counts[i] += 1
                 placed = True
                 break
-
         if not placed:
             counts[-1] += 1
 
     labels: List[str] = []
     prev = 0.0
-
     for edge in bin_edges:
         labels.append(f"{prev:.1f}-{edge:.1f}s")
         prev = edge
-
     labels.append(f">{bin_edges[-1]:.1f}s")
 
     return list(zip(labels, counts))
@@ -353,7 +318,6 @@ def print_time_summary(title: str, times: List[float]) -> None:
     print(f"\n--- {title} ---")
 
     stats = summarize_times(times)
-
     if stats["count"] == 0:
         print("No timing data collected.")
         return
@@ -366,8 +330,8 @@ def print_time_summary(title: str, times: List[float]) -> None:
     print(f"median  : {stats['median']:.3f}s")
     print(f"p75     : {stats['p75']:.3f}s")
     print(f"max     : {stats['max']:.3f}s")
-    print("distribution:")
 
+    print("distribution:")
     for label, count in build_time_histogram(times):
         print(f"  {label:>10} : {count}")
 
@@ -385,9 +349,6 @@ def write_time_summary_json(path: str, title: str, times: List[float]) -> None:
         ],
         "raw_times_seconds": [round(t, 6) for t in times],
     }
-
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
@@ -415,7 +376,6 @@ def detect_bad_outputs(
         out_file = os.path.join(out_dir, filename)
 
         reason = None
-
         if not os.path.exists(out_file):
             reason = "missing_output_file"
         else:
@@ -441,7 +401,6 @@ def detect_bad_outputs(
         return bad_indices, ""
 
     bad_csv_path = os.path.join(out_dir, "bad_executions.csv")
-
     with open(bad_csv_path, "w", newline="", encoding="utf-8") as cf:
         writer = csv.writer(cf)
         writer.writerow(["row_index", "filename", "reason"])
@@ -469,29 +428,23 @@ def parse_batch_log(batch_log_path: str, total_rows: int) -> Tuple[Set[int], boo
                 continue
 
             parts = [p.strip() for p in stripped.split("|")]
-
             for part in parts:
                 if part.startswith("rows "):
                     range_str = part[len("rows "):].strip()
-
                     if "-" in range_str:
                         start_s, end_s = range_str.split("-", 1)
-
                         try:
                             start_i = int(start_s)
                             end_i = int(end_s)
                         except ValueError:
                             continue
-
                         for idx in range(start_i, end_i + 1):
                             processed_indices.add(idx)
-
                     else:
                         try:
                             idx = int(range_str)
                         except ValueError:
                             continue
-
                         processed_indices.add(idx)
 
     if not is_completed and processed_indices and max(processed_indices) >= total_rows - 1:
@@ -503,7 +456,6 @@ def parse_batch_log(batch_log_path: str, total_rows: int) -> Tuple[Set[int], boo
 def ensure_batch_log_header(batch_log_path: str, csv_path: str) -> None:
     if os.path.exists(batch_log_path):
         return
-
     with open(batch_log_path, "w", encoding="utf-8") as lf:
         lf.write(f"# Batch log for {csv_path}\n")
         lf.write("# Each line: batch_index | row_indices | filenames\n\n")
@@ -521,10 +473,9 @@ def process_csv(
     Process a single CSV file and return summary information for final reporting.
     """
     file_stem = os.path.splitext(os.path.basename(csv_path))[0]
-
-    out_dir = os.path.join(OUTPUT_ROOT, file_stem)
+    # out_dir = os.path.join("output", file_stem)
+    out_dir = os.path.join("235B", file_stem)
     os.makedirs(out_dir, exist_ok=True)
-
     batch_log_path = os.path.join(out_dir, "batch_log.txt")
 
     print(f"\n=== Processing CSV: {csv_path} ===")
@@ -533,20 +484,17 @@ def process_csv(
     with open(csv_path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         raw_header = next(reader, None)
-
         if raw_header is None:
             raise ValueError(f"CSV file '{csv_path}' is empty or missing a header row.")
 
         header = [h.strip().lstrip("\ufeff") for h in raw_header]
         colmap = detect_schema(header)
-
         if colmap["question"] is None:
             raise ValueError(f"'question' column not found in CSV header: {header}")
 
         rows = list(reader)
 
     total_rows = len(rows)
-
     if total_rows == 0:
         print("No data rows found in CSV. Skipping.")
         return {
@@ -564,28 +512,19 @@ def process_csv(
     print(f"  total rows  : {total_rows}")
 
     ensure_batch_log_header(batch_log_path, csv_path)
-
     processed_indices, is_completed_from_log = parse_batch_log(batch_log_path, total_rows)
 
     if processed_indices:
-        bad_indices, bad_csv_path = detect_bad_outputs(
-            rows,
-            colmap,
-            out_dir,
-            processed_indices,
-        )
-
+        bad_indices, bad_csv_path = detect_bad_outputs(rows, colmap, out_dir, processed_indices)
         if bad_indices:
             print(f"[CHECK INFO] Detected {len(bad_indices)} bad output JSON file(s).")
             print(f"[CHECK INFO] Details logged to: {bad_csv_path}")
-
             answer_bad = (
                 ask_yes_no(
                     "Do you want to re-run these bad executions? [y/n]: ",
                     default="n",
                 )
-                if ASK_BEFORE_RERUN_BAD
-                else "y"
+                if ASK_BEFORE_RERUN_BAD else "y"
             )
 
             if answer_bad == "y":
@@ -595,27 +534,22 @@ def process_csv(
                 print("[CHECK INFO] Bad executions will be left as-is.")
 
     is_completed_effective = (
-        is_completed_from_log
-        and processed_indices
-        and max(processed_indices) >= total_rows - 1
+        is_completed_from_log and processed_indices and max(processed_indices) >= total_rows - 1
     )
 
     if is_completed_effective:
         print("Detected that this CSV appears to be fully processed based on batch_log.txt.")
-
         answer = (
             ask_yes_no(
                 "Files already generated. Do you want to update them? [y/n]: ",
                 default="n",
             )
-            if ASK_BEFORE_RERUN_COMPLETE
-            else "n"
+            if ASK_BEFORE_RERUN_COMPLETE else "n"
         )
 
         if answer != "y":
             print("User chose not to update existing outputs. Skipping this CSV.")
             overall_pbar.update(total_rows)
-
             return {
                 "csv_path": csv_path,
                 "total_rows": total_rows,
@@ -624,10 +558,8 @@ def process_csv(
             }
 
         processed_indices.clear()
-
         with open(batch_log_path, "a", encoding="utf-8") as lf:
             lf.write("\n# Restarting processing: user requested update.\n")
-
     else:
         if processed_indices:
             print(f"Resuming from row {max(processed_indices) + 1}.")
@@ -649,7 +581,6 @@ def process_csv(
             batch_rows = rows[batch_start: batch_start + batch_size]
             batch_index = batch_start // batch_size
             batch_number = batch_index + 1
-
             batch_filenames: List[str] = []
             batch_row_indices: List[int] = []
 
@@ -662,7 +593,6 @@ def process_csv(
                     continue
 
                 input_text = build_input_text(row, colmap)
-
                 if not input_text:
                     file_pbar.update(1)
                     overall_pbar.update(1)
@@ -672,24 +602,20 @@ def process_csv(
                 out_file = os.path.join(out_dir, filename)
 
                 start_time = time.perf_counter()
-
                 proc = subprocess.run(
                     GRASP_COMMAND,
                     input=input_text,
                     capture_output=True,
                     text=True,
                 )
-
                 elapsed = time.perf_counter() - start_time
 
                 file_times.append(elapsed)
                 overall_times.append(elapsed)
 
                 stdout_text = proc.stdout
-
                 try:
                     data = json.loads(stdout_text)
-
                     if isinstance(data, dict):
                         data["elapsed"] = round(elapsed, 6)
                         data["source_csv"] = csv_path
@@ -703,12 +629,10 @@ def process_csv(
                             if q_idx is not None and len(row) > q_idx
                             else None
                         )
-
                         if a_idx is not None and len(row) > a_idx:
                             data["reference_answer"] = row[a_idx].strip()
 
                     json_text = json.dumps(data, ensure_ascii=False)
-
                 except json.JSONDecodeError:
                     json_text = stdout_text
 
@@ -717,16 +641,13 @@ def process_csv(
 
                 if proc.returncode != 0:
                     sys.stderr.write(
-                        f"[WARN] Row {global_index} ({filename}): "
-                        "grasp returned non-zero exit.\n"
+                        f"[WARN] Row {global_index} ({filename}): grasp returned non-zero exit.\n"
                     )
-
                     with open(out_file + ".stderr.txt", "w", encoding="utf-8") as errf:
                         errf.write(proc.stderr)
 
                 processed_count += 1
                 processed_indices.add(global_index)
-
                 batch_filenames.append(filename)
                 batch_row_indices.append(global_index)
 
@@ -736,7 +657,6 @@ def process_csv(
                 if file_times:
                     file_mean = statistics.mean(file_times)
                     overall_mean = statistics.mean(overall_times) if overall_times else 0.0
-
                     file_pbar.set_postfix_str(
                         f"avg={file_mean:.2f}s | overall_avg={overall_mean:.2f}s"
                     )
@@ -747,7 +667,6 @@ def process_csv(
                     if len(batch_row_indices) > 1
                     else str(batch_row_indices[0])
                 )
-
                 with open(batch_log_path, "a", encoding="utf-8") as lf:
                     lf.write(
                         f"batch {batch_index} (#{batch_number}) | rows {row_range_str} | "
@@ -772,10 +691,11 @@ def process_csv(
 
     print_time_summary(f"Timing summary for {file_stem}", file_times)
 
+    os.makedirs("235B", exist_ok=True)
     write_time_summary_json(
-        os.path.join(out_dir, "timing_summary.json"),
-        f"Timing summary for {file_stem}",
-        file_times,
+    os.path.join("235B", "overall_timing_summary.json"),
+    "Overall timing summary",
+    overall_times,
     )
 
     return {
@@ -786,15 +706,11 @@ def process_csv(
     }
 
 
-# ---------------- Main entry point ---------------- #
-
 if __name__ == "__main__":
-    os.makedirs(OUTPUT_ROOT, exist_ok=True)
-
     csv_files = discover_csv_files(INPUT_DIRS)
 
     if not csv_files:
-        print("No CSV files found in data/ComplexQA/ or data/SimpleQA/.")
+        print("No CSV files found in ComplexQA/ or SimpleQA/.")
         sys.exit(0)
 
     print("Discovered CSV files:")
@@ -802,7 +718,6 @@ if __name__ == "__main__":
         print(f"  - {path}")
 
     overall_total_rows = count_total_rows(csv_files)
-
     overall_times: List[float] = []
     file_summaries: List[Dict[str, object]] = []
 
@@ -847,9 +762,8 @@ if __name__ == "__main__":
             print("  timing stats   : no new timing data collected")
 
     print_time_summary("Overall timing summary", overall_times)
-
     write_time_summary_json(
-        os.path.join(OUTPUT_ROOT, "overall_timing_summary.json"),
+        "overall_timing_summary.json",
         "Overall timing summary",
         overall_times,
     )
