@@ -37542,3 +37542,389 @@
 (APIServer pid=3566384) INFO 04-27 20:37:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 219.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.4%, Prefix cache hit rate: 97.9%
 (APIServer pid=3566384) INFO 04-27 20:37:54 [loggers.py:259] Engine 000: Avg prompt throughput: 29.9 tokens/s, Avg generation throughput: 211.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
 (APIServer pid=3566384) INFO 04-27 20:38:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 220.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311] Error in preprocessing prompt inputs
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/chat_completion/serving.py", line 295, in render_chat_request
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     conversation, engine_prompts = await self._preprocess_chat(
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/engine/serving.py", line 982, in _preprocess_chat
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     (conversation,), (engine_prompt,) = await renderer.render_chat_async(
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 759, in render_chat_async
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     tok_prompts = await self.tokenize_prompts_async(dict_prompts, tok_params)
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 448, in tokenize_prompts_async
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     return await asyncio.gather(
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 441, in tokenize_prompt_async
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     return await self._tokenize_singleton_prompt_async(prompt, params)
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 374, in _tokenize_singleton_prompt_async
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     return params.apply_post_tokenization(self.tokenizer, prompt)  # type: ignore[arg-type]
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 373, in apply_post_tokenization
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     prompt["prompt_token_ids"] = self._validate_tokens(  # type: ignore[typeddict-unknown-key]
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 357, in _validate_tokens
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     tokens = validator(tokenizer, tokens)
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 337, in _token_len_check
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311]     raise VLLMValidationError(
+(APIServer pid=3566384) ERROR 04-27 20:38:07 [serving.py:311] vllm.exceptions.VLLMValidationError: You passed 24577 input tokens and requested 8192 output tokens. However, the model's context length is only 32768 tokens, resulting in a maximum input length of 24576 tokens. Please reduce the length of the input prompt. (parameter=input_tokens, value=24577)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311] Error in preprocessing prompt inputs
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/chat_completion/serving.py", line 295, in render_chat_request
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     conversation, engine_prompts = await self._preprocess_chat(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/engine/serving.py", line 982, in _preprocess_chat
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     (conversation,), (engine_prompt,) = await renderer.render_chat_async(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 759, in render_chat_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     tok_prompts = await self.tokenize_prompts_async(dict_prompts, tok_params)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 448, in tokenize_prompts_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     return await asyncio.gather(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 441, in tokenize_prompt_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     return await self._tokenize_singleton_prompt_async(prompt, params)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 374, in _tokenize_singleton_prompt_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     return params.apply_post_tokenization(self.tokenizer, prompt)  # type: ignore[arg-type]
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 373, in apply_post_tokenization
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     prompt["prompt_token_ids"] = self._validate_tokens(  # type: ignore[typeddict-unknown-key]
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 357, in _validate_tokens
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     tokens = validator(tokenizer, tokens)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 337, in _token_len_check
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     raise VLLMValidationError(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311] vllm.exceptions.VLLMValidationError: You passed 24577 input tokens and requested 8192 output tokens. However, the model's context length is only 32768 tokens, resulting in a maximum input length of 24576 tokens. Please reduce the length of the input prompt. (parameter=input_tokens, value=24577)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311] Error in preprocessing prompt inputs
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/chat_completion/serving.py", line 295, in render_chat_request
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     conversation, engine_prompts = await self._preprocess_chat(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/engine/serving.py", line 982, in _preprocess_chat
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     (conversation,), (engine_prompt,) = await renderer.render_chat_async(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 759, in render_chat_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     tok_prompts = await self.tokenize_prompts_async(dict_prompts, tok_params)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 448, in tokenize_prompts_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     return await asyncio.gather(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 441, in tokenize_prompt_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     return await self._tokenize_singleton_prompt_async(prompt, params)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 374, in _tokenize_singleton_prompt_async
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     return params.apply_post_tokenization(self.tokenizer, prompt)  # type: ignore[arg-type]
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 373, in apply_post_tokenization
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     prompt["prompt_token_ids"] = self._validate_tokens(  # type: ignore[typeddict-unknown-key]
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 357, in _validate_tokens
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     tokens = validator(tokenizer, tokens)
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 337, in _token_len_check
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311]     raise VLLMValidationError(
+(APIServer pid=3566384) ERROR 04-27 20:38:08 [serving.py:311] vllm.exceptions.VLLMValidationError: You passed 24577 input tokens and requested 8192 output tokens. However, the model's context length is only 32768 tokens, resulting in a maximum input length of 24576 tokens. Please reduce the length of the input prompt. (parameter=input_tokens, value=24577)
+(APIServer pid=3566384) INFO 04-27 20:38:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 80.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:38:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:38:34 [loggers.py:259] Engine 000: Avg prompt throughput: 4.8 tokens/s, Avg generation throughput: 133.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:38:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 237.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:38:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:39:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 213.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:39:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:39:24 [loggers.py:259] Engine 000: Avg prompt throughput: 4.7 tokens/s, Avg generation throughput: 139.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:39:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 237.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:39:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:39:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 207.7 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:40:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:40:14 [loggers.py:259] Engine 000: Avg prompt throughput: 5.8 tokens/s, Avg generation throughput: 100.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:40:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 238.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:40:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:40:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:40:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 12.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:41:04 [loggers.py:259] Engine 000: Avg prompt throughput: 4.8 tokens/s, Avg generation throughput: 85.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:41:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 238.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:41:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:41:34 [loggers.py:259] Engine 000: Avg prompt throughput: 7.2 tokens/s, Avg generation throughput: 237.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:41:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 237.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:41:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171] Error in extracting tool call from response.
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]   File "/usr/local/lib/python3.12/dist-packages/vllm/tool_parsers/hermes_tool_parser.py", line 146, in extract_tool_calls
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]     json.loads(match[0] if match[0] else match[1])
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]   File "/usr/lib/python3.12/json/__init__.py", line 346, in loads
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]     return _default_decoder.decode(s)
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]   File "/usr/lib/python3.12/json/decoder.py", line 338, in decode
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]     obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]   File "/usr/lib/python3.12/json/decoder.py", line 354, in raw_decode
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]     obj, end = self.scan_once(s, idx)
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171]                ^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 20:41:55 [hermes_tool_parser.py:171] json.decoder.JSONDecodeError: Expecting ',' delimiter: line 3 column 1 (char 335)
+(APIServer pid=3566384) INFO 04-27 20:42:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 29.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:42:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:42:24 [loggers.py:259] Engine 000: Avg prompt throughput: 5.4 tokens/s, Avg generation throughput: 238.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:42:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 236.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:42:44 [loggers.py:259] Engine 000: Avg prompt throughput: 6.9 tokens/s, Avg generation throughput: 236.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:42:54 [loggers.py:259] Engine 000: Avg prompt throughput: 6.1 tokens/s, Avg generation throughput: 239.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:43:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 237.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:43:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:43:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 221.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:43:34 [loggers.py:259] Engine 000: Avg prompt throughput: 24.3 tokens/s, Avg generation throughput: 228.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:43:44 [loggers.py:259] Engine 000: Avg prompt throughput: 23.2 tokens/s, Avg generation throughput: 230.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:43:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 237.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:44:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:44:14 [loggers.py:259] Engine 000: Avg prompt throughput: 23.3 tokens/s, Avg generation throughput: 225.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:44:24 [loggers.py:259] Engine 000: Avg prompt throughput: 27.1 tokens/s, Avg generation throughput: 234.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:44:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 238.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:44:44 [loggers.py:259] Engine 000: Avg prompt throughput: 24.4 tokens/s, Avg generation throughput: 226.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:44:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.1 tokens/s, Avg generation throughput: 218.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:45:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 236.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:45:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:45:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.6 tokens/s, Avg generation throughput: 229.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:45:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:45:44 [loggers.py:259] Engine 000: Avg prompt throughput: 24.3 tokens/s, Avg generation throughput: 230.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:45:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.7 tokens/s, Avg generation throughput: 222.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:46:04 [loggers.py:259] Engine 000: Avg prompt throughput: 24.3 tokens/s, Avg generation throughput: 228.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:46:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 230.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:46:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:46:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:46:44 [loggers.py:259] Engine 000: Avg prompt throughput: 24.2 tokens/s, Avg generation throughput: 226.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:46:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:47:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:47:14 [loggers.py:259] Engine 000: Avg prompt throughput: 23.3 tokens/s, Avg generation throughput: 223.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:47:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.6 tokens/s, Avg generation throughput: 226.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:47:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:47:44 [loggers.py:259] Engine 000: Avg prompt throughput: 24.4 tokens/s, Avg generation throughput: 223.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:47:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:48:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.8 tokens/s, Avg generation throughput: 218.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:48:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:48:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.4 tokens/s, Avg generation throughput: 221.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:48:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:48:44 [loggers.py:259] Engine 000: Avg prompt throughput: 22.3 tokens/s, Avg generation throughput: 219.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:48:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.2 tokens/s, Avg generation throughput: 227.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:49:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 234.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:49:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 229.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:49:24 [loggers.py:259] Engine 000: Avg prompt throughput: 24.2 tokens/s, Avg generation throughput: 225.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.4%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:49:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:49:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 231.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:49:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.0 tokens/s, Avg generation throughput: 210.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:50:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 228.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:50:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.3 tokens/s, Avg generation throughput: 231.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:50:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.1 tokens/s, Avg generation throughput: 227.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:50:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 226.3 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:50:44 [loggers.py:259] Engine 000: Avg prompt throughput: 22.7 tokens/s, Avg generation throughput: 233.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:50:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.5 tokens/s, Avg generation throughput: 221.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:51:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 216.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:51:14 [loggers.py:259] Engine 000: Avg prompt throughput: 24.3 tokens/s, Avg generation throughput: 222.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:51:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 224.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:51:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 232.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:51:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 230.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:51:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 225.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:52:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.7 tokens/s, Avg generation throughput: 224.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:52:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 230.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:52:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.7 tokens/s, Avg generation throughput: 215.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:52:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 232.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:52:44 [loggers.py:259] Engine 000: Avg prompt throughput: 23.3 tokens/s, Avg generation throughput: 215.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:52:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 231.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:53:04 [loggers.py:259] Engine 000: Avg prompt throughput: 23.6 tokens/s, Avg generation throughput: 222.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:53:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 230.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:53:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 210.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:53:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 231.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.8%
+(APIServer pid=3566384) INFO 04-27 20:53:44 [loggers.py:259] Engine 000: Avg prompt throughput: 17.8 tokens/s, Avg generation throughput: 222.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:53:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 230.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:54:04 [loggers.py:259] Engine 000: Avg prompt throughput: 21.9 tokens/s, Avg generation throughput: 221.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:54:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 230.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:54:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 222.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:54:34 [loggers.py:259] Engine 000: Avg prompt throughput: 21.7 tokens/s, Avg generation throughput: 221.9 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:54:44 [loggers.py:259] Engine 000: Avg prompt throughput: 24.1 tokens/s, Avg generation throughput: 223.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:54:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.9 tokens/s, Avg generation throughput: 221.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:55:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 229.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:55:14 [loggers.py:259] Engine 000: Avg prompt throughput: 24.0 tokens/s, Avg generation throughput: 222.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:55:24 [loggers.py:259] Engine 000: Avg prompt throughput: 24.4 tokens/s, Avg generation throughput: 197.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:55:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 229.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:55:44 [loggers.py:259] Engine 000: Avg prompt throughput: 21.7 tokens/s, Avg generation throughput: 214.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:55:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.9 tokens/s, Avg generation throughput: 216.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:56:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 229.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:56:14 [loggers.py:259] Engine 000: Avg prompt throughput: 24.1 tokens/s, Avg generation throughput: 222.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:56:24 [loggers.py:259] Engine 000: Avg prompt throughput: 24.5 tokens/s, Avg generation throughput: 223.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:56:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 227.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:56:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 226.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:56:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.5 tokens/s, Avg generation throughput: 197.1 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:57:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 221.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:57:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 227.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:57:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 225.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:57:34 [loggers.py:259] Engine 000: Avg prompt throughput: 23.3 tokens/s, Avg generation throughput: 205.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:57:44 [loggers.py:259] Engine 000: Avg prompt throughput: 23.2 tokens/s, Avg generation throughput: 221.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.7%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:57:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 228.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:58:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.3 tokens/s, Avg generation throughput: 217.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:58:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 227.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:58:24 [loggers.py:259] Engine 000: Avg prompt throughput: 24.8 tokens/s, Avg generation throughput: 219.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:58:34 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 221.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:58:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 227.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:58:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 226.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:59:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 224.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:59:14 [loggers.py:259] Engine 000: Avg prompt throughput: 21.2 tokens/s, Avg generation throughput: 221.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:59:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.4 tokens/s, Avg generation throughput: 209.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:59:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 226.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:59:44 [loggers.py:259] Engine 000: Avg prompt throughput: 22.8 tokens/s, Avg generation throughput: 216.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 20:59:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 227.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:00:04 [loggers.py:259] Engine 000: Avg prompt throughput: 23.3 tokens/s, Avg generation throughput: 220.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:00:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 225.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:00:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.2 tokens/s, Avg generation throughput: 220.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:00:34 [loggers.py:259] Engine 000: Avg prompt throughput: 23.4 tokens/s, Avg generation throughput: 215.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:00:44 [loggers.py:259] Engine 000: Avg prompt throughput: 18.6 tokens/s, Avg generation throughput: 220.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.8%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:00:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 226.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:01:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 224.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:01:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.4 tokens/s, Avg generation throughput: 221.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:01:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.1 tokens/s, Avg generation throughput: 220.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:01:34 [loggers.py:259] Engine 000: Avg prompt throughput: 23.0 tokens/s, Avg generation throughput: 219.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:01:44 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 221.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:01:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.9 tokens/s, Avg generation throughput: 214.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:02:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 225.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:02:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.3 tokens/s, Avg generation throughput: 219.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:02:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.9 tokens/s, Avg generation throughput: 219.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:02:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 225.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:02:44 [loggers.py:259] Engine 000: Avg prompt throughput: 22.8 tokens/s, Avg generation throughput: 219.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:02:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.2 tokens/s, Avg generation throughput: 219.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:03:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 224.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:03:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 218.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.9%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:03:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 224.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:03:34 [loggers.py:259] Engine 000: Avg prompt throughput: 21.8 tokens/s, Avg generation throughput: 218.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:03:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 224.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:03:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 219.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:04:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 222.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:04:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.9 tokens/s, Avg generation throughput: 217.6 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:04:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.2 tokens/s, Avg generation throughput: 218.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:04:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 223.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:04:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 221.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:04:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.9 tokens/s, Avg generation throughput: 218.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:05:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.1 tokens/s, Avg generation throughput: 218.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:05:14 [loggers.py:259] Engine 000: Avg prompt throughput: 23.0 tokens/s, Avg generation throughput: 216.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:05:24 [loggers.py:259] Engine 000: Avg prompt throughput: 23.6 tokens/s, Avg generation throughput: 214.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:05:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 223.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:05:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 221.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:05:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.0 tokens/s, Avg generation throughput: 215.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:06:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 222.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:06:14 [loggers.py:259] Engine 000: Avg prompt throughput: 22.2 tokens/s, Avg generation throughput: 215.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.0%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:06:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 223.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:06:34 [loggers.py:259] Engine 000: Avg prompt throughput: 24.4 tokens/s, Avg generation throughput: 199.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:06:44 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 216.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:06:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.5 tokens/s, Avg generation throughput: 213.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:07:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 222.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:07:14 [loggers.py:259] Engine 000: Avg prompt throughput: 23.7 tokens/s, Avg generation throughput: 214.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:07:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 221.9 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:07:34 [loggers.py:259] Engine 000: Avg prompt throughput: 22.7 tokens/s, Avg generation throughput: 214.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:07:44 [loggers.py:259] Engine 000: Avg prompt throughput: 21.8 tokens/s, Avg generation throughput: 207.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:07:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 213.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 97.9%
+(APIServer pid=3566384) INFO 04-27 21:08:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.6 tokens/s, Avg generation throughput: 211.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.1%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:08:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 221.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:08:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.0 tokens/s, Avg generation throughput: 207.1 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:08:34 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 221.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:08:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 219.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.4%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:08:54 [loggers.py:259] Engine 000: Avg prompt throughput: 23.4 tokens/s, Avg generation throughput: 215.2 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:09:04 [loggers.py:259] Engine 000: Avg prompt throughput: 22.2 tokens/s, Avg generation throughput: 215.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:09:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 220.7 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:09:24 [loggers.py:259] Engine 000: Avg prompt throughput: 22.2 tokens/s, Avg generation throughput: 215.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:09:34 [loggers.py:259] Engine 000: Avg prompt throughput: 23.2 tokens/s, Avg generation throughput: 212.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:09:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 220.5 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:09:54 [loggers.py:259] Engine 000: Avg prompt throughput: 22.3 tokens/s, Avg generation throughput: 214.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.3%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:10:04 [loggers.py:259] Engine 000: Avg prompt throughput: 23.1 tokens/s, Avg generation throughput: 212.8 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 1.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] Error in preprocessing prompt inputs
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/chat_completion/serving.py", line 295, in render_chat_request
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     conversation, engine_prompts = await self._preprocess_chat(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/engine/serving.py", line 982, in _preprocess_chat
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     (conversation,), (engine_prompt,) = await renderer.render_chat_async(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 759, in render_chat_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     tok_prompts = await self.tokenize_prompts_async(dict_prompts, tok_params)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 448, in tokenize_prompts_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return await asyncio.gather(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 441, in tokenize_prompt_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return await self._tokenize_singleton_prompt_async(prompt, params)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 374, in _tokenize_singleton_prompt_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return params.apply_post_tokenization(self.tokenizer, prompt)  # type: ignore[arg-type]
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 373, in apply_post_tokenization
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     prompt["prompt_token_ids"] = self._validate_tokens(  # type: ignore[typeddict-unknown-key]
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 357, in _validate_tokens
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     tokens = validator(tokenizer, tokens)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 337, in _token_len_check
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     raise VLLMValidationError(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] vllm.exceptions.VLLMValidationError: You passed 24577 input tokens and requested 8192 output tokens. However, the model's context length is only 32768 tokens, resulting in a maximum input length of 24576 tokens. Please reduce the length of the input prompt. (parameter=input_tokens, value=24577)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] Error in preprocessing prompt inputs
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/chat_completion/serving.py", line 295, in render_chat_request
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     conversation, engine_prompts = await self._preprocess_chat(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/engine/serving.py", line 982, in _preprocess_chat
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     (conversation,), (engine_prompt,) = await renderer.render_chat_async(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 759, in render_chat_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     tok_prompts = await self.tokenize_prompts_async(dict_prompts, tok_params)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 448, in tokenize_prompts_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return await asyncio.gather(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 441, in tokenize_prompt_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return await self._tokenize_singleton_prompt_async(prompt, params)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 374, in _tokenize_singleton_prompt_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return params.apply_post_tokenization(self.tokenizer, prompt)  # type: ignore[arg-type]
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 373, in apply_post_tokenization
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     prompt["prompt_token_ids"] = self._validate_tokens(  # type: ignore[typeddict-unknown-key]
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 357, in _validate_tokens
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     tokens = validator(tokenizer, tokens)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 337, in _token_len_check
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     raise VLLMValidationError(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] vllm.exceptions.VLLMValidationError: You passed 24577 input tokens and requested 8192 output tokens. However, the model's context length is only 32768 tokens, resulting in a maximum input length of 24576 tokens. Please reduce the length of the input prompt. (parameter=input_tokens, value=24577)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] Error in preprocessing prompt inputs
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] Traceback (most recent call last):
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/chat_completion/serving.py", line 295, in render_chat_request
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     conversation, engine_prompts = await self._preprocess_chat(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/engine/serving.py", line 982, in _preprocess_chat
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     (conversation,), (engine_prompt,) = await renderer.render_chat_async(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 759, in render_chat_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     tok_prompts = await self.tokenize_prompts_async(dict_prompts, tok_params)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 448, in tokenize_prompts_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return await asyncio.gather(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 441, in tokenize_prompt_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return await self._tokenize_singleton_prompt_async(prompt, params)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/base.py", line 374, in _tokenize_singleton_prompt_async
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     return params.apply_post_tokenization(self.tokenizer, prompt)  # type: ignore[arg-type]
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 373, in apply_post_tokenization
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     prompt["prompt_token_ids"] = self._validate_tokens(  # type: ignore[typeddict-unknown-key]
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 357, in _validate_tokens
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     tokens = validator(tokenizer, tokens)
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]   File "/usr/local/lib/python3.12/dist-packages/vllm/renderers/params.py", line 337, in _token_len_check
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311]     raise VLLMValidationError(
+(APIServer pid=3566384) ERROR 04-27 21:10:12 [serving.py:311] vllm.exceptions.VLLMValidationError: You passed 24577 input tokens and requested 8192 output tokens. However, the model's context length is only 32768 tokens, resulting in a maximum input length of 24576 tokens. Please reduce the length of the input prompt. (parameter=input_tokens, value=24577)
+(APIServer pid=3566384) INFO 04-27 21:10:14 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 178.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:10:24 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:10:34 [loggers.py:259] Engine 000: Avg prompt throughput: 5.0 tokens/s, Avg generation throughput: 94.0 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.2%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:10:44 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 238.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.3%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:10:54 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 235.4 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.5%, Prefix cache hit rate: 98.0%
+(APIServer pid=3566384) INFO 04-27 21:11:04 [loggers.py:259] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 233.3 tokens/s, Running: 1 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.6%, Prefix cache hit rate: 98.0%
