@@ -1033,7 +1033,8 @@ def process_csv_plan(
 # ---------------- Main entrypoint ---------------- #
 
 if __name__ == "__main__":
-    csv_files = discover_csv_files(INPUT_DIRS)
+    # csv_files = discover_csv_files(INPUT_DIRS)
+    csv_files = ["data/SimpleQA/Qampari_wikitables_simple.csv"]
 
     if not csv_files:
         print("No CSV files found in ComplexQA/ or SimpleQA/.")
