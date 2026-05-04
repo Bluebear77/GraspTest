@@ -1034,7 +1034,7 @@ def process_csv_plan(
 
 if __name__ == "__main__":
     # csv_files = discover_csv_files(INPUT_DIRS)
-    csv_files = ["data/ComplexQA/Monaco_non_time_complex.csv"]
+    csv_files = ["data/SimpleQA/NQ_table_test_simple.csv"]
 
     if not csv_files:
         print("No CSV files found in ComplexQA/ or SimpleQA/.")
