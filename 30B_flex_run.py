@@ -7,6 +7,9 @@ Improved behavior in this version:
 - Detects rows that need re-run because output JSON is missing, empty, invalid,
   structurally empty, null-output, empty-output, or because a matching
   .stderr.txt file exists.
+- Detects SPARQL endpoint gateway failures in saved JSON output, especially:
+      "SPARQL execution failed" + "502 Bad Gateway"
+  including nested fields such as output.result.
 - Asks re-run decisions once at startup across all input directories.
 - After the startup choices, the script runs to completion without asking again.
 - Before re-running a bad row, removes old output JSON and old .stderr.txt.
@@ -37,6 +40,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from tqdm import tqdm
 
+
 # ---------------- Configuration ---------------- #
 
 INPUT_DIRS: List[str] = [
@@ -63,6 +67,22 @@ RERUN_EMPTY_OUTPUT_FIELD = True
 
 # Treat {}, [], null as bad whole-file JSON outputs.
 RERUN_EMPTY_JSON_STRUCTURES = True
+
+# Detect and re-run saved GRASP outputs where SPARQL failed because the endpoint
+# gateway returned a 502 Bad Gateway.
+RERUN_SPARQL_GATEWAY_FAILURES = True
+
+# A row is considered bad when a string field, especially a nested "result" field,
+# contains all required terms from at least one group below.
+#
+# This intentionally catches both:
+#   "SPARQL execution failed:\n<html>...502 Bad Gateway...</html>"
+# and shorter variants that contain these same cue words.
+SPARQL_GATEWAY_FAILURE_REQUIRED_TERMS: List[Tuple[str, ...]] = [
+    ("SPARQL execution failed", "502 Bad Gateway"),
+    ("SPARQL execution failed", "Bad Gateway"),
+    ("502 Bad Gateway", "nginx"),
+]
 
 # If GRASP exits non-zero, mark the row as bad for the current run by writing stderr.
 # The row is still recorded as DONE because an output artifact was produced;
@@ -371,6 +391,69 @@ def write_time_summary_json(path: str, title: str, times: List[float]) -> None:
 
 # ---------------- Output validation ---------------- #
 
+def string_matches_gateway_failure(text: str) -> bool:
+    """
+    Return True when a string contains the configured gateway-failure cues.
+
+    Example target:
+        SPARQL execution failed:
+        <html>
+        <head><title>502 Bad Gateway</title></head>
+        ...
+    """
+    if not RERUN_SPARQL_GATEWAY_FAILURES:
+        return False
+
+    normalized_text = text.lower()
+
+    for required_terms in SPARQL_GATEWAY_FAILURE_REQUIRED_TERMS:
+        if all(term.lower() in normalized_text for term in required_terms):
+            return True
+
+    return False
+
+
+def find_gateway_failure_in_json(data: object, path: str = "$") -> Optional[str]:
+    """
+    Recursively search a parsed JSON object for endpoint gateway failures.
+
+    Returns a reason string with the nested path where the failure was found,
+    or None if no failure is found.
+
+    This catches:
+        data["output"]["result"]
+    but also works if GRASP changes the nesting later.
+    """
+    if not RERUN_SPARQL_GATEWAY_FAILURES:
+        return None
+
+    if isinstance(data, str):
+        if string_matches_gateway_failure(data):
+            return f"sparql_gateway_failure_502_at:{path}"
+        return None
+
+    if isinstance(data, dict):
+        # Prefer explicitly detecting result fields because that is the GRASP pattern.
+        if "result" in data and isinstance(data["result"], str):
+            if string_matches_gateway_failure(data["result"]):
+                return f"sparql_gateway_failure_502_at:{path}.result"
+
+        for key, value in data.items():
+            child_path = f"{path}.{key}"
+            reason = find_gateway_failure_in_json(value, child_path)
+            if reason:
+                return reason
+
+    if isinstance(data, list):
+        for i, value in enumerate(data):
+            child_path = f"{path}[{i}]"
+            reason = find_gateway_failure_in_json(value, child_path)
+            if reason:
+                return reason
+
+    return None
+
+
 def is_semantically_empty_json(data: object) -> Tuple[bool, str]:
     """Detect JSON that parses but should not count as a valid GRASP result."""
     if RERUN_EMPTY_JSON_STRUCTURES:
@@ -380,6 +463,10 @@ def is_semantically_empty_json(data: object) -> Tuple[bool, str]:
             return True, "empty_json_object"
         if data == []:
             return True, "empty_json_array"
+
+    gateway_reason = find_gateway_failure_in_json(data)
+    if gateway_reason:
+        return True, gateway_reason
 
     if isinstance(data, dict):
         # Known GRASP null-output pattern.
@@ -418,6 +505,7 @@ def is_good_output_file(path: str) -> Tuple[bool, str]:
     - known GRASP null-output pattern
     - empty output field
     - matching .stderr.txt sidecar exists
+    - SPARQL execution failed due to 502 Bad Gateway
     """
     stderr_path = path + ".stderr.txt"
     if RERUN_WHEN_STDERR_EXISTS and os.path.exists(stderr_path):
@@ -440,6 +528,11 @@ def is_good_output_file(path: str) -> Tuple[bool, str]:
 
     if not raw.strip():
         return False, "empty_file_whitespace_only"
+
+    # Raw fallback catches cases where the file has escaped or malformed content
+    # but still clearly contains the gateway failure.
+    if RERUN_SPARQL_GATEWAY_FAILURES and string_matches_gateway_failure(raw):
+        return False, "sparql_gateway_failure_502_raw"
 
     try:
         data = json.loads(raw)
@@ -625,11 +718,17 @@ def load_csv_plan(csv_path: str) -> CsvPlan:
     ensure_batch_log_header(batch_log_path, csv_path)
 
     logged_indices, is_completed_from_log = parse_batch_log(batch_log_path, total_rows)
+
+    # This scans every row's expected output JSON file.
+    # Because is_good_output_file now detects 502 gateway failures, those files
+    # will not be counted as good.
     existing_good_indices = scan_existing_good_outputs(rows, colmap, out_dir)
 
-    # Candidate bad rows are anything the log claims was processed, plus every row
-    # that has an output filename already. This catches .stderr.txt sidecars even
-    # when the log is incomplete.
+    # Candidate bad rows are every possible row index, so we catch:
+    # - missing outputs
+    # - invalid outputs
+    # - existing stderr sidecars
+    # - SPARQL 502 gateway failures in output.result
     all_indices = set(range(total_rows))
     bad_indices, bad_csv_path = detect_bad_outputs(rows, colmap, out_dir, all_indices)
 
@@ -700,7 +799,8 @@ def apply_startup_resume_choices(plans: List[CsvPlan]) -> None:
 
     if ASK_AT_STARTUP and total_bad > 0:
         rerun_bad = ask_yes_no(
-            f"Detected {total_bad} row(s) with bad output, empty JSON, or .stderr.txt. Re-run them now?",
+            f"Detected {total_bad} row(s) with bad output, empty JSON, .stderr.txt, "
+            f"or SPARQL 502 gateway failure. Re-run them now?",
             default="y",
         )
     elif total_bad > 0:
@@ -898,11 +998,13 @@ def process_csv_plan(
     processed_count = len(processed_indices)
     file_times: List[float] = []
 
+    # Important: initial is 0 because we still call update(1) for rows that are
+    # already processed. This avoids double-counting in the file progress bar.
     with tqdm(
         total=total_rows,
         desc=f"File: {file_stem}",
         unit="row",
-        initial=processed_count,
+        initial=0,
         leave=False,
         position=1,
     ) as file_pbar:
@@ -1033,8 +1135,8 @@ def process_csv_plan(
 # ---------------- Main entrypoint ---------------- #
 
 if __name__ == "__main__":
-    # csv_files = discover_csv_files(INPUT_DIRS)
-    csv_files = ["data/SimpleQA/NQ_table_test_simple.csv"]
+    csv_files = discover_csv_files(INPUT_DIRS)
+    # csv_files = ["data/SimpleQA/NQ_table_test_simple.csv"]
 
     if not csv_files:
         print("No CSV files found in ComplexQA/ or SimpleQA/.")
