@@ -1,0 +1,153 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nPREFIX wd: <http://www.wikidata.org/entity/>\nSELECT ?artist WHERE {\n  wd:Q89324673 wdt:P175 ?artist\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Toosie Slide (wd:Q89324673):\n  - 2020 single by Drake\n  - is instance of single\n\nUsing properties:\n- performer (wd:P175 as wdt), also known as \"actor\", \"actress\", \"artist\", \"dancer\", \"musical artist\", etc.:\n  - actor, musician, band or other performer associated with this role or musical work",
+    "result": "Got 1 row and 1 column:\n| artist            |\n| ----------------- |\n| Drake (wd:Q33240) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "Drake",
+    "formatted": "Drake\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nPREFIX wd: <http://www.wikidata.org/entity/>\nSELECT ?artist WHERE {\n  wd:Q89324673 wdt:P175 ?artist\n}\n```\n\nUsing entities:\n- Toosie Slide (wd:Q89324673):\n  - 2020 single by Drake\n  - is instance of single\n\nUsing properties:\n- performer (wd:P175 as wdt), also known as \"actor\", \"actress\", \"artist\", \"dancer\", \"musical artist\", etc.:\n  - actor, musician, band or other performer associated with this role or musical work\n\nExecution result:\nGot 1 row and 1 column:\n| artist            |\n| ----------------- |\n| Drake (wd:Q33240) |"
+  },
+  "elapsed": 34.358207,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "What was the name of English Singer who performed in Toosie Slide?"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "0a668acf1d8d40709ff3faf2c50b0ca5",
+        "message": null,
+        "reasoning": {
+          "id": "0fba8482982f4c9b9765792d52fed2d2",
+          "content": "Okay, let's tackle this question: \"What was the name of English Singer who performed in Toosie Slide?\"\n\nFirst, I need to figure out what the user is asking. The key points here are:\n- They're looking for an English singer.\n- The singer performed in a song called \"Toosie Slide.\"\n\nWait, \"Toosie Slide\" is a song by Drake, right? Let me confirm that. Drake's song \"Toosie Slide\" was a hit, but he's Canadian, not English. So maybe the user is confused. But the user says \"English Singer,\" so maybe they mean a British singer, as \"English\" often refers to people from England, which is part of the UK. However, Drake is Canadian. Hmm, maybe there's a different artist. Wait, \"Toosie Slide\" is by Drake, but maybe there's a collaboration. Let me check.\n\nWait, the song \"Toosie Slide\" by Drake doesn't have a featured English singer. The main artist is Drake. But maybe the user mixed up the song title. Let me verify.\n\nAlternatively, maybe the user is referring to a different song with a similar name. But \"Toosie Slide\" is a specific track. Let me look up the song. Drake's \"Toosie Slide\" released in 2020, and he's the sole performer. So maybe the user has a mistake here. But as a question, I have to answer based on the info given.\n\nWait, but the user says \"English Singer who performed in Toosie Slide.\" So they might think the singer is English. Let's try to check if there's an English singer associated with that song.\n\nFirst, I should find the song \"Toosie Slide\" in Wikidata. Let's find the correct entity for the song. Maybe \"Toosie Slide\" is a song by Drake, and check its artist.\n\nSo step by step:\n\n1. Find the song \"Toosie Slide\" in Wikidata. Search for it as a song. Use search_entity with query \"Toosie Slide\".\n\n2. Once I have the song's entity, check its main artist (property P175 for \"performer\" or \"artist\").\n\n3. Check if the artist is English (maybe via place of birth or nationality).\n\nBut wait, the user might be confused. Let's proceed.\n\nFirst, use search_entity to find \"Toosie Slide\" in Wikidata.\n\nSo, call search_entity(kg=\"wikidata\", query=\"Toosie Slide\").\n\nWait, but \"Toosie Slide\" is the song title, so the entity would be the song. Let's assume that.\n\nOnce I get the song entity, say it's wd:Q123456, then look for its performer.\n\nProperty for performer in Wikidata is P175 (performer) or maybe P2003 (recorded in) but probably P175.\n\nWait, for songs, the artist is often linked via P175.\n\nSo, the plan is:\n\n- Find the song entity for \"Toosie Slide\".\n- Get the performer(s) of the song.\n- Check if the performer is an English singer (nationality = England OR birth country = England).\n\nLet's start with searching for the song.\n\nCalling search_entity with \"Toosie Slide\"."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-81a83546fe37ad0f",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "Toosie Slide"
+            },
+            "result": "Top 10 entity alternatives:\n1. Toosie Slide (wd:Q89324673):\n  - 2020 single by Drake\n  - is instance of single\n2. Toosie Slide (wd:Q92748215):\n  - 2020 audio track by Drake\n  - is instance of audio track\n3. Hoosier Slide (wd:Q110664618):\n  - historic sand dune\n  - is instance of dune\n4. Slice Boogie (wd:Q126509640):\n  - American professional wrestler\n  - has occupation professional wrestler\n  - has occupation wrestler\n  - is instance of human\n5. Moose Mountain Slide (wd:Q49469697):\n  - cliff in Teton County, Wyoming, United States\n  - is instance of cliff\n6. Taosi (wd:Q217859, matched via \"Taosi Site\"), also known as \"Taosi site\", \"Taosi Site\":\n  - archaeological site\n  - is instance of archaeological site\n7. Rob Moodie (wd:Q7340388, matched via \"Alice Moodie\"), also known as \"Alice Moodie\", \"Robert Alexander Moodie\":\n  - has occupation farmer\n  - has occupation lawyer\n  - has occupation police officer\n  - is instance of human\n  - New Zealand police officer, lawyer and politician\n8. Coosje Smid (wd:Q2327936), also known as \"C. Smid\":\n  - Dutch actress\n  - has occupation actor\n  - has occupation singer-songwriter\n  - has occupation songwriter\n  - is instance of human\n9. Poolie Pride (wd:Q7228649)\n10. moose hide (wd:Q72936895):\n  - is subclass of hide"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 730,
+          "prompt_tokens": 3756,
+          "total_tokens": 4486
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "8db919d7c029403bbd8d2b86a46971bf",
+        "message": null,
+        "reasoning": {
+          "id": "129d5e37bbf9462d957c2f46a2f9d476",
+          "content": "Okay, let's see. The user is asking for the name of the English singer who performed \"Toosie Slide.\" From the search results, I found that \"Toosie Slide\" is a 2020 single by Drake. But Drake is Canadian, not English. The user mentioned \"English Singer,\" so maybe they're confused.\n\nWait, the top two entries for \"Toosie Slide\" on Wikidata are both by Drake. Drake's actual name is Aubrey Graham, and he's from Toronto, Canada. So maybe the user made a mistake in the nationality. But the question specifies \"English,\" which usually refers to someone from England, UK.\n\nHmm, maybe there's another artist who covered \"Toosie Slide\" and is English? Let me check the search results again. The other entries like Hoosier Slide, Slice Boogie, etc., don't seem related. The search results don't show any English singer for that song.\n\nWait, the user might be thinking of a cover version. But Drake's \"Toosie Slide\" is original. There's a chance the user mixed up the song or the artist. Let me confirm: \"Toosie Slide\" is by Drake, released in 2020. Drake is Canadian, not English. So there's no English singer for that song. But the user might not know Drake's nationality, so they think he's English.\n\nAlternatively, maybe the user meant a different song. But the query is clear: \"Toosie Slide.\" So the correct answer would be Drake, but he's not English. However, the user is asking for an English singer, which might mean the question itself is based on a misunderstanding.\n\nWait, but the user might have confused Drake as an English singer. Let me check Drake's nationality. Yes, Drake is Canadian. So the answer should be that there's no English singer who performed \"Toosie Slide,\" but the actual performer is Drake. However, the question says \"English Singer,\" so the correct answer is that it's a mistake. But maybe the user expects the name regardless.\n\nWait, the user's question might have a typo or misunderstanding. The main point is to find who performed \"Toosie Slide,\" and the answer is Drake, even though he's not English. The user might have made an error in the nationality. So the answer should state that the performer is Drake, but he's Canadian, not English. But the user's question is asking for the English singer, so perhaps there's no such person. However, the song's performer is Drake, so the answer would need to clarify that.\n\nBut let's make sure there's no English cover. Let me check if there's a cover by an English artist. Maybe the user heard a version by someone else. But from the search results, the top entries are Drake's original. So the main performer is Drake. So the answer should be Drake, and note that he's Canadian.\n\nWait, but the user specifically says \"English Singer.\" In common parlance, people sometimes confuse \"English\" with \"British,\" but Drake is Canadian. So the answer needs to correct that.\n\nSo the SPARQL query should find the artist of \"Toosie Slide,\" which is Drake, then check his nationality. But since the user might have a mistake, the correct answer is Drake, but he's not English.\n\nBut the question is asking for the name. So the answer is Drake, even if the nationality part is incorrect. So the SPARQL query needs to get the artist of the song \"Toosie Slide.\"\n\nFrom the search_entity results, \"Toosie Slide\" is a single (wd:Q89324673), which is by Drake. So the artist is Drake. So the SPARQL query should be SELECT ?artist WHERE { wd:Q89324673 wdt:P50 ?artist }.\n\nLet's check. The property for artist is P50 (creator). Wait, the single is a work, so the creator (P50) would be Drake. Let me confirm the property. In Wikidata, P50 is \"producer\" or \"director\"? Wait, no: P50 is \"author\" or \"creator\" for works. For a music track, the creator (artist) is P50.\n\nSo the query would be:\n\nSELECT ?artist WHERE {\n  wd:Q89324673 wdt:P50 ?artist .\n}\n\nThis should return Drake (Q267777). But the user asked for \"English Singer,\" which is incorrect, so the answer should state the correct name and clarify the nationality.\n\nBut since the user's question has a possible error, the answer should provide Drake's name and note that he's Canadian, not English. However, the instruction says to generate a SPARQL query to answer the question. The question is asking for the name, so the query should return Drake's name.\n\nSo the correct SPARQL query is the one above. Let's make sure. The entity for the single is Q89324673. The P50 (author) of that single is Drake (Q267777). So executing that query should give the result.\n\nNow, check if there are any other possible entities. The search results showed only Drake as the main performer for Toosie Slide. So the query should be straightforward."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-9fac1415a76d47c5",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?artist WHERE { wd:Q89324673 wdt:P50 ?artist }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1181,
+          "prompt_tokens": 4225,
+          "total_tokens": 5406
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "a50aca3cb5174f1482daf42a1f4d9119",
+        "message": null,
+        "reasoning": {
+          "id": "855551a35b5c402290625fa6acb13ca1",
+          "content": "Okay, let's see. The user is asking for the name of the English singer who performed \"Toosie Slide.\" From the previous steps, I tried searching for the entity \"Toosie Slide\" and found that it's a 2020 single by Drake, so the entity is wd:Q89324673. Then I tried to get the artist using wd:Q89324673 wdt:P50 ?artist. But the result was empty.\n\nHmm, maybe P50 is the wrong property. P50 usually stands for \"composer\" or \"author\" in Wikidata. Wait, no, for works like songs, the main artist is usually linked via the \"performer\" property. Let me recall the correct properties. The property for the artist of a song is often P175 (performer) or maybe P136 (genre), but wait, no. For music tracks, the performer is usually connected via P175. Wait, maybe it's P431 or another property.\n\nWait, let me check. In Wikidata, for a track, the artist (the performer) is often linked via the \"performer\" property, which is P175. But maybe for a single, it's different. Let me think. Drake is the artist for \"Toosie Slide,\" but the question says \"English singer.\" Drake is Canadian, not English. Wait, Drake (Aubrey Graham) is Canadian, so maybe the user made a mistake? But the user is asking for an English singer. So maybe \"Toosie Slide\" is performed by an English singer, but the entity found is Drake, who isn't English. Wait, but the search for Toosie Slide gave the single by Drake, which is correct. But the user is asking for an English singer, so perhaps there's a different song or a cover by an English artist?\n\nWait, maybe the user confused \"Toosie Slide\" with another song. Let me verify. Drake's \"Toosie Slide\" is a 2020 hit. The main performer is Drake, who is Canadian. So there's a discrepancy here. Maybe the user made an error, but I need to answer based on the data.\n\nWait, but the initial search returned Toosie Slide as a single by Drake. So the artist should be Drake. But the user says \"English singer,\" which is incorrect. But perhaps the user meant \"Canadian\" instead of \"English.\" Or maybe there's a different track with the same name. Let me check the entity again.\n\nLooking back at the search results, the top entity was Toosie Slide (wd:Q89324673), a 2020 single by Drake. So the artist is Drake. But Drake is not English. So why does the user say \"English singer\"? Maybe they confused it with another song. Let's see if there's another Toosie Slide by an English artist.\n\nWait, maybe I need to check if the song has any English performers. Maybe Drake's song is a collaboration with an English artist. Let's check the Wikidata entry for wd:Q89324673. But since I can't access it directly, I need to think of the right SPARQL.\n\nAlternatively, maybe the right property is P175 (performer) or P276 (record label), but I'm not sure. Let's try using P175 instead of P50. Let's adjust the SPARQL query to use P175.\n\nSo the query should be: SELECT ?artist WHERE { wd:Q89324673 wdt:P175 ?artist }\n\nWait, but what's the correct property for the performer of a track? For music tracks, P175 is \"performer,\" yes. So maybe my initial query used the wrong property (P50 is \"composer,\" which might not be correct here). Let's try P175.\n\nSo I'll execute the SPARQL with P175. Let me check if that's the correct property.\n\nWait, another way: check what properties exist for the work. For example, the track \"Toosie Slide\" (Q89324673) would have a list of properties. Common ones for music tracks include P276 (record label), P175 (performer), P176 (creator), but P175 is performer.\n\nSo modifying the query from P50 (which is \"author\" or \"composer\" in some contexts) to P175 (performer) should give the right result.\n\nLet's try that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a90afa4a19ba1d65",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?artist WHERE { wd:Q89324673 wdt:P175 ?artist }"
+            },
+            "result": "Got 1 row and 1 column:\n| artist            |\n| ----------------- |\n| Drake (wd:Q33240) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1044,
+          "prompt_tokens": 4295,
+          "total_tokens": 5339
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "a3104e7efdd54e9c948ec2df6e16be92",
+        "message": null,
+        "reasoning": {
+          "id": "55dd7eb45a354313805f7de7714c5c70",
+          "content": "Okay, let's see. The user is asking for the name of the English singer who performed \"Toosie Slide\". From the previous steps, I found that \"Toosie Slide\" is a single by Drake, which is a song by Drake, not an English singer. Wait, Drake is Canadian, not English. So the user's question might have a mistake, but we need to check.\n\nFirst, the search_entity for \"Toosie Slide\" gave multiple results, but the main one was the 2020 single by Drake (wd:Q89324673). Then, when I tried to get the artist using wdt:P50 (which is the property for main performer), it returned Drake. But the user asked for an English singer. Drake is from Toronto, Canada, so he's not English. That's a problem.\n\nWait, maybe the user confused \"Toosie Slide\" with another song? Or maybe there's a different artist. Let me double-check. The second result was another entry for Toosie Slide as an audio track by Drake (wd:Q92748215), but same artist. The other entities like \"Hoosier Slide\" or \"Slice Boogie\" are unrelated. So Drake is the correct artist, but he's not English.\n\nThe user might have made a mistake in the question. But according to the data, the artist is Drake. So the answer should be Drake, but noting that he's not English. However, the user might have intended a different answer. Wait, maybe I should check if there's an English version or a cover by an English singer. But the main version is by Drake, and \"Toosie Slide\" is a Drake song.\n\nWait, maybe \"Toosie Slide\" refers to a different song. Let me check the Wikidata entries again. The top result is \"Toosie Slide\" as a single by Drake (Q89324673), and the second is the same as a track. The user's question says \"English Singer\", but Drake is Canadian. Maybe the user is mistaken, but the data shows Drake is the performer. So the answer should be Drake, noting the nationality. But the problem is the user's question has a possible error.\n\nSince the task is to answer based on the data, not to correct the user, the answer would be Drake. But the user asked for an English singer, so perhaps the answer is that there's no English singer, but the song was performed by Drake. However, the system wants us to provide the actual data. Let me check if there's an English artist involved. Maybe the song was covered by an English singer. But the main song by Drake, so the primary artist is Drake. The user's mistake is probably thinking Drake is English, but he's not.\n\nSo the correct answer from the data is Drake. Even though he's not English, that's the artist. The user's question has a factual error, but we have to go with the data. So the answer should be Drake. Let me confirm once more.\n\nChecked the SPARQL query: wd:Q89324673 (Toosie Slide single) has the artist via p:P175 (performer), which is Drake. So the SPARQL query returns Drake. The user's question mentions \"English Singer\", but Drake is Canadian. So the answer should state that the performer is Drake, but clarify he's not English. However, the instructions say not to do additional computation, so just provide the data. The answer should be \"Drake\" as the name of the singer, but since the user specified English, perhaps the answer is that there's a mistake. But according to the data, the answer is Drake. The correct response is to give Drake's name, noting the nationality discrepancy, but the system might just want the name.\n\nWait, the user is asking \"What was the name of English Singer who performed in Toosie Slide?\" So the answer they expect might be wrong, but based on data, it's Drake. So the correct answer based on Wikidata is Drake. So the final answer should be Drake."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a0aa799e53b9b208",
+            "name": "answer",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?artist WHERE { wd:Q89324673 wdt:P175 ?artist }",
+              "answer": "Drake"
+            },
+            "result": "Stopping"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 930,
+          "prompt_tokens": 4388,
+          "total_tokens": 5318
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/entity/Q110664618",
+    "http://www.wikidata.org/entity/Q72936895",
+    "http://www.wikidata.org/entity/Q126509640",
+    "http://www.wikidata.org/entity/Q89324673",
+    "http://www.wikidata.org/entity/Q7340388",
+    "http://www.wikidata.org/entity/Q217859",
+    "http://www.wikidata.org/entity/Q33240",
+    "http://www.wikidata.org/entity/Q92748215",
+    "http://www.wikidata.org/entity/Q49469697",
+    "http://www.wikidata.org/entity/Q7228649",
+    "http://www.wikidata.org/entity/Q2327936"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/CompMix_table_simple_qa.csv",
+  "row_index": 66,
+  "question": "What was the name of English Singer who performed in Toosie Slide?",
+  "reference_answer": "Drake"
+}
