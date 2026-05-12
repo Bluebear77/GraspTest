@@ -39,6 +39,7 @@ def load_data(index_dir: str) -> Data:
     try:
         data = Data.load(os.path.join(index_dir, "data"))
     except Exception as e:
+        logging.critical(e, exc_info=True)
         raise ValueError(f"Failed to load index data from {index_dir}") from e
 
     return data
