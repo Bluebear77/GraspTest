@@ -1,0 +1,343 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?composer WHERE {\n  wd:Q484442 wdt:P86 ?composer\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Spider-Man (wd:Q484442):\n  - 2002 film directed by Sam Raimi\n  - is instance of film\n\nUsing properties:\n- composer (wd:P86 as wdt), also known as \"composed by\", \"film score by\", \"musical score by\", \"music by\", \"original music composer\", etc.:\n  - person(s) who wrote the music [for lyricist, use \"lyrics by\" (P676)]",
+    "result": "Got 1 row and 1 column:\n| composer                  |\n| ------------------------- |\n| Danny Elfman (wd:Q193338) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?composer WHERE { wd:Q484442 wdt:P86 ?composer }\", \"answer\": \"Danny Elfman\"}}",
+    "formatted": "{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?composer WHERE { wd:Q484442 wdt:P86 ?composer }\", \"answer\": \"Danny Elfman\"}}\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?composer WHERE {\n  wd:Q484442 wdt:P86 ?composer\n}\n```\n\nUsing entities:\n- Spider-Man (wd:Q484442):\n  - 2002 film directed by Sam Raimi\n  - is instance of film\n\nUsing properties:\n- composer (wd:P86 as wdt), also known as \"composed by\", \"film score by\", \"musical score by\", \"music by\", \"original music composer\", etc.:\n  - person(s) who wrote the music [for lyricist, use \"lyrics by\" (P676)]\n\nExecution result:\nGot 1 row and 1 column:\n| composer                  |\n| ------------------------- |\n| Danny Elfman (wd:Q193338) |"
+  },
+  "elapsed": 54.595837,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "Who is the composer of the movie Spide man part 1?"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "7c1d4e6f4b0e4d3a8d26406c0bde7718",
+        "message": null,
+        "reasoning": {
+          "id": "717c9d71b43e424aa6d8a97a575982e3",
+          "content": "Okay, let's tackle this question: \"Who is the composer of the movie Spide man part 1?\" Wait, the user probably meant \"Spider-Man\" but wrote \"Spide man part 1\". First, I need to confirm the correct title of the movie. The first Spider-Man movie is usually called \"Spider-Man\" (2002), directed by Sam Raimi. But the user said \"Spide man part 1\", which might be a typo.\n\nFirst, I should search for the movie title to get the correct entity. Maybe the user meant \"Spider-Man\" (2002), so I'll use \"Spider-Man\" as the query. Let me use the search_entity function to find the movie in Wikidata.\n\nWait, the user mentioned \"Spide man part 1\", which might be a misspelling. Let's check \"Spider-Man\" first. I'll call search_entity with \"spider man\" to get the correct entity. Wait, the function is search_entity, so kg=\"wikidata\", query=\"spider man part 1\" but maybe it's better to correct the typo.\n\nAlternatively, maybe the user intended \"Spider-Man: The First\" but there's no such title. The original Spider-Man movie is just \"Spider-Man\" (2002), often referred to as the first one. So I'll look for \"Spider-Man\" (2002).\n\nSo first step: search for the movie title. Let's use search_entity on Wikidata with the query \"Spider-Man\".\n\nWait, let's make sure. Let's use search_entity(kg=\"wikidata\", query=\"spider man\") to find the correct entity. The correct entity for the first Spider-Man movie should be Q86955, which is \"Spider-Man (2002 film)\".\n\nOnce I get the entity, I need to find the composer. The composer would be a person associated with the movie in the 'composer' property. In Wikidata, the property for composer is P86 (composer). So I need to find the person with p:P86 pointing to the movie entity.\n\nBut first, let's get the movie entity. Let's execute search_entity with \"spider man\".\n\nWait, the user wrote \"Spide man part 1\", which might have typos. \"Spide man\" is missing the 'r', so it's \"Spider Man\" but written as \"Spide man\". The correct term would be \"Spider-Man\", so the search should be for \"Spider-Man\".\n\nSo first, call search_entity with query=\"Spider-Man\" (assuming that's the standard title).\n\nAfter getting the entity, then perform a SPARQL query to get the composer.\n\nLet me proceed step by step.\n\nFirst, use search_entity to find the movie.\n\nWait, the user says \"part 1\", which might refer to the first part of a series, but Spider-Man (2002) is the first. Let's check.\n\nSo, start by searching for the entity. Let's use the search_entity function with query=\"spider man part 1\", but maybe the search function can handle the typo. Alternatively, search_entity with \"Spider-Man\".\n\nBut to be safe, let's first try to find the movie using the search function.\n\nWait, in Wikidata, the movie is known as \"Spider-Man\" (2002), so the entity label is \"Spider-Man\". The query \"spider man part 1\" might not match directly, but the search_entity using 'fuzzy' index might still find it. The fuzzy index uses label words with some fuzziness. So maybe \"spider man\" or \"spide man\" could get the right entity.\n\nBut let's proceed.\n\nFirst, call search_entity with kg=\"wikidata\", query=\"spider man part 1\". Wait, the query should be \"spider man\" because \"part 1\" might not be part of the title. The actual title is \"Spider-Man\", so maybe the \"part 1\" is a mistake. So perhaps the user meant \"Spider-Man part 1\" but actually, it's the first movie. So the correct entity is for \"Spider-Man (2002)\".\n\nBut I need to find that entity. Let's call search_entity with query=\"spider man\".\n\nSo first tool call: search_entity(kg=\"wikidata\", query=\"spider man\")\n\nWait, the exact command would be:\n\n{\"name\": \"search_entity\", \"arguments\": {\"kg\": \"wikidata\", \"query\": \"spider man\"}}\n\nThat should return the entity, probably wd:Q86955 or similar.\n\nAssuming that's the case, next step is to find the composer. The property for composer is p:P86. So the query would be SELECT ?composer WHERE { wd:Q86955 wdt:P86 ?composer }.\n\nBut I need to confirm that the entity Q86955 is indeed the correct one. Let's make sure. The spider man movie is Q86955, and its composer is Danny Elfman.\n\nWait, Danny Elfman composed the Spider-Man (2002) soundtrack. So the SPARQL query should retrieve him.\n\nBut to be thorough, after getting the entity, let's verify using list function or another search.\n\nWait, but according to the tools, after I call search_entity, I can get the entity ID. Then, use that ID to look up the property.\n\nSo step by step:\n\n1. Use search_entity to find the movie.\n2. Once entity is found, perform a SPARQL query for P86.\n\nSo first, the search_entity call.\n\nLet me write the tool call for that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a62bf986f940461b",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "spider man"
+            },
+            "result": "Top 10 entity alternatives:\n1. Spider Man (wd:Q17062409):\n  - album by Freddie McCoy\n  - is instance of album\n2. Spider-Man Remastered (wd:Q100440421, matched via \"Spider Man Remastered\"), also known as \"Marvel's Spider-Man Remastered\", \"Marvel's Spider-Man: Remastered\", \"Spider Man Remastered\", \"Spider-Man: Remastered\":\n  - 2020 video game developed by Insomniac Games, remastered version of 2018 video game Spider-Man\n  - is instance of video game\n3. Spider map (wd:Q7577062):\n  - Schematic bus service diagram for an area\n4. Black Spider Man (wd:Q74063702):\n  - is instance of print\n  - print in the National Gallery of Art (NGA 64031)\n5. Spicer (wd:Q2088811, matched via \"Spicer, MN\"), also known as \"Spicer, Minnesota\", \"Spicer, MN\":\n  - human settlement in Kandiyohi County, Minnesota, United States of America\n  - is instance of city in the United States\n6. Ananse (wd:Q485953, matched via \"Anase the Spider Man\"), also known as \"Ananansa\", \"Anancy\", \"Anancyi\", \"Anansi Drew\", \"Anansie\", etc.:\n  - Akan folktale character\n  - is instance of anthropomorphic spider\n  - is instance of creator deity\n  - is instance of folklore character\n  - is instance of mythical character\n  - is instance of trickster\n7. penny-farthing (wd:Q1554036, matched via \"man slicer\"), also known as \"high wheel\", \"high wheeler\", \"man slicer\", \"ordinary\", \"penny farthing\":\n  - bicycle with a large front wheel and a much smaller rear wheel\n  - is instance of bicycle\n  - is subclass of michaudine\n8. Platycryptus undatus (wd:Q291947, matched via \"tan jumping spider\"), also known as \"familiar jumping spider\", \"tan jumping spider\":\n  - is instance of taxon\n  - species of arachnid\n9. Side Man (wd:Q7508275):\n  - is instance of literary work\n  - play written by Warren Leight\n10. Van Snider (wd:Q7913664), also known as \"Van Voorhees Snider\":\n  - American baseball player\n  - has occupation baseball player\n  - is instance of human"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1229,
+          "prompt_tokens": 3755,
+          "total_tokens": 4984
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "4773e2c850964613bff7e3f49a83aae7",
+        "message": null,
+        "reasoning": {
+          "id": "14fcbb3e312949979eabb77aac163760",
+          "content": "Okay, let's see. The user is asking for the composer of the movie \"Spide man part 1\". First, I notice that \"Spide man\" is probably a typo for \"Spider-Man\". So the correct title should be \"Spider-Man\" movie, part 1.\n\nFrom the search results for \"spider man\", the first entity is Spider Man (Q17062409), which is an album by Freddie McCoy. That's not a movie. The second one is Spider-Man Remastered, a video game. The third is a spider map, which isn't relevant. Black Spider Man is a print, not a movie. So maybe the user is referring to the first Spider-Man movie, which is \"Spider-Man\" from 2002, directed by Sam Raimi.\n\nWait, the user mentioned \"part 1\", so maybe they mean the first movie in the Spider-Man series, which is indeed the 2002 film. Now, I need to confirm the exact title. Let's check the top entity that's a movie. The search results listed so far don't have a movie entity, but the second entry was Spider-Man Remastered, but that's a video game. So maybe I need to look for the actual movie.\n\nWait, perhaps the correct entity for the first Spider-Man movie is WD:Q20512. Let me think. I should use the search_entity function again but maybe with \"Spider-Man (2002 film)\" to get the correct entity. But the user's question says \"Spide man part 1\", so maybe \"Spider-Man part 1\" isn't an exact title. The first Spider-Man film is just \"Spider-Man\" (2002), so maybe \"part 1\" was a mistake.\n\nSo, next step: search for the entity \"Spider-Man\" (2002) to get the correct movie entity. Let's try searching again with \"Spider-Man 2002\" to find the specific movie. Wait, but the initial search was \"spider man\", which didn't return the movie. Maybe the correct entity ID is Q20512, which is the 2002 Spider-Man film.\n\nAlternatively, maybe I should use search_entity for \"Spider-Man movie\". Let me use the search_entity function again with a more precise query.\n\nWait, the previous search used \"spider man\" and returned several entities, but none were the movie. So perhaps I need to adjust the query. The user probably meant the first Spider-Man movie, which is \"Spider-Man\" (2002), so let's search for \"Spider-Man movie\" to get that entity.\n\nLet me call search_entity again with \"Spider-Man movie\" to find the correct entity. That should give the 2002 film as a result."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b384cffc94fc13f7",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "Spider-Man movie 2002"
+            },
+            "result": "Top 10 entity alternatives:\n1. Category:Spider-Man (2002 film series) (wd:Q60798616, matched via \"Category:Spider-Man (2002 movie series)\"), also known as \"Category:Spider-Man (2002 movie series)\":\n  - is instance of Wikimedia category\n  - Wikimedia category\n2. Category:The Amazing Spider-Man (2012 film series) (wd:Q60802731, matched via \"Category:The Amazing Spider-Man (2012 movie series)\"), also known as \"Category:The Amazing Spider-Man (2012 movie series)\":\n  - is instance of Wikimedia category\n  - Wikimedia category\n3. Spider-Man (wd:Q2539517, matched via \"Spider-Man: The Movie\"), also known as \"Spider-Man: The Movie\":\n  - 2002 beat 'em up video game\n  - is instance of video game\n4. Category:2002 films (wd:Q7141609, matched via \"Category:2002 movies\"), also known as \"Category:2002 movies\":\n  - is instance of Wikimedia category\n  - Wikimedia category\n5. Category:Spider-Man films (wd:Q7142195, matched via \"Category:Spider-Man movies\"), also known as \"Category:Spider-Man movies\":\n  - is instance of Wikimedia category\n  - Wikimedia category\n6. Water (wd:Q617395, matched via \"Water (2005 movie)\"), also known as \"Water (2005)\", \"Water (2005 movie)\":\n  - 2005 film by Deepa Mehta\n  - is instance of film\n7. Spider-Man (wd:Q288296, matched via \"Spider-Man 2000\"), also known as \"Spider-Man 2000\":\n  - 2000 video game\n  - is instance of video game\n8. Spider-Man: The New Animated Series (wd:Q777406, matched via \"MTV Spider-Man 2003\"), also known as \"MTV Spider-Man\", \"MTV Spider-Man 2003\", \"Spider-Man\", \"Spider-Man 2003\":\n  - American animated television series\n  - is instance of animated television series\n9. 2002 MTV Movie Awards (wd:Q1785535):\n  - is instance of award ceremony\n  - US film awards event\n10. Category:Spider-Man film characters (wd:Q101246471, matched via \"Category:Spider-Man movie characters\"), also known as \"Category:Spider-Man movie characters\":\n  - is instance of Wikimedia category\n  - Wikimedia category"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 630,
+          "prompt_tokens": 4397,
+          "total_tokens": 5027
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "025b6ced784840458611588c79a43ea0",
+        "message": null,
+        "reasoning": {
+          "id": "d548172166d34579be66317229c3403a",
+          "content": "Okay, let's see. The user is asking for the composer of the movie \"Spider-Man part 1.\" Wait, the first thing I noticed is that the user said \"Spide man part 1,\" which is probably a typo for \"Spider-Man, Part 1.\" But the first search I did for \"spider man\" didn't give me the movie directly. Then I tried \"Spider-Man movie 2002,\" which makes sense because the first Spider-Man movie was released in 2002.\n\nLooking at the search results for \"Spider-Man movie 2002,\" the top result was Spider-Man (2002 film), but the second search result shows an entity with wd:Q2539517, which is the 2002 movie. Wait, no, the first entry under that search is a category. Wait, the third entry is \"Spider-Man (wd:Q2539517, matched via \"Spider-Man: The Movie\"), also known as \"Spider-Man: The Movie\": 2002 beat 'em up video game.\" Hmm, that's a video game, not the movie. So maybe that's not the right one.\n\nWait, I need to check the actual movie. The first Spider-Man movie from 2002 is directed by Sam Raimi. But the user is asking for the composer, not the director. The composer for that movie is Danny Elfman. But I need to confirm that through Wikidata.\n\nSo, first, I need to find the correct entity for the Spider-Man (2002) movie. Let's search again. The user said \"part 1,\" but the 2002 movie is just called \"Spider-Man,\" not \"Part 1.\" Maybe the user made a typo. Let's assume it's the 2002 movie.\n\nIn the search results for \"Spider-Man movie 2002,\" entry 5 is \"Category:Spider-Man films (wd:Q7142195),\" but categories aren't the movie itself. Entry 2 was a category too. Entry 10 is also a category. So maybe the actual entity is not showing up because the search is using fuzzy matching. Wait, the entry for Spider-Man (2002) might be \"Spider-Man\" (2002 film), but it's not listed here. Let's check another approach.\n\nUse the search_entity function with \"Spider-Man 2002 movie\" to get the correct entity. Alternatively, search for the film \"Spider-Man\" (2002) directly.\n\nWait, in the previous search results, there's a mention of \"Web of Spider-Man\" but that's a comic. Let's try using search_entity again with \"Spider-Man\" (2002) as the query.\n\nWait, the first search for \"spider man\" gave some results, including a video game. The second search for \"Spider-Man movie 2002\" gave mostly categories. Maybe I need to look for the actual film entity.\n\nLet me try to search for the entity by the title \"Spider-Man\" and year 2002. But since the user is asking for the composer, perhaps the correct entity is wd:Q288296? Wait, the second search result had \"Spider-Man (wd:Q288296, matched via \"Spider-Man 2000\")\" as 2000 video game. No, that's not helpful.\n\nWait, I should check the correct Wikidata ID for the 2002 Spider-Man movie. From my prior knowledge, the 2002 Spider-Man film is Q288296? Wait, no. Let me think. The 2002 Spider-Man film is \"Spider-Man (2002 film)\", which on Wikidata is Q288296? Or maybe Q2539517. Wait, the search result for \"Spider-Man (wd:Q2539517)\" was a video game. So Q2539517 is the game, not the movie.\n\nThe actual movie might be Q288296. Let me check. If I search \"Spider-Man\" on Wikidata, the main movie entry is likely Q288296. Let's test that.\n\nSo, perhaps I need to use the search_entity again but with a more specific query. Let's try \"Spider-Man 2002 film\", but the function might not match it. Alternatively, use search_entity with \"Spider-Man movie 2002\" and see if the entity is there.\n\nWait, in the second search, the 5th entry is \"Category:Spider-Man films (wd:Q7142195)\", but I need the actual film. Maybe the entity ID for the 2002 film is Q288296. Let's confirm.\n\nWait, when I search for \"Spider-Man\" on Wikidata, the correct entity should be a film. Let's assume that after several searches, the correct ID is Q288296 for the 2002 movie. Now, to find its composer, I need to look for the \"composer\" property.\n\nIn Wikidata, the property for composer is P92. Wait, no. The property for composer in films is P276 (for music by) or maybe P81 (composer)? Wait, let's recall. In Wikidata, for musical works, composer is P175, but for films, the soundtrack composer might be listed under a different property.\n\nActually, there's a property called \"composer\" which is P276. Wait, let me check. Wait, in the film context, the \"composer\" is usually under the property \"composer\" (P276) or \"music by\" (P276). Or perhaps it's under \"soundtrack\" (P336), but I need to find the correct property.\n\nAlternatively, the film has a \"soundtrack\" property, but the composer would be a different property. To get the composer, the correct property might be P177 (composer) or P800 (music composer). Wait, no. Let me think: in Wikidata, for people as composers, the property is P175 (composer), but for the work, it might be different.\n\nWait, perhaps the film's composer is under the \"composer\" property (P276). Let me check. If I look up the Spider-Man (2002) film on Wikidata, the composer would be listed under the property \"music by\" (which is P276). Wait, no. P276 is the property for \"music by\" in Wikidata. So to get the composer, we need to find the statement with p:P276.\n\nSo the steps are:\n\n1. Find the correct entity for Spider-Man (2002) film.\n2. Get the value of the property p:P276 (music by) for that entity.\n\nBut first, I need to confirm the correct entity ID. From the previous search results, I need to find the actual movie. Let's try using search_entity again with \"Spider-Man 2002\" to get the correct ID.\n\nWait, when I did \"Spider-Man movie 2002,\" the third entry was a video game. Maybe the correct entity is not being found because the search is fuzzy. Let me search for \"Spider-Man (2002)\".\n\nAnother approach: use search_entity with \"Spider-Man (2002)\", maybe with \"film\" as a keyword.\n\nBut given the previous results, let's assume that the correct entity is Q288296. Wait, but the second search result mentioned Spider-Man (wd:Q288296, matched via Spider-Man 2000) as a 2000 video game. So that's not it.\n\nAlternatively, maybe the correct entity is Q2539517. Wait, the first search result for \"spider man\" included a video game, but the second search for \"Spider-Man movie 2002\" had Spider-Man (Q2539517) as a 2002 video game. Hmm. This is confusing.\n\nWait, the first Spider-Man movie (2002) is called \"Spider-Man\" and its Wikidata ID is Q288296. Let me verify by looking up \"Spider-Man (2002 film)\" in Wikidata. But since I can't access external data, I have to rely on the function calls.\n\nLet me try using the search_entity function with \"Spider-Man film 2002\" to see if it returns the correct entity.\n\nWait, the user's original question says \"Spide man part 1\", which is probably a typo for \"Spider-Man part 1\", but the first Spider-Man movie is just \"Spider-Man\" (2002), not part 1. So maybe the user is referring to the first film.\n\nAssuming that, the next step is to find the correct entity ID for Spider-Man (2002) film.\n\nWait, let's try to use the search_entity function again with \"Spider-Man 2002 film\" to get the correct entity.\n\nWait, the previous tool responses show that when searching for \"Spider-Man movie 2002,\" the top results are categories and video games. So perhaps the exact entity name is \"Spider-Man (film)\" or \"Spider-Man (2002 film)\".\n\nAlternatively, maybe the film's correct entity is wd:Q288296. Let's proceed with that.\n\nAssuming the entity is wd:Q288296, the next step is to find the composer. In Wikidata, the property for the composer of a film is typically handled via the \"composer\" property, which is P81 (but I'm not sure). Wait, let me recall: on Wikidata, the property for the composer of a film is usually under \"composed by\" (P81) or \"music by\" (P276).\n\nWait, according to Wikidata, the property P276 is \"music by\", which is used for the composer of the film's soundtrack. So for the movie Spider-Man (2002), the composer is Danny Elfman, and that would be linked via property P276.\n\nSo, the SPARQL query would need to find the entity for Spider-Man (2002), then get the value of the statement with property p:P276.\n\nSo, first, find the entity ID. Let's assume it's Q288296. Let's verify with a list query.\n\nWait, the 'list' function can be used to list triples for a subject. If I use list with subject as wd:Q288296, I can see what properties it has.\n\nBut since I can't do that yet, let's proceed.\n\nAlternatively, search the property for composer. Use search_property to find \"music by\" or \"composer\" in Wikidata.\n\nLet's try search_property with query \"composer\".\n\nWait, the user might need the composer, so the property should be related to composer. Let's search for the property in Wikidata.\n\nWait, in the tools, there's a search_property function. Let's call that to find the correct property code for composer.\n\nSo, first, I'll use search_property with query \"composer\" to find the relevant property.\n\nWait, but the previous search for \"Spider-Man movie 2002\" didn't yield the entity, so maybe I need to find the correct entity first."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-aa0bffe62941c130",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "composer"
+            },
+            "result": "Top 10 property alternatives:\n1. composer (wd:P86 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"composed by\", \"film score by\", \"musical score by\", \"music by\", \"original music composer\", etc.:\n  - person(s) who wrote the music [for lyricist, use \"lyrics by\" (P676)]\n2. inception (wd:P571 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"composed\"), also known as \"built\", \"commenced on date\", \"commencement date\", \"completed\", \"composed\", etc.:\n  - time when an entity begins to exist; for date of official opening use P1619\n3. sound designer (wd:P5028 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - person responsible for the sound on a stage, in a film or in a radio drama\n4. publisher (wd:P123 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"music publisher\"), also known as \"board game publisher\", \"book publisher\", \"comic book publisher\", \"comic publisher\", \"music publisher\", etc.:\n  - organization or person responsible for publishing a work, such as a book, periodical, printed music, podcast, game or software\n5. CompositionToday composer ID (wd:P8688 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"Composition Today composer ID\":\n  - composer ID on the website CompositionToday\n6. music created for (wd:P9899 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"music for\"), also known as \"composed for\", \"composed for work\", \"created for\", \"is music for work\", \"music composed for\", etc.:\n  - a work, event, etc. for which a musical composition was ... written; a film for which motion picture music was created)\n7. Musicsperlacobla composer ID (wd:P11203 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - composer identifier used by musicsperlacobla archive\n8. producer (wd:P162 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"music producer\"), also known as \"creative producer\", \"film producer\", \"musical producer\", \"music producer\", \"produced by\", etc.:\n  - person(s) who produced the film, musical work, theatrical ... [for production company, use P272, video games - use P178]\n9. location of creation (wd:P1071 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"composed at\"), also known as \"assembly location\", \"built at\", \"built in\", \"composed at\", \"created at\", etc.:\n  - place where the item was conceived or made; where applicable, location of final assembly\n10. musical conductor (wd:P3300 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"music director\"), also known as \"choir director\", \"conducted by\", \"conductor\", \"musical director\", \"music director\", etc.:\n  - the person who directs a musical group, orchestra or chorus"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 2533,
+          "prompt_tokens": 5064,
+          "total_tokens": 7597
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "83b46f5f64714f89a1464e3e9de1d6d4",
+        "message": null,
+        "reasoning": {
+          "id": "cdfc190acfc44419b58f7214b1465816",
+          "content": "Okay, let's see. The user is asking for the composer of the movie \"Spider-Man part 1\". Wait, the user mentioned \"Spide man part 1\", but that's probably a typo for \"Spider-Man\". From the previous search, they tried \"Spider-Man movie 2002\", and the top result was Spider-Man (2002 film), which is the first movie in the Sam Raimi series.\n\nSo first, I need to confirm the correct entity for the movie. The 2002 Spider-Man movie is a key one. The search for \"Spider-Man movie 2002\" gave an entity with Q288296 as \"Spider-Man (2002)\". Wait, looking back, the list has Spider-Man (wd:Q288296) as the movie. Wait, no, the search results under \"Spider-Man movie 2002\" included an entry 3 as \"Spider-Man (wd:Q2539517)\" as a 2002 video game, but entry 6 was a film called Water (2005), which isn't relevant. Wait, maybe the actual movie \"Spider-Man\" (2002) has a different QID.\n\nWait, looking at the initial search for \"spider man\", the first result was Spider Man (wd:Q17062409), but that's an album. The second result was Spider-Man Remastered (Q100440421), a video game. Then maybe I need to search again for the actual movie.\n\nWait, in the second search, they used \"Spider-Man movie 2002\", and among the results, entry 3 is \"Spider-Man (wd:Q2539517)\" as a 2002 video game, but the actual movie should have a different QID. Let me check: the 2002 Spider-Man film is a well-known movie, so it should be Q288296 perhaps? Wait, the user's initial search might not have found it yet.\n\nAlternatively, maybe the correct entity is \"Spider-Man\" (2002) as a film. Let's think: in Wikidata, the entry for the 2002 film Spider-Man is often listed as \"Spider-Man\" with P31 (instance of) as film. So I should search for \"Spider-Man 2002 film\" to get the correct entity.\n\nWait, but the user's second search was \"Spider-Man movie 2002\", and the top result was Category:Spider-Man (2002 film series), but the actual film entity might not be showing up. Maybe the best approach is to use the entity ID from a reliable source. Wait, but as an AI, I can't access external sources. So I need to use the tools provided.\n\nAlternatively, maybe using the property \"composer\" as found earlier (wd:P86), so the composer of a movie would be linked via wdt:P86.\n\nSo the plan is:\n\n1. Find the correct entity for the Spider-Man (2002) movie.\n2. Use that entity to find the composer via property P86.\n\nEarlier search for \"Spider-Man movie 2002\" didn't get the actual film entity. Let's try searching again with \"Spider-Man (2002) film\". Wait, the previous search had \"Spider-Man movie 2002\", maybe I should adjust the query.\n\nWait, the user's question says \"Spide man part 1\", which is a typo for \"Spider-Man part 1\". The first Spider-Man movie was indeed 2002, so part 1 is 2002 Spider-Man.\n\nIn the second search, the user did \"Spider-Man movie 2002\", but the results included \"Spider-Man (wd:Q288296)\" as a video game? Wait, in the results, entry 7 says \"Spider-Man (wd:Q288296), matched via 'Spider-Man 2000'\". Wait, maybe the correct ID for the movie is different. Let's check: I recall that the 2002 Spider-Man movie has QID Q345312.\n\nWait, maybe the correct entity is \"Spider-Man (film)\" which is Q345312. But how to find it via the tools.\n\nAlternatively, let's use the \"list\" function to find entities related to Spider-Man and filter by year. For example, use list(kg=\"wikidata\", subject=\"wd:Q345312\", ...), but I need the correct entity first.\n\nWait, perhaps using the search_entity with \"Spider-Man film 2002\" would help. Let's try that.\n\nWait, but looking back at the user's previous tool calls, they did two search_entity calls. The first was \"spider man\", the second \"Spider-Man movie 2002\". The second search gave a list where entry 6 was \"Water\" (2005), entry 9 was \"2002 MTV Movie Awards\". So maybe the actual film isn't in the top 10, but perhaps the correct ID is known. Wait, maybe the user's search wasn't precise.\n\nAlternatively, let's proceed with the assumption that the movie Spider-Man (2002) is the entity with Q288296. Wait, in the second search result, entry 3 was \"Spider-Man (wd:Q2539517)\" as a 2002 video game. But the user is asking for a movie, so that's not it.\n\nWait, maybe the correct entity is \"Spider-Man\" (film) with QID Q345312. Let me check standard Wikidata IDs. Wait, I can't, but I have to proceed with the tools.\n\nAlternatively, use the search_object_of_property function to find objects for the property \"director\" (P57) but we're looking for composer. Wait, the composer property is P86.\n\nWait, maybe first find the entity of the movie. Let's do another search_entity for \"Spider-Man 2002 movie\".\n\nSo the next step should be to call search_entity with \"Spider-Man 2002 movie\".\n\nWait, but according to the previous assistant's tool calls, they did search_entity with \"Spider-Man movie 2002\" and got results. In those results, none were movies except maybe the categories. So perhaps the actual entity ID is Q345312, but we need to find it.\n\nAlternatively, use the search_property for \"composer\" (which we did, got P86), then use another search to find the composer of a specific movie.\n\nWait, maybe the best way is to assume the movie entity. Let's proceed to construct the SPARQL query.\n\nAssuming the movie's entity is wd:Q345312 (Spider-Man, 2002), then the query would be:\n\nSELECT ?composer WHERE { wd:Q345312 wdt:P86 ?composer }\n\nBut to confirm, we need to know the correct QID.\n\nWait, another approach: use the property P31 (instance of) to find films. The movie should have instance of film (Q11424). So, search for entities with label \"Spider-Man\" and instance of film (P31) and year 2002 (P577).\n\nBut using the tools, we can use search_with_filter. Let's try to find the movie entity.\n\nFirst, find what entity has label \"Spider-Man\" and instance of film.\n\nSo, use search_with_filter:\n\nindex: entity\n\nsparql: SELECT DISTINCT ?s WHERE { ?s wdt:P31 wd:Q11424 } (since film is Q11424)\n\nquery: \"Spider-Man\"\n\nThen, from the results, filter by year 2002.\n\nBut the tools don't let us chain filters that way. So alternatively, we can use search_entity with \"Spider-Man\" and then check the results for the film.\n\nWait, the previous search_entity for \"spider man\" gave top 10, but the correct entity is not there. Let's try again with a more precise query.\n\nWait, the user's question says \"Spide man part 1\", so maybe \"Spider-Man Part 1\" is an alternative title. But the movie is simply \"Spider-Man\", 2002.\n\nAlternative idea: Use the search_entity with \"Spider-Man (2002)\".\n\nLet me call search_entity again with \"Spider-Man (2002)\".\n\nSo the next tool call should be search_entity with query \"Spider-Man (2002)\".\n\nWait, but the user's second search tried \"Spider-Man movie 2002\" and got categories. Let's try \"Spider-Man (2002)\".\n\nWait, the entity for the movie is typically \"Spider-Man\" (2002), so the search should return that.\n\nSo, let's make that tool call."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a5d73ce3e36b29d3",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "Spider-Man (2002)"
+            },
+            "result": "Top 10 entity alternatives:\n1. Spider-Man (wd:Q288296, matched via \"Spider-Man 2000\"), also known as \"Spider-Man 2000\":\n  - 2000 video game\n  - is instance of video game\n2. Spider-Man: The New Animated Series (wd:Q777406, matched via \"Spider-Man 2003\"), also known as \"MTV Spider-Man\", \"MTV Spider-Man 2003\", \"Spider-Man\", \"Spider-Man 2003\":\n  - American animated television series\n  - is instance of animated television series\n3. Spider-Man trilogy (wd:Q18636789, matched via \"2002 Spider-Man film series\"), also known as \"2002 Spider-Man film series\":\n  - film trilogy by Sam Raimi\n  - is instance of film trilogy\n4. Category:Spider-Man (2002 film series) (wd:Q60798616), also known as \"Category:Spider-Man (2002 movie series)\":\n  - is instance of Wikimedia category\n  - Wikimedia category\n5. The Amazing Spider-Man (wd:Q18636794, matched via \"Spider-Man (2012 film series)\"), also known as \"Amazing Spider-Man\", \"Spider-Man (2012 film series)\", \"The Amazing Spider-Man (film series)\", \"The Amazing Spider-Man series\":\n  - is instance of film series\n  - series of Spider-Man films\n6. 2002 (wd:Q1987), also known as \"MMII\":\n  - calendar year\n  - is instance of calendar year\n  - is instance of common year\n  - is instance of common year starting and ending on Tuesday\n7. Category:2002 (wd:Q6939166):\n  - is instance of Wikimedia category\n  - Wikimedia category\n8. Spider-Man (wd:Q79037), also known as \"Peter Benjamin Parker\", \"Peter Parker\", \"Spidey\", \"The Amazing Spider-Man\", \"The Fantastic Spider-Man\", etc.:\n  - fictional character in Marvel Comics\n  - has occupation businessperson\n  - has occupation inventor\n  - has occupation photographer\n  - has occupation scientist\n  - has occupation superhero\n  - has occupation teacher\n  - is instance of comics character\n  - is instance of film character\n  - is instance of mutate\n9. 2002 FIFA World Cup (wd:Q47735, matched via \"FIFA 2002\"), also known as \"2002 FIFA World Cup Korea/Japan\", \"FIFA 2002\", \"FIFA World Cup 2002\":\n  - 17th FIFA World Cup, held in South Korea and Japan\n  - is instance of sports season\n10. Spider-Man (wd:Q484442):\n  - 2002 film directed by Sam Raimi\n  - is instance of film"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1998,
+          "prompt_tokens": 5949,
+          "total_tokens": 7947
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "f14b25e01742479684d1380504723a2a",
+        "message": null,
+        "reasoning": {
+          "id": "bab1eab7b70c46958c1ffa6413d4a79c",
+          "content": "Okay, let's see. The user is asking for the composer of the movie Spider-Man part 1. From the previous interactions, they searched for \"Spide man part 1\" but the correct title is \"Spider-Man (2002)\". The last search for \"Spider-Man (2002)\" returned an entity (wd:Q484442) as the 2002 film directed by Sam Raimi. So now I need to find the composer of that specific movie.\n\nEarlier, they searched for \"composer\" and got the property P86 (composer). So the plan is to get the composer property (wdt:P86) of the Spider-Man 2002 movie (wd:Q484442). Let me confirm that wd:Q484442 is the correct entity for the 2002 Spider-Man film.\n\nLooking back at the results from \"Spider-Man (2002)\" search, number 10 is \"Spider-Man (wd:Q484442)\" with the description \"2002 film directed by Sam Raimi\". That's the right one. So the next step is to query for the composer of wd:Q484442 using wdt:P86.\n\nI should construct a SPARQL query that selects the composer (P86) from the movie entity. So the query would be:\n\nSELECT ?composer WHERE { wd:Q484442 wdt:P86 ?composer }\n\nBut wait, maybe I should use the correct namespace. In Wikidata, properties are under wd: and their direct properties are wdt:.\n\nWait, the prefixes provided include wdt: http://www.wikidata.org/prop/direct/ so using wdt:P86 is correct.\n\nSo the SPARQL query should be:\n\nSELECT ?composer WHERE { wd:Q484442 wdt:P86 ?composer }\n\nI need to make sure that this query actually returns the composer. The user might have the title as \"Spider-Man Part 1\" but the actual movie is just called \"Spider-Man (2002)\" and there are sequels, so Part 1 would refer to the 2002 film. The entity wd:Q484442 is the correct one.\n\nLet me check if the property P86 is indeed the composer. In the search_property results, the first property listed is \"composer (wd:P86 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as 'composed by'.\" So yes, P86 is the correct property.\n\nTherefore, the SPARQL query should retrieve the composer for Spider-Man 2002."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-87ec2c3f3db9375c",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?composer WHERE { wd:Q484442 wdt:P86 ?composer }"
+            },
+            "result": "Got 1 row and 1 column:\n| composer                  |\n| ------------------------- |\n| Danny Elfman (wd:Q193338) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 643,
+          "prompt_tokens": 6673,
+          "total_tokens": 7316
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "4b46d508866b434493d408f67ca0ede9",
+        "message": "{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?composer WHERE { wd:Q484442 wdt:P86 ?composer }\", \"answer\": \"Danny Elfman\"}}",
+        "reasoning": {
+          "id": "350b0798f3064163b5b84dec6608deed",
+          "content": "Okay, let's see. The user asked for the composer of the movie \"Spider-Man part 1.\" From the previous steps, I searched for \"Spide man part 1\" but the correct title is \"Spider-Man (2002)\". After some iterations, I found the correct entity ID for the 2002 Spider-Man movie, which is Q484442. Then, I used the SPARQL query to get the composer property (P86) for that entity.\n\nThe execute function returned Danny Elfman as the composer. Let me verify if that's accurate. I know Danny Elfman did compose the score for the 2002 Spider-Man film directed by Sam Raimi. So, the answer should be Danny Elfman.\n\nNow, check if there's any possible mistake. The user mentioned \"part 1,\" which refers to the first movie in the series. The 2002 Spider-Man film is the first, so it's correct. The SPARQL query using wd:Q484442 and P86 (composer) returned the right person. No other composers are listed for that movie in the data. So the answer is Danny Elfman."
+        },
+        "tool_calls": [],
+        "usage": {
+          "completion_tokens": 309,
+          "prompt_tokens": 6766,
+          "total_tokens": 7075
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/prop/reference/value-normalized/P162",
+    "http://www.wikidata.org/prop/P1071",
+    "http://www.wikidata.org/prop/statement/value/P1071",
+    "http://www.wikidata.org/prop/reference/P11203",
+    "http://www.wikidata.org/prop/statement/P86",
+    "http://www.wikidata.org/prop/direct/P162",
+    "http://www.wikidata.org/prop/qualifier/value/P1071",
+    "http://www.wikidata.org/prop/P3300",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P9899",
+    "http://www.wikidata.org/prop/reference/value-normalized/P9899",
+    "http://www.wikidata.org/prop/direct-normalized/P5028",
+    "http://www.wikidata.org/entity/Q60802731",
+    "http://www.wikidata.org/prop/qualifier/P5028",
+    "http://www.wikidata.org/prop/reference/P5028",
+    "http://www.wikidata.org/prop/qualifier/P162",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P5028",
+    "http://www.wikidata.org/prop/reference/value/P11203",
+    "http://www.wikidata.org/prop/statement/P162",
+    "http://www.wikidata.org/entity/Q1785535",
+    "http://www.wikidata.org/prop/qualifier/value/P5028",
+    "http://www.wikidata.org/prop/reference/value/P86",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P571",
+    "http://www.wikidata.org/prop/direct-normalized/P9899",
+    "http://www.wikidata.org/prop/direct/P5028",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P86",
+    "http://www.wikidata.org/entity/Q1987",
+    "http://www.wikidata.org/prop/reference/value-normalized/P3300",
+    "http://www.wikidata.org/entity/Q7577062",
+    "http://www.wikidata.org/prop/reference/value/P571",
+    "http://www.wikidata.org/prop/P11203",
+    "http://www.wikidata.org/prop/qualifier/value/P162",
+    "http://www.wikidata.org/entity/Q101246471",
+    "http://www.wikidata.org/entity/Q484442",
+    "http://www.wikidata.org/prop/statement/value/P3300",
+    "http://www.wikidata.org/prop/direct-normalized/P11203",
+    "http://www.wikidata.org/entity/Q7142195",
+    "http://www.wikidata.org/prop/statement/value/P571",
+    "http://www.wikidata.org/prop/reference/value/P8688",
+    "http://www.wikidata.org/prop/direct/P123",
+    "http://www.wikidata.org/prop/statement/value/P11203",
+    "http://www.wikidata.org/entity/Q617395",
+    "http://www.wikidata.org/prop/qualifier/P9899",
+    "http://www.wikidata.org/prop/reference/value/P162",
+    "http://www.wikidata.org/prop/reference/value/P123",
+    "http://www.wikidata.org/prop/statement/value-normalized/P5028",
+    "http://www.wikidata.org/prop/P8688",
+    "http://www.wikidata.org/prop/qualifier/P86",
+    "http://www.wikidata.org/prop/P571",
+    "http://www.wikidata.org/entity/Q17062409",
+    "http://www.wikidata.org/prop/statement/value/P123",
+    "http://www.wikidata.org/prop/direct-normalized/P162",
+    "http://www.wikidata.org/prop/reference/P3300",
+    "http://www.wikidata.org/prop/statement/P3300",
+    "http://www.wikidata.org/prop/direct/P9899",
+    "http://www.wikidata.org/prop/direct/P86",
+    "http://www.wikidata.org/prop/reference/P86",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P3300",
+    "http://www.wikidata.org/prop/statement/value/P162",
+    "http://www.wikidata.org/prop/P9899",
+    "http://www.wikidata.org/prop/statement/value/P8688",
+    "http://www.wikidata.org/prop/statement/value-normalized/P9899",
+    "http://www.wikidata.org/prop/reference/value-normalized/P123",
+    "http://www.wikidata.org/prop/reference/P571",
+    "http://www.wikidata.org/prop/direct/P8688",
+    "http://www.wikidata.org/entity/P123",
+    "http://www.wikidata.org/prop/statement/P11203",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1071",
+    "http://www.wikidata.org/prop/direct/P11203",
+    "http://www.wikidata.org/prop/direct-normalized/P3300",
+    "http://www.wikidata.org/prop/P86",
+    "http://www.wikidata.org/prop/direct-normalized/P123",
+    "http://www.wikidata.org/prop/statement/value-normalized/P86",
+    "http://www.wikidata.org/prop/direct-normalized/P8688",
+    "http://www.wikidata.org/prop/statement/value-normalized/P123",
+    "http://www.wikidata.org/entity/Q100440421",
+    "http://www.wikidata.org/entity/P86",
+    "http://www.wikidata.org/entity/Q18636789",
+    "http://www.wikidata.org/entity/P5028",
+    "http://www.wikidata.org/prop/qualifier/value/P86",
+    "http://www.wikidata.org/prop/statement/P8688",
+    "http://www.wikidata.org/prop/direct/P1071",
+    "http://www.wikidata.org/entity/P3300",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P8688",
+    "http://www.wikidata.org/entity/P571",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1071",
+    "http://www.wikidata.org/prop/reference/P1071",
+    "http://www.wikidata.org/prop/direct/P571",
+    "http://www.wikidata.org/entity/Q74063702",
+    "http://www.wikidata.org/prop/reference/value-normalized/P5028",
+    "http://www.wikidata.org/prop/qualifier/value/P8688",
+    "http://www.wikidata.org/prop/qualifier/value/P571",
+    "http://www.wikidata.org/prop/statement/value-normalized/P11203",
+    "http://www.wikidata.org/prop/statement/value-normalized/P162",
+    "http://www.wikidata.org/entity/Q18636794",
+    "http://www.wikidata.org/prop/statement/P571",
+    "http://www.wikidata.org/prop/qualifier/P3300",
+    "http://www.wikidata.org/prop/P123",
+    "http://www.wikidata.org/entity/Q485953",
+    "http://www.wikidata.org/prop/reference/value/P5028",
+    "http://www.wikidata.org/prop/statement/P123",
+    "http://www.wikidata.org/entity/P8688",
+    "http://www.wikidata.org/entity/Q291947",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1071",
+    "http://www.wikidata.org/prop/direct/P3300",
+    "http://www.wikidata.org/prop/statement/P1071",
+    "http://www.wikidata.org/prop/P5028",
+    "http://www.wikidata.org/entity/Q193338",
+    "http://www.wikidata.org/entity/Q79037",
+    "http://www.wikidata.org/prop/qualifier/P8688",
+    "http://www.wikidata.org/prop/qualifier/P1071",
+    "http://www.wikidata.org/entity/P9899",
+    "http://www.wikidata.org/prop/statement/value/P9899",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P162",
+    "http://www.wikidata.org/entity/Q7913664",
+    "http://www.wikidata.org/prop/qualifier/value/P11203",
+    "http://www.wikidata.org/entity/Q1554036",
+    "http://www.wikidata.org/prop/reference/value-normalized/P571",
+    "http://www.wikidata.org/entity/P11203",
+    "http://www.wikidata.org/prop/reference/value-normalized/P8688",
+    "http://www.wikidata.org/prop/statement/value/P5028",
+    "http://www.wikidata.org/prop/reference/P123",
+    "http://www.wikidata.org/prop/direct-normalized/P86",
+    "http://www.wikidata.org/prop/reference/value-normalized/P11203",
+    "http://www.wikidata.org/prop/qualifier/value/P3300",
+    "http://www.wikidata.org/prop/qualifier/P11203",
+    "http://www.wikidata.org/entity/Q777406",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P123",
+    "http://www.wikidata.org/prop/qualifier/value/P9899",
+    "http://www.wikidata.org/entity/P1071",
+    "http://www.wikidata.org/prop/reference/value-normalized/P86",
+    "http://www.wikidata.org/prop/statement/value/P86",
+    "http://www.wikidata.org/prop/statement/value-normalized/P571",
+    "http://www.wikidata.org/entity/Q2539517",
+    "http://www.wikidata.org/entity/Q60798616",
+    "http://www.wikidata.org/entity/Q47735",
+    "http://www.wikidata.org/prop/statement/P5028",
+    "http://www.wikidata.org/prop/reference/P9899",
+    "http://www.wikidata.org/prop/reference/value/P3300",
+    "http://www.wikidata.org/prop/qualifier/P571",
+    "http://www.wikidata.org/prop/qualifier/value/P123",
+    "http://www.wikidata.org/prop/direct-normalized/P1071",
+    "http://www.wikidata.org/prop/statement/value-normalized/P3300",
+    "http://www.wikidata.org/entity/Q6939166",
+    "http://www.wikidata.org/entity/Q288296",
+    "http://www.wikidata.org/prop/statement/P9899",
+    "http://www.wikidata.org/entity/P162",
+    "http://www.wikidata.org/prop/reference/value/P1071",
+    "http://www.wikidata.org/prop/reference/value/P9899",
+    "http://www.wikidata.org/prop/direct-normalized/P571",
+    "http://www.wikidata.org/prop/statement/value-normalized/P8688",
+    "http://www.wikidata.org/prop/reference/P162",
+    "http://www.wikidata.org/prop/reference/P8688",
+    "http://www.wikidata.org/prop/P162",
+    "http://www.wikidata.org/entity/Q2088811",
+    "http://www.wikidata.org/entity/Q7141609",
+    "http://www.wikidata.org/prop/qualifier/P123",
+    "http://www.wikidata.org/entity/Q7508275",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P11203"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/CompMix_table_simple_qa.csv",
+  "row_index": 146,
+  "question": "Who is the composer of the movie Spide man part 1?",
+  "reference_answer": "Danny Elfman"
+}
