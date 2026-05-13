@@ -1,0 +1,142 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?subclass WHERE {\n  wd:Q29330 wdt:P279 ?subclass\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Jaffa Cakes (wd:Q29330), also known as \"cakes\", \"Pim's\":\n  - is subclass of cake\n  - type of cookie or cake\n\nUsing properties:\n- subclass of (wd:P279 as wdt), also known as \"all members of this class also belong to\", \"category of\", \"form of\", \"has superclass\", \"is a class of\", etc.:\n  - this item is a subclass (subset) of that item; ALL instances ... is a subclass of mountain; Everest is an instance of mountain",
+    "result": "Got 1 row and 1 column:\n| subclass         |\n| ---------------- |\n| cake (wd:Q13276) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "The SPARQL query `SELECT ?subclass WHERE { wd:Q29330 wdt:P279 ?subclass }` confirmed that Jaffa Cakes (`wd:Q29330`) are a subclass of \"cake\" (`wd:Q13276`). This means Jaffa Cakes are classified as a type of cake in Wikidata, despite some colloquial or historical debates about their categorization.\n\n<answer>\nJaffa Cakes are classified as a cake, not a biscuit. They are specifically categorized under \"cake\" in Wikidata (instance of cake).\n</answer>",
+    "formatted": "The SPARQL query `SELECT ?subclass WHERE { wd:Q29330 wdt:P279 ?subclass }` confirmed that Jaffa Cakes (`wd:Q29330`) are a subclass of \"cake\" (`wd:Q13276`). This means Jaffa Cakes are classified as a type of cake in Wikidata, despite some colloquial or historical debates about their categorization.\n\n<answer>\nJaffa Cakes are classified as a cake, not a biscuit. They are specifically categorized under \"cake\" in Wikidata (instance of cake).\n</answer>\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?subclass WHERE {\n  wd:Q29330 wdt:P279 ?subclass\n}\n```\n\nUsing entities:\n- Jaffa Cakes (wd:Q29330), also known as \"cakes\", \"Pim's\":\n  - is subclass of cake\n  - type of cookie or cake\n\nUsing properties:\n- subclass of (wd:P279 as wdt), also known as \"all members of this class also belong to\", \"category of\", \"form of\", \"has superclass\", \"is a class of\", etc.:\n  - this item is a subclass (subset) of that item; ALL instances ... is a subclass of mountain; Everest is an instance of mountain\n\nExecution result:\nGot 1 row and 1 column:\n| subclass         |\n| ---------------- |\n| cake (wd:Q13276) |"
+  },
+  "elapsed": 31.513765,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "is jaffa cakes a biscuit or a cake"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "15d06e187c5f488caeda50d402cdc206",
+        "message": null,
+        "reasoning": {
+          "id": "f3ba1174dedb40ffb419cf144ed46aca",
+          "content": "Okay, let's tackle this question: \"is jaffa cakes a biscuit or a cake\". I need to figure out whether Jaffa Cakes are classified as a biscuit or a cake according to Wikidata.\n\nFirst, I should search for the entity \"Jaffa Cakes\" in Wikidata. Using the search_entity function might be a good start. Let me call that.\n\nWait, the user is asking about the classification, so I need to find what category Jaffa Cakes belong to. The relevant properties might be something like \"instance of\" (P31) which in Wikidata is used to specify the category of an item. So maybe I need to check the instance of property for Jaffa Cakes and see if it's a cake (Q184012) or a biscuit (Q820526).\n\nBut first, I need to find the correct entity for Jaffa Cakes. Let me search for \"Jaffa Cakes\" using search_entity. Let's see what comes up.\n\nWait, Jaffa Cakes are a specific product, so searching for \"Jaffa Cakes\" should give me the right entity. Let me execute the search_entity function with kg=\"wikidata\" and query=\"jaffa cakes\".\n\nWait, the search_entity function might return the entity ID if it exists. Let me check that. Suppose it returns wd:Q865501 or something. Once I have the entity, I can then query its properties.\n\nSo first step: search_entity(kg=\"wikidata\", query=\"jaffa cakes\").\n\nBut the user is asking if it's a biscuit or a cake. So the possible answers would be under the instance of (wdb:P31) property. The values would be either Q184012 (cake) or Q820526 (biscuit).\n\nWait, but maybe there's a more precise category. Let me make sure. Let's proceed step by step.\n\nFirst, get the entity for Jaffa Cakes. Let's run the search_entity."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-ac930d73c391f18f",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "jaffa cakes"
+            },
+            "result": "Top 10 entity alternatives:\n1. Jaffa Cakes (wd:Q29330), also known as \"cakes\", \"Pim's\":\n  - is subclass of cake\n  - type of cookie or cake\n2. Category:Jaffa cakes (wd:Q44022413):\n  - is instance of Wikimedia category\n  - Wikimedia category\n3. Cape Jaffa (wd:Q19460815), also known as \"Cape Jaffa, South Australia\", \"Cape Jaffa, South Australia, Australia\":\n  - is instance of cape\n  - is instance of headland\n  - is instance of point\n  - locality in South Australia\n4. Cape Jaffa (wd:Q19460818), also known as \"Cape Jaffa, South Australia\":\n  - human settlement in South Australia\n  - is instance of locality\n  - is instance of town\n5. Safia cades (wd:Q13515941):\n  - is instance of taxon\n  - species of insect\n6. Cases Marfà (wd:Q47171096):\n  - house in Barcelona, Spain\n  - is instance of residential building\n7. Cape Jaffa Lighthouse (wd:Q5034877):\n  - is instance of lighthouse\n  - lighthouse in South Australia\n8. Cape Jaffa Anchorage (wd:Q21973041)\n9. Jeff Lakes (wd:Q30505081):\n  - is instance of human\n10. CAPE JAFFA LIGHTHOUSE (wd:Q123623445), also known as \"026044\":\n  - is instance of weather station\n  - weather station in State of South Australia, Australia from 1965 to 1973"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 473,
+          "prompt_tokens": 3752,
+          "total_tokens": 4225
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "bbb43ad7baca4903a7300d22283aa439",
+        "message": null,
+        "reasoning": {
+          "id": "1cd6663d24734f4d85f510462e24873d",
+          "content": "Okay, let's see. The user is asking if Jaffa cakes are a biscuit or a cake. From the search results, the top entity is Jaffa Cakes (wd:Q29330), which says it's a subclass of cake and also a type of cookie or cake. Hmm, but the user is confused between biscuit and cake. Wait, in the UK, \"biscuit\" is often used where Americans say \"cookie,\" but \"cake\" is different. So I need to check if Wikidata classifies Jaffa Cakes as a cake or a biscuit.\n\nLooking at the entity info: \"is subclass of cake\" and \"type of cookie or cake.\" So it's a cake, not a biscuit. But maybe the user is confused because Jaffa Cakes are sometimes called biscuits in everyday language. But according to Wikidata, it's a type of cake.\n\nWait, the question is to determine if it's a biscuit or a cake. So the answer should be cake. But I need to verify this with the knowledge graph. The entity's instance of might have more info. Let me check if there's a property indicating it's a cake.\n\nIn Wikidata, the main classification would be via the instance of property (P31). So for Jaffa Cakes (Q29330), what's its instance of? The search results mention \"is subclass of cake,\" but maybe the instance of is a specific type. Wait, the search results list \"is subclass of cake\" which probably means it's a subclass of the category \"cake,\" which would mean it's a type of cake. But maybe there's a more precise property.\n\nWait, perhaps using the \"instance of\" property (P31) would show. Let me check. If I do a simple SPARQL query on Q29330's instance of, it should show what it's a type of.\n\nSo the SPARQL query would be: SELECT ?instance WHERE { wd:Q29330 wdt:P31 ?instance }.\n\nBut since the user wants to know if it's a biscuit or cake, I need to see what the instance is. From the search results, the first entry says \"is subclass of cake\" which implies it's a cake. But maybe in reality, Jaffa Cakes are often classified as biscuits in some contexts, but according to Wikidata, it's a cake.\n\nWait, let me confirm. The user is asking for a definitive answer based on the knowledge graph. So if the Wikidata entity for Jaffa Cakes lists it as a type of cake (via P31), then the answer is cake.\n\nSo the next step is to execute a query to check the instance of for Jaffa Cakes (Q29330)."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-beac5b612205331b",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?instance WHERE { wd:Q29330 wdt:P31 ?instance }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 642,
+          "prompt_tokens": 4221,
+          "total_tokens": 4863
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "e0110dc7593440b8908d056bca7dd9b3",
+        "message": null,
+        "reasoning": {
+          "id": "310645d703c347dc8772870d5c85011c",
+          "content": "Okay, let's see. The user is asking if Jaffa cakes are a biscuit or a cake. First, I tried searching for \"jaffa cakes\" in Wikidata using the search_entity function. The top result was Jaffa Cakes (wd:Q29330), which is listed as a \"cake\" in the alternatives. But then when I tried to check the instance type using the SPARQL query with wdt:P31 (which is the instance of property), it returned no results. Hmm, that's confusing.\n\nWait, maybe I used the wrong property. In Wikidata, the \"instance of\" property is usually wd:P31. But sometimes, entities might have different classifications. Let me check the entity Q29330 again. The search result said it's \"is subclass of cake\" and \"type of cookie or cake\". So maybe it's a subclass of cake but also related to biscuits.\n\nWait, in the search results, it says \"is subclass of cake\" so maybe the main category is cake. But the user wants to know if it's a biscuit or a cake. In the UK, Jaffa Cakes are a type of snack that's often categorized as a biscuit, but there was a famous court case about whether they're a cake or a biscuit for tax purposes. The answer might be that they're classified as a cake in Wikidata, but I need to confirm.\n\nWait, the initial SPARQL query using P31 didn't return anything. Maybe the correct property is something else. Let's check the entity Q29330's properties. The search_result says \"is subclass of cake\" which would mean it's an instance of a cake category. The subclass is usually linked via wdt:P279 (subclass of). Let me try querying that instead.\n\nSo the correct SPARQL query should be looking for the subclass, not the instance. So instead of wdt:P31, use wdt:P279. Wait, no. The instance of (P31) is what we need to find the type. Wait, if the entity is an instance of something, like cake, then using P31 would show that. But the first query didn't return anything. Maybe the entity Q29330's instance is more specific. Let me check another angle.\n\nAlternatively, maybe the entity's label is \"Jaffa Cakes\" but Wikidata lists it under \"cake\" as a subclass. Wait, the search result said \"is subclass of cake\", which would mean it's a type of cake. So maybe the correct property to check is P279 (subclass of). Let me try that.\n\nSo the query should be: SELECT ?subclass WHERE { wd:Q29330 wdt:P279 ?subclass }.\n\nBut maybe the user wants to know if it's a biscuit or cake, so I need to check both possibilities. The search results mentioned \"type of cookie or cake\", so maybe it's listed under both. But the main classification is as a cake.\n\nWait, let me check the Wikidata page for Q29330. From the search results, it says \"is instance of food\" (maybe?), but the first line says it's a \"cake\". However, the initial SPARQL with P31 returned nothing. Maybe the entity's instance is not a direct one. Let me look at the actual data.\n\nWait, in Wikidata, the property P31 (instance of) is used to state the class of an entity. If Jaffa Cakes is an instance of a cake, then P31 should point to a cake item. But perhaps the correct classification is that it's a type of cake, so maybe it's a subclass of cake. Wait, P31 would be for \"instance of\", not \"subclass of\". Subclass is P279. So if the entity Q29330 is a specific type of cake, like \"Jaffa Cakes\" as a specific cake, then its P31 would be \"cake\" (Q486240), or maybe \"biscuit\" (Q231718). But the search results say it's a \"cake\", so P31 should be Q486240.\n\nWait, maybe the first query was wrong because the user used the property wdt:P31 but the actual property in the data is something else. Wait, no, P31 is the direct instance of. Let me check what the correct SPARQL query would be.\n\nLet me think: To find the instance (class) of Jaffa Cakes (wd:Q29330), we should query:\n\nSELECT ?instance WHERE { wd:Q29330 wdt:P31 ?instance }.\n\nBut the user's previous attempt got no results. So maybe the entity doesn't have a P31 statement? That's possible if the entity is a category or something else. Wait, the search result for Q29330 says \"is subclass of cake\", which would mean that the entity is a subclass, so it would have a P279 statement pointing to a cake category. Let's check that.\n\nAlternatively, maybe the actual property used is different. Let me try to execute a different query to get all the properties of Q29330. But since I can't do that directly, maybe I should look up the entity's page on Wikidata. But since I can't, I'll have to make an educated guess.\n\nGiven that the initial search result says \"is subclass of cake\", perhaps the correct way is to find the subclass. So using P279 instead of P31. Let's try:\n\nSELECT ?sub WHERE { wd:Q29330 wdt:P279 ?sub }.\n\nBut the user's question is whether it's a biscuit or a cake. The search results mentioned \"type of cookie or cake\". So \"cookie\" might be a biscuit in UK terms. Wait, in British English, \"biscuit\" is what Americans call a cookie. So \"cookie\" here refers to a biscuit. So maybe it's listed as a type of biscuit (cookie) and cake. Let's see.\n\nIn the search results for Q29330: \"also known as 'cakes', 'Pim's' : is subclass of cake, type of cookie or cake\".\n\nWait, \"type of cookie or cake\" could mean it's considered both a cookie (biscuit) and a cake. But the user's question is whether it's a biscuit or a cake. So the answer might be both, but the actual classification in Wikidata might be one of them.\n\nAlternatively, perhaps it's classified as a cake. Let's try the query for subclass (P279) to see what it's a subclass of.\n\nWait, the entity Q29330 is the one referred to as Jaffa Cakes. Let's assume that the query using P279 would give us the categories it's a subclass of, which might be 'cake' and 'biscuit'.\n\nBut let's generate the SPARQL query for P279.\n\nSo the query would be:\n\nSELECT ?subclass WHERE { wd:Q29330 wdt:P279 ?subclass }.\n\nIf that returns both 'cake' and 'biscuit' (or their Wikidata IDs), then we can confirm.\n\nAlternatively, maybe it's listed as a class under 'cake' but also under 'biscuit'.\n\nWait, let's proceed to execute this query."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a0316cdce491d589",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?subclass WHERE { wd:Q29330 wdt:P279 ?subclass }"
+            },
+            "result": "Got 1 row and 1 column:\n| subclass         |\n| ---------------- |\n| cake (wd:Q13276) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1662,
+          "prompt_tokens": 4288,
+          "total_tokens": 5950
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "438b2f61126b4df58ecd92ae0af0bcdd",
+        "message": "The SPARQL query `SELECT ?subclass WHERE { wd:Q29330 wdt:P279 ?subclass }` confirmed that Jaffa Cakes (`wd:Q29330`) are a subclass of \"cake\" (`wd:Q13276`). This means Jaffa Cakes are classified as a type of cake in Wikidata, despite some colloquial or historical debates about their categorization.\n\n<answer>\nJaffa Cakes are classified as a cake, not a biscuit. They are specifically categorized under \"cake\" in Wikidata (instance of cake).\n</answer>",
+        "reasoning": {
+          "id": "bc198250674d42679dd01a6942c04cdd",
+          "content": "Okay, let's see. The user is asking if Jaffa cakes are a biscuit or a cake. From the previous tool calls, when I searched for \"jaffa cakes,\" the top entity was Jaffa Cakes (wd:Q29330), which is listed as a \"type of cookie or cake.\" Then I tried to check the instance using wdt:P31 (instance of), but got no results. Then I checked the subclass using wdt:P279 (subclass of), and it showed that Jaffa Cakes are a subclass of \"cake\" (wd:Q13276).\n\nWait, but the user is asking whether it's a biscuit or a cake. The SPARQL query for subclass gave \"cake,\" so that suggests Jaffa Cakes are categorized under cake. But the initial search result mentioned \"type of cookie or cake,\" which is confusing because cookies and cakes are different.\n\nWait, maybe I need to check if there's a property that specifically says it's a biscuit. Let me think. In Wikidata, there's a property for instance of (P31), but maybe the direct instance isn't clearly listed. Alternatively, the taxonomic hierarchy might have it as a type of cake.\n\nBut the previous query using wdt:P279 (subclass) returned \"cake,\" so that's a strong indicator. However, I should verify if there's a mention of biscuit. Let me check another property. Maybe P136 (genre) or another category.\n\nWait, maybe the \"type of cookie or cake\" is in the description, but the actual classification in Wikidata is as a cake. Since the subclass is cake, that's more authoritative. Also, Jaffa Cakes are a British snack, typically considered a small cake with a layer of chocolate and jam, but sometimes referred to as a biscuit because they're small and eaten like a biscuit. However, legally, they're classified as a cake due to the cake base.\n\nSo based on the SPARQL results, the answer should be cake. The user's question is a bit tricky because of the common confusion, but the data shows it's a cake. So the final answer should state that Jaffa Cakes are classified as a cake, not a biscuit."
+        },
+        "tool_calls": [],
+        "usage": {
+          "completion_tokens": 616,
+          "prompt_tokens": 4377,
+          "total_tokens": 4993
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/entity/Q19460815",
+    "http://www.wikidata.org/entity/Q44022413",
+    "http://www.wikidata.org/entity/Q30505081",
+    "http://www.wikidata.org/entity/Q21973041",
+    "http://www.wikidata.org/entity/Q29330",
+    "http://www.wikidata.org/entity/Q47171096",
+    "http://www.wikidata.org/entity/Q5034877",
+    "http://www.wikidata.org/entity/Q19460818",
+    "http://www.wikidata.org/entity/Q13276",
+    "http://www.wikidata.org/entity/Q123623445",
+    "http://www.wikidata.org/entity/Q13515941"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/NQ_table_test_simple.csv",
+  "row_index": 173,
+  "question": "is jaffa cakes a biscuit or a cake",
+  "reference_answer": "Cake"
+}
