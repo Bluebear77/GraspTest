@@ -1,0 +1,282 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?lifespan WHERE {\n  wd:Q37716 wdt:P2250 ?lifespan .\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- basset hound (wd:Q37716):\n  - dog breed\n  - is instance of dog breed\n  - is subclass of hound\n  - is subclass of hunting dog\n\nUsing properties:\n- life expectancy (wd:P2250 as wdt), also known as \"life span\", \"lifespan\":\n  - average life expectancy for this group or species",
+    "result": "Got 1 row and 1 column:\n| lifespan           |\n| ------------------ |\n| 11.5 (xsd:decimal) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "The average lifespan of a Basset Hound is 11.5 years.",
+    "formatted": "The average lifespan of a Basset Hound is 11.5 years.\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?lifespan WHERE {\n  wd:Q37716 wdt:P2250 ?lifespan .\n}\n```\n\nUsing entities:\n- basset hound (wd:Q37716):\n  - dog breed\n  - is instance of dog breed\n  - is subclass of hound\n  - is subclass of hunting dog\n\nUsing properties:\n- life expectancy (wd:P2250 as wdt), also known as \"life span\", \"lifespan\":\n  - average life expectancy for this group or species\n\nExecution result:\nGot 1 row and 1 column:\n| lifespan           |\n| ------------------ |\n| 11.5 (xsd:decimal) |"
+  },
+  "elapsed": 27.682694,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "what's the average lifespan of a basset hound"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "3702178838954567bd35aa5518f0167f",
+        "message": null,
+        "reasoning": {
+          "id": "2cdef8e7bdc5485787cc35ad7521b452",
+          "content": "Okay, let's tackle this question: \"what's the average lifespan of a basset hound\". I need to find the average lifespan of a Basset Hound breed.\n\nFirst, I should figure out if \"Basset Hound\" is a known entity in Wikidata. I'll use the search_entity function to find the correct entity. The query is \"basset hound\", so I'll call search_entity with kg=\"wikidata\" and query=\"basset hound\".\n\nWait, but the user asked for the average lifespan. So I need to find the property that represents lifespan in Wikidata. Let me recall common properties. The property for lifespan in Wikidata is usually wdt:P2463 (length of life) or maybe wdt:P571 (date of birth) but that's not it. Wait, lifespan might be related to the average life expectancy. Let me check the search_property function for \"lifespan\" to find the correct property.\n\nBut maybe I should first confirm the correct entity for Basset Hound. Let's start with searching for the entity. Using search_entity(kg=\"wikidata\", query=\"basset hound\"). The result should give me the Wikidata ID for the Basset Hound breed.\n\nOnce I have the entity ID, say Q18150 (which I think is the correct ID for Basset Hound), then I need to find the property that gives lifespan. So, search_property(kg=\"wikidata\", query=\"lifespan\"). Let's see what properties come up. The relevant one might be \"average lifespan\" which is maybe wdt:P2463 (length of life) but I'm not sure. Alternatively, there's \"lifespan\" as a property. Let me check.\n\nWait, maybe it's better to use search_property with \"lifespan\" to find the correct property. Let's assume that the property is wdt:P2453 (which I might be making up, but I need to search). Wait, no. Let me actually think: in Wikidata, the property for average life expectancy of a dog breed might be \"average lifespan\" with an identifier. Let me check via search_property.\n\nSo first, search_entity for \"basset hound\" to get the breed's entity. Then, search_property for \"lifespan\" to find the right property.\n\nAlternatively, use search_with_constraints to find properties of the Basset Hound entity related to lifespan.\n\nBut let's proceed step by step.\n\nFirst, call search_entity(kg=\"wikidata\", query=\"basset hound\").\n\nAssuming the result returns wd:Q18150 as the Basset Hound entity. Now, need to find the lifespan property. Let's search for properties related to lifespan. Call search_property(kg=\"wikidata\", query=\"lifespan\"). The possible properties might be wdt:P2463 (length of life) or wdt:P573 (time of death, but not average). Wait, average lifespan is likely a quantity, so maybe a property like \"average lifespan\" which is a standard property.\n\nWait, according to Wikidata, the property for average lifespan of a species or breed is \"average lifespan\" (P2463) but I'm not 100% sure. Let me check.\n\nAlternatively, maybe the breed has a statement with property P2463 (average length of life). Let's proceed to find that.\n\nOnce I have the entity ID and the property ID, I can write a SPARQL query to get the value.\n\nWait, the user is asking for the average lifespan, so the value would be a quantity (e.g., 12 years). So I need to find the property that links Basset Hound to a quantity representing lifespan.\n\nLet's outline the steps:\n\n1. Find the Basset Hound entity in Wikidata.\n2. Find the correct property that represents average lifespan for breeds.\n3. Query Wikidata to get the value.\n\nFirst, call search_entity for \"basset hound\" to get the entity ID.\n\nThen, use that entity ID to find the property (using search_property_of_entity or search_with_constraints). Let's try search_property_of_entity(kg=\"wikidata\", entity=\"wd:Q18150\", query=\"lifespan\").\n\nWait, but I don't know the exact entity ID yet. So first step must be to get the entity ID via search_entity.\n\nSo first tool call: search_entity with query \"basset hound\"."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b648e062922fb3e2",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "basset hound"
+            },
+            "result": "Top 10 entity alternatives:\n1. basset hound (wd:Q37716):\n  - dog breed\n  - is instance of dog breed\n  - is subclass of hound\n  - is subclass of hunting dog\n2. The Basset Hound (wd:Q136770714):\n  - is instance of pub\n  - pub in Wirral, Merseyside, England, UK\n3. Category:Basset Hound (wd:Q55330213):\n  - is instance of Wikimedia category\n  - Wikimedia category\n4. A Basset Hound (wd:Q119149704):\n  - is instance of painting\n  - painting by Robert L. Alexander (1840–1923), Kirkcaldy Galleries\n5. basset horn (wd:Q810515), also known as \"basset-horn\":\n  - alto member of the clarinet family with extended lower range\n  - is instance of type of musical instrument\n  - is subclass of clarinet\n  - is subclass of transposing instrument\n6. Masset Sound (wd:Q6784592):\n  - is instance of sound\n  - sound in British Columbia, Canada\n7. Basket Hounds (wd:Q130457538):\n  - basketball team in Harare, Zimbabwe\n  - is instance of basketball club\n8. Westerby Basset Hounds (wd:Q38269604):\n  - is instance of pack\n  - working Basset Hound pack\n9. Basset horn (wd:Q123818591):\n  - instrument in the collections of the Swedish Museum of Performing Arts (F326)\n  - is instance of basset horn\n10. Basset horn (wd:Q123818606):\n  - instrument in the collections of the Swedish Museum of Performing Arts (M112)\n  - is instance of basset horn"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 977,
+          "prompt_tokens": 3752,
+          "total_tokens": 4729
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "4a402b1b5f6649bbbe35b179cd278942",
+        "message": null,
+        "reasoning": {
+          "id": "024aae70d0464f548af4fdaa8db3b681",
+          "content": "Okay, let's see. The user is asking for the average lifespan of a Basset Hound. I first need to find the correct entity for Basset Hound in Wikidata. The search results from the search_entity call show that the top result is \"basset hound\" with wd:Q37716, which is a dog breed. So that's the right entity.\n\nNow, I need to find the property that relates to lifespan. The next step is to figure out which Wikidata property is used for lifespan. Common properties for animals might be P31 (instance of) but that's for categories. Wait, lifespan is probably a duration, maybe using property P571 (inception) but no, that's for when something was created. Wait, for lifespan, it's often stored as a duration or maybe a birth and death date, but for average lifespan, it's usually a value in years.\n\nLooking at Wikidata properties, the one for average lifespan might be wd:P2000. Let me check. Wait, maybe it's wd:P2000 (average lifespan) or maybe a property like wd:P193 (lifespan) or something else. Wait, in Wikidata, common properties for lifespan include:\n\n- P2508: average lifespan (years)\n- P244: lifespan\n- P193: duration\n\nWait, I'm not sure. Let's think. Maybe I should search for properties related to \"lifespan\". So I should use the search_property function with query \"lifespan\" to find the correct property.\n\nSo, next step: call search_property with kg \"wikidata\" and query \"lifespan\". That should give me the relevant property IDs.\n\nWait, the user's question is about average lifespan, so maybe the property is specifically \"average lifespan\" as a property. Let me check.\n\nAlternatively, maybe it's P2153: average lifespan (years), which I think exists. But I need to confirm.\n\nSo, first, let me figure out the correct property. Let's use the search_property function."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-82fe5ffd7aacdd8f",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "lifespan"
+            },
+            "result": "Top 10 property alternatives:\n1. life expectancy (wd:P2250 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"lifespan\"), also known as \"life span\", \"lifespan\":\n  - average life expectancy for this group or species\n2. longest observed lifespan (wd:P4214 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"maximum lifespan\"), also known as \"highest observed lifespan\", \"longest lifespan\", \"maximum age\", \"maximum life expectancy\", \"maximum life span\", etc.:\n  - age of the oldest specimen of a taxon for which the age can be verified\n3. shelf life (wd:P4218 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"expiration\", \"expired by\", \"expires in\", \"unfit for use after\":\n  - length of time that a commodity may be stored without becoming unfit for use or consumption\n4. religion or worldview (wd:P140 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"life stance\"), also known as \"belief system\", \"believes\", \"denomination\", \"devotee of\", \"faith\", etc.:\n  - religion of a person, organization or religious building, or associated with this subject\n5. mean lifetime (wd:P2645 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - inverse of exponential decay rate; half-life is ln(2) times this value\n6. service life (wd:P5069 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - product's total life in use from the point of sale to the point of discard\n7. half-life (wd:P2114 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - time required for the amount of something to fall to half its initial value\n8. biological phase (wd:P4774 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"life cycle stage\"), also known as \"life cycle stage\", \"life stage\":\n  - biological period or stage when this biological process or phenomenon occurs\n9. duration (wd:P2047 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"time span\"), also known as \"cooking time\", \"cook time\", \"era\", \"interval\", \"length\", etc.:\n  - length of time of an event or process\n10. floruit (wd:P1317 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"year alive\"), also known as \"active\", \"alive at\", \"alive in\", \"circa\", \"date cited\", etc.:\n  - date when the person was known to be active or alive, when birth or death not documented"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 472,
+          "prompt_tokens": 4245,
+          "total_tokens": 4717
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "24badfcfdc9d45ff996662d7345ec45f",
+        "message": null,
+        "reasoning": {
+          "id": "fbe92fcc3ded417bb737d490849ac9f1",
+          "content": "Okay, let's see. The user is asking for the average lifespan of a Basset Hound. I need to figure out how to get this from Wikidata.\n\nFirst, I found the correct entity for Basset Hound using search_entity. The top result was \"basset hound (wd:Q37716)\" which is a dog breed. Good, that's the one.\n\nNext, I searched for properties related to \"lifespan\" using search_property. The top result was \"life expectancy (wd:P2250)\", which seems relevant. \"Life expectancy\" is probably what we need for average lifespan.\n\nNow, I need to check if the Basset Hound entity has a life expectancy property. So, I should look up the properties of wd:Q37716. Let's use the list function with subject as wd:Q37716. Wait, but the available tools include list, so maybe I should call list(kg=\"wikidata\", subject=\"wd:Q37716\") to see what properties it has. But maybe there's a better way. Alternatively, search_property_of_entity with entity wd:Q37716 and query \"lifespan\" to confirm.\n\nWait, the user wants the average lifespan, so I need to find the statement where the Basset Hound (Q37716) has the life expectancy property (P2250). The property P2250 corresponds to life expectancy. So the SPARQL query should look for wd:Q37716 wdt:P2250 ?lifespan.\n\nBut I should make sure that the property is correctly applied. Let me verify using the list function. Let's call list(kg=\"wikidata\", subject=\"wd:Q37716\", property=\"wdt:P2250\") to see if there are any entries. If that returns data, then the SPARQL query can be formed.\n\nWait, the user's question is about average lifespan, which is exactly what P2250 (life expectancy) is for in Wikidata. So the SPARQL query would be selecting the value of p:P2250 for the Basset Hound entity.\n\nSo the query should be something like:\n\nSELECT ?lifespan WHERE {\n  wd:Q37716 wdt:P2250 ?lifespan.\n}\n\nThen, the answer would be the value of ?lifespan. But let's make sure the property exists. If I run that query, it should return the average lifespan.\n\nWait, but in Wikidata, life expectancy for dog breeds might be a statement. Let's check.\n\nAlternatively, maybe the property is used on the breed, so the correct SPARQL is as above. Let's proceed with that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b6bbfdc8ed469fbe",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?lifespan WHERE { wd:Q37716 wdt:P2250 ?lifespan. }"
+            },
+            "result": "Got 1 row and 1 column:\n| lifespan           |\n| ------------------ |\n| 11.5 (xsd:decimal) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 649,
+          "prompt_tokens": 5031,
+          "total_tokens": 5680
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "9725097e0b30416190a8a90e3c41a51a",
+        "message": null,
+        "reasoning": {
+          "id": "d3865585bb3947aa867ee5b67ffccba4",
+          "content": "Okay, let's see. The user asked for the average lifespan of a Basset Hound. I found the entity for Basset Hound using search_entity, which gave me wd:Q37716 as the main dog breed entry. Then, I searched for the lifespan property and found that life expectancy (wd:P2250) matches the query.\n\nI executed a SPARQL query using wd:Q37716 and P2250 to get the lifespan, and the result was 11.5. The answer should probably be \"11.5 years\" since lifespan in such contexts is typically in years, even if the data uses a decimal. The user is asking for the average, and the query returned 11.5, so that's likely the average. Let me check if there's any other possible property, but the top result was life expectancy with P2250. The other properties like longest observed lifespan are different, so P2250 is the right one for average.\n\nSo the final answer should be 11.5 years. The executed query got 11.5, so I'll present that as the answer."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-95b4afb10b0ab477",
+            "name": "answer",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?lifespan WHERE { wd:Q37716 wdt:P2250 ?lifespan. }",
+              "answer": "The average lifespan of a Basset Hound is 11.5 years."
+            },
+            "result": "Stopping"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 326,
+          "prompt_tokens": 5126,
+          "total_tokens": 5452
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/prop/qualifier/P140",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2114",
+    "http://www.wikidata.org/entity/P1317",
+    "http://www.wikidata.org/prop/reference/value/P2250",
+    "http://www.wikidata.org/entity/P5069",
+    "http://www.wikidata.org/prop/reference/P2645",
+    "http://www.wikidata.org/entity/P2645",
+    "http://www.wikidata.org/prop/reference/value/P1317",
+    "http://www.wikidata.org/entity/P4214",
+    "http://www.wikidata.org/prop/reference/value/P5069",
+    "http://www.wikidata.org/prop/direct/P2250",
+    "http://www.wikidata.org/entity/P140",
+    "http://www.wikidata.org/entity/P4774",
+    "http://www.wikidata.org/prop/reference/value/P4774",
+    "http://www.wikidata.org/prop/direct/P5069",
+    "http://www.wikidata.org/entity/P2047",
+    "http://www.wikidata.org/prop/qualifier/value/P2250",
+    "http://www.wikidata.org/prop/direct/P4214",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2250",
+    "http://www.wikidata.org/entity/P2250",
+    "http://www.wikidata.org/prop/statement/value/P2250",
+    "http://www.wikidata.org/prop/statement/P4214",
+    "http://www.wikidata.org/prop/qualifier/P4774",
+    "http://www.wikidata.org/prop/reference/P140",
+    "http://www.wikidata.org/prop/reference/P4218",
+    "http://www.wikidata.org/prop/statement/value/P4774",
+    "http://www.wikidata.org/entity/Q136770714",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P140",
+    "http://www.wikidata.org/prop/direct-normalized/P4218",
+    "http://www.wikidata.org/prop/qualifier/value/P140",
+    "http://www.wikidata.org/prop/qualifier/value/P2114",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1317",
+    "http://www.wikidata.org/prop/P1317",
+    "http://www.wikidata.org/prop/P4214",
+    "http://www.wikidata.org/prop/direct-normalized/P2250",
+    "http://www.wikidata.org/prop/P2645",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2645",
+    "http://www.wikidata.org/prop/direct/P2047",
+    "http://www.wikidata.org/prop/statement/value-normalized/P4218",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2645",
+    "http://www.wikidata.org/prop/direct-normalized/P140",
+    "http://www.wikidata.org/prop/qualifier/P4214",
+    "http://www.wikidata.org/entity/Q810515",
+    "http://www.wikidata.org/prop/direct-normalized/P1317",
+    "http://www.wikidata.org/entity/Q38269604",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P5069",
+    "http://www.wikidata.org/entity/Q123818591",
+    "http://www.wikidata.org/prop/qualifier/P1317",
+    "http://www.wikidata.org/prop/qualifier/value/P4218",
+    "http://www.wikidata.org/prop/reference/value/P4218",
+    "http://www.wikidata.org/prop/statement/value/P4218",
+    "http://www.wikidata.org/prop/statement/value/P1317",
+    "http://www.wikidata.org/entity/Q119149704",
+    "http://www.wikidata.org/prop/reference/value/P2047",
+    "http://www.wikidata.org/prop/direct-normalized/P2047",
+    "http://www.wikidata.org/prop/P2114",
+    "http://www.wikidata.org/prop/statement/value-normalized/P4214",
+    "http://www.wikidata.org/entity/Q37716",
+    "http://www.wikidata.org/prop/P5069",
+    "http://www.wikidata.org/prop/P2250",
+    "http://www.wikidata.org/prop/qualifier/P2047",
+    "http://www.wikidata.org/prop/qualifier/P2645",
+    "http://www.wikidata.org/entity/Q6784592",
+    "http://www.wikidata.org/prop/direct/P140",
+    "http://www.wikidata.org/prop/reference/P1317",
+    "http://www.wikidata.org/entity/P4218",
+    "http://www.wikidata.org/prop/direct/P2114",
+    "http://www.wikidata.org/entity/P2114",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2114",
+    "http://www.wikidata.org/prop/reference/value-normalized/P4218",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P4774",
+    "http://www.wikidata.org/prop/direct-normalized/P4214",
+    "http://www.wikidata.org/prop/direct/P4218",
+    "http://www.wikidata.org/prop/reference/value/P2645",
+    "http://www.wikidata.org/prop/direct-normalized/P4774",
+    "http://www.wikidata.org/prop/reference/value-normalized/P4214",
+    "http://www.wikidata.org/prop/P140",
+    "http://www.wikidata.org/prop/P4218",
+    "http://www.wikidata.org/prop/qualifier/value/P4774",
+    "http://www.wikidata.org/prop/statement/P4218",
+    "http://www.wikidata.org/prop/direct-normalized/P5069",
+    "http://www.wikidata.org/prop/statement/value/P140",
+    "http://www.wikidata.org/prop/reference/value/P140",
+    "http://www.wikidata.org/prop/reference/P4774",
+    "http://www.wikidata.org/prop/statement/value/P4214",
+    "http://www.wikidata.org/prop/statement/P2114",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2250",
+    "http://www.wikidata.org/prop/reference/value-normalized/P4774",
+    "http://www.wikidata.org/prop/qualifier/P2114",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2047",
+    "http://www.wikidata.org/prop/statement/value/P2047",
+    "http://www.wikidata.org/prop/qualifier/value/P1317",
+    "http://www.wikidata.org/prop/qualifier/value/P2645",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2114",
+    "http://www.wikidata.org/prop/statement/P2250",
+    "http://www.wikidata.org/prop/qualifier/P5069",
+    "http://www.wikidata.org/prop/reference/value/P4214",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P4214",
+    "http://www.wikidata.org/prop/reference/P5069",
+    "http://www.wikidata.org/prop/statement/value/P2645",
+    "http://www.wikidata.org/prop/statement/value-normalized/P5069",
+    "http://www.wikidata.org/prop/qualifier/value/P2047",
+    "http://www.wikidata.org/prop/reference/P2250",
+    "http://www.wikidata.org/prop/direct/P2645",
+    "http://www.wikidata.org/prop/P4774",
+    "http://www.wikidata.org/prop/direct-normalized/P2645",
+    "http://www.wikidata.org/prop/reference/value/P2114",
+    "http://www.wikidata.org/prop/statement/P1317",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2047",
+    "http://www.wikidata.org/prop/statement/P2645",
+    "http://www.wikidata.org/prop/qualifier/value/P5069",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1317",
+    "http://www.wikidata.org/entity/Q130457538",
+    "http://www.wikidata.org/prop/qualifier/P2250",
+    "http://www.wikidata.org/prop/qualifier/P4218",
+    "http://www.wikidata.org/prop/statement/value/P2114",
+    "http://www.wikidata.org/prop/reference/value-normalized/P5069",
+    "http://www.wikidata.org/entity/Q123818606",
+    "http://www.wikidata.org/prop/statement/P5069",
+    "http://www.wikidata.org/prop/reference/P2114",
+    "http://www.wikidata.org/prop/statement/value-normalized/P4774",
+    "http://www.wikidata.org/prop/reference/P4214",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1317",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2047",
+    "http://www.wikidata.org/entity/Q55330213",
+    "http://www.wikidata.org/prop/statement/P140",
+    "http://www.wikidata.org/prop/direct/P1317",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2645",
+    "http://www.wikidata.org/prop/P2047",
+    "http://www.wikidata.org/prop/statement/value/P5069",
+    "http://www.wikidata.org/prop/reference/value-normalized/P140",
+    "http://www.wikidata.org/prop/reference/P2047",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P4218",
+    "http://www.wikidata.org/prop/statement/P4774",
+    "http://www.wikidata.org/prop/statement/P2047",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2250",
+    "http://www.wikidata.org/prop/statement/value-normalized/P140",
+    "http://www.wikidata.org/prop/qualifier/value/P4214",
+    "http://www.wikidata.org/prop/direct-normalized/P2114",
+    "http://www.wikidata.org/prop/direct/P4774"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/NQ_table_test_simple.csv",
+  "row_index": 261,
+  "question": "what's the average lifespan of a basset hound",
+  "reference_answer": "Median 10–12 years"
+}
