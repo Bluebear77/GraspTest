@@ -1,0 +1,282 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nPREFIX wd: <http://www.wikidata.org/entity/>\nSELECT ?budget WHERE {\n  wd:Q44578 wdt:P2130 ?budget\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Titanic (wd:Q44578), also known as \"Titanic (1997)\":\n  - 1997 film by James Cameron\n  - is instance of film\n\nUsing properties:\n- capital cost (wd:P2130 as wdt), also known as \"budget\", \"CAPEX\", \"cost\", \"unit cost\":\n  - amount of money spent on building or producing an object",
+    "result": "Got 1 row and 1 column:\n| budget                    |\n| ------------------------- |\n| 200000000.0 (xsd:decimal) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "$200,000,000",
+    "formatted": "$200,000,000\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nPREFIX wd: <http://www.wikidata.org/entity/>\nSELECT ?budget WHERE {\n  wd:Q44578 wdt:P2130 ?budget\n}\n```\n\nUsing entities:\n- Titanic (wd:Q44578), also known as \"Titanic (1997)\":\n  - 1997 film by James Cameron\n  - is instance of film\n\nUsing properties:\n- capital cost (wd:P2130 as wdt), also known as \"budget\", \"CAPEX\", \"cost\", \"unit cost\":\n  - amount of money spent on building or producing an object\n\nExecution result:\nGot 1 row and 1 column:\n| budget                    |\n| ------------------------- |\n| 200000000.0 (xsd:decimal) |"
+  },
+  "elapsed": 26.089001,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "What was the cost to make Titanic?"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "12bb06b7c80e44fda518950083464f85",
+        "message": null,
+        "reasoning": {
+          "id": "9e8eaddf8ee1436a8e7fba6b7df209c3",
+          "content": "Okay, let's see. The user is asking, \"What was the cost to make Titanic?\" So I need to find the production cost of the movie Titanic.\n\nFirst, I should figure out which entities are involved here. The main entity here is the movie \"Titanic.\" I need to confirm the correct Wikidata ID for Titanic. Let me use the search_entity function to find the right entity.\n\nWait, the user mentioned \"Titanic,\" which is a 1997 film directed by James Cameron. So I'll search for \"Titanic\" as an entity in Wikidata using search_entity.\n\nLet me call search_entity with kg \"wikidata\" and query \"Titanic\". That should give me the entities related to Titanic. Once I have the correct entity, I can look for the production cost.\n\nAfter getting the entity, I need to find the property that holds the production cost. In Wikidata, production cost is usually under a property like wdt:P1083 (budget). Let me use search_property to find properties related to cost or budget.\n\nWait, but maybe I should first get the entity ID for Titanic. Let me do that first.\n\nWait, using search_entity for \"Titanic\" might return multiple results: the ship, the movie, etc. I need to make sure I pick the movie. The movie Titanic is Q244, I think. But I should verify.\n\nSo, execute search_entity with query \"Titanic\". The response should have the top results. Let's say the top entity is the movie. Then, check its properties.\n\nOnce I have the entity's ID, say wd:Q244, I can search for properties related to budget. The property for budget in Wikidata is usually wdt:P1083. Let me confirm with search_property. If I search for \"budget,\" I should get wdt:P1083.\n\nSo, step by step:\n\n1. Search for \"Titanic\" in entities to get the correct ID.\n2. Search for properties related to \"budget\" to find the correct property.\n3. Then, query the budget for the Titanic movie.\n\nLet me proceed with the tools.\n\nFirst, call search_entity(kg=\"wikidata\", query=\"Titanic\")."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b93166264913bfb7",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "Titanic"
+            },
+            "result": "Top 10 entity alternatives:\n1. Titanic (wd:Q25173), also known as \"RMS Titanic\", \"Royal Mail Steamship Titanic\", \"SS Titanic\", \"The Titanic\":\n  - British transatlantic passenger liner, launched and foundered in 1912\n  - is instance of four funnel liner\n  - is instance of shipwreck\n2. Titanic (wd:Q44578), also known as \"Titanic (1997)\":\n  - 1997 film by James Cameron\n  - is instance of film\n3. Titanic (wd:Q738840):\n  - is instance of Wikimedia disambiguation page\n  - Wikimedia disambiguation page\n4. Titanic (wd:Q1197729), also known as \"Titanic (1953)\":\n  - 1953 film by Jean Negulesco\n  - is instance of film\n5. Titanic (wd:Q679670):\n  - 1943 German propaganda film\n  - is instance of film\n6. Titanic (wd:Q1426605):\n  - 1996 TV miniseries directed by Robert Lieberman\n  - is instance of miniseries\n  - is instance of television film\n7. Titanic (wd:Q6147467), also known as \"Titanic, OK\", \"Titanic, Oklahoma\":\n  - census-designated place in Adair County, Oklahoma, United States\n  - is instance of census-designated place in the United States\n8. Titanic (wd:Q2099497):\n  - 2012 English-language TV miniseries\n  - is instance of television series\n9. Titanic (wd:Q1889132):\n  - is instance of musical ensemble\n  - is instance of musical group\n  - Norwegian band\n10. Titanic (wd:Q1416989), also known as \"Titanic: The Musical\":\n  - is instance of dramatico-musical work\n  - musical by Maury Yeston and book by Peter Stone in 1997"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 493,
+          "prompt_tokens": 3749,
+          "total_tokens": 4242
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "2a73b04c29544da391c585e3e02e5e75",
+        "message": null,
+        "reasoning": {
+          "id": "cfe5a877a9d14c1f9a498f1748b66a4a",
+          "content": "Okay, the user asked, \"What was the cost to make Titanic?\" First, I need to figure out which Titanic they're referring to. The search results show several entities related to Titanic: the ship, different movies, a TV miniseries, a place, etc.\n\nThe most common reference for \"cost to make\" would likely be a movie, since the ship itself isn't made but built, and the cost to build it isn't typically called \"cost to make.\" The user probably means the 1997 film by James Cameron. Let me check the search results again. The second entry is \"Titanic (wd:Q44578), also known as 'Titanic (1997)'\", which is a film. The other entries include the ship (Q25173), but the cost for making a movie makes more sense than building a ship.\n\nSo I should focus on the 1997 film. Next, I need to find the property that represents the production cost. In Wikidata, the property for budget is usually \"cost\" or \"budget.\" Let me confirm the correct property code. The property for budget in Wikidata is typically wdt:P1114 (Budget). Wait, but I should check. Maybe using the search_property function to find the right property.\n\nWait, the user's question is about the cost to make the movie, so the property would be the budget. Let me search for properties related to \"budget\" or \"cost.\"\n\nSo, I'll use search_property with query \"budget\" to find the correct property. Let me call search_property with kg=\"wikidata\" and query=\"budget\".\n\nWait, but first, I should make sure the entity is the correct movie. The entity for the 1997 Titanic film is Q44578. Once I have the entity, I need to find the budget property for it.\n\nBut to get the property, maybe I should use search_property. Let me do that first."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-8a83f0d4fb5fb1cf",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "budget"
+            },
+            "result": "Top 10 property alternatives:\n1. capital cost (wd:P2130 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"budget\"), also known as \"budget\", \"CAPEX\", \"cost\", \"unit cost\":\n  - amount of money spent on building or producing an object\n2. budget (wd:P2769 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - assigned monetary amount for a project (for the estimated cost of a film, also commonly referred to as budget, use P2130)\n3. total expenditure (wd:P2402 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"expense\"), also known as \"expense\", \"expenses\", \"spending\":\n  - amount of spending by this public or private entity, not to be confused with fiscal expenditure\n4. price (wd:P2284 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"cost\"), also known as \"cost\", \"exchange rate\", \"list price\", \"MSRP\", \"published price\", etc.:\n  - published price listed or paid for a product (use with unit of currency)\n5. prize money (wd:P2121 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"money\"), also known as \"money\", \"prize pool\", \"purse\", \"value\":\n  - amount in a specific currency\n6. quantity (wd:P1114 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"amount\"), also known as \"amount\", \"copies\", \"count\", \"instances\", \"multiplicity\", etc.:\n  - number of instances of this subject in the universe of the ... number of instances in Wikidata may be lower or higher)\n7. fee (wd:P2555 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"admission\", \"charge\", \"entrance fee\", \"entrance fees\", \"entry fee\", etc.:\n  - fee or toll payable to use, transit or enter the subject ... do NOT use it for an ongoing fee, tuition fee or trading fee)\n8. account charge / subscription fee (wd:P5897 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"fee\"), also known as \"annual cost\", \"fee\", \"member fee\", \"membership fee\", \"monthly cost\", etc.:\n  - a monthly/yearly fee for using a service or account; use qualifier duration to specify the billing cycle\n9. measured physical quantity (wd:P111 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"quantity\"), also known as \"measure of\", \"measures\", \"physical quantity\", \"quantity\":\n  - value of a physical property expressed as number multiplied by a unit\n10. net worth (wd:P2218 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"wealth\"), also known as \"declared patrimony\", \"estimated net worth\", \"net wealth\", \"net worth estimate\", \"personal assets\", etc.:\n  - totality of wealth possessed by a person"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 444,
+          "prompt_tokens": 4272,
+          "total_tokens": 4716
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "ab3b506bbc1f4384b455b624f08141b1",
+        "message": null,
+        "reasoning": {
+          "id": "decfbb16723343a5a4e994750fc90940",
+          "content": "Okay, let's see. The user is asking \"What was the cost to make Titanic?\" So first, I need to figure out which Titanic they're referring to. The search_entity result shows multiple entities related to Titanic, like the ship, the 1997 film, the 1953 film, etc.\n\nSince the question is about the cost to \"make\" Titanic, that's likely referring to a movie production cost, not the ship itself. The ship's cost would be historical, but the most famous Titanic-related film is the 1997 one directed by James Cameron. So the user is probably asking about the budget for the 1997 film.\n\nNext, check the properties. The user mentioned \"cost to make,\" so the property should be related to budget. The search_property results show \"capital cost\" (P2130) and \"budget\" (P2769). The note for P2130 says it's for the estimated cost of a film, which fits here. So the property to use is wdt:P2130.\n\nNow, need to confirm the correct entity for the 1997 Titanic film. From the entity search, the second entry is \"Titanic (wd:Q44578), also known as 'Titanic (1997)'\". So the entity ID is Q44578.\n\nSo the SPARQL query should find the value of P2130 for wd:Q44578. The property in Wikidata for film budget is usually P2130 (capital cost), but sometimes P2769 (budget) is used. However, the description for P2130 says it's for film budget, so that's the right one.\n\nLet me check the SPARQL structure. To get the budget, the query would be:\n\nSELECT ?budget WHERE { wd:Q44578 wdt:P2130 ?budget }\n\nBut need to make sure the format is correct. The unit should be included, and the value might be in USD. Also, the value might be a numeric value with a unit, so the result would show the number and the currency.\n\nWait, but in Wikidata, the budget for films is often stored as a quantity with the unit. So the query should return the value and the unit. However, the user just wants the cost, so probably the value with currency.\n\nLet me test with the SPARQL. Let's see if there's a known budget for Titanic 1997. I think it was around $200 million, but need to confirm via the query.\n\nSo the steps are: use the entity Q44578 (Titanic 1997 film) and property P2130."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-abfbe7c1a72a4524",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?budget WHERE { wd:Q44578 wdt:P2130 ?budget }"
+            },
+            "result": "Got 1 row and 1 column:\n| budget                    |\n| ------------------------- |\n| 200000000.0 (xsd:decimal) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 641,
+          "prompt_tokens": 5128,
+          "total_tokens": 5769
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "3b79575af78b4e7e9b769da4192e4cbd",
+        "message": null,
+        "reasoning": {
+          "id": "fbf6f1009b124179a0b4d6a5b43cdf61",
+          "content": "Okay, let's see. The user asked, \"What was the cost to make Titanic?\" So first, I need to figure out which Titanic they're referring to. The search for \"Titanic\" in Wikidata gave multiple results, but the most likely one for a movie cost would be the 1997 film, which is Q44578.\n\nI checked the properties related to \"budget\" and found that P2130 is the capital cost property, which is used for the estimated cost of a film. So I ran a SPARQL query on Q44578 (the 1997 Titanic film) using wdt:P2130 to get the budget. The result came back as 200,000,000.0 in decimal.\n\nWait, but I should confirm if that's the correct entity. The user probably means the 1997 movie, not the ship or other versions. The initial search showed that Q44578 is the 1997 film by James Cameron, so that's the right one. The property P2130 is correctly used for film budgets. The answer from the query is 200 million dollars, so the answer should be \"$200,000,000\" or similar. Let me make sure there's no other property that might be more accurate, but the search for \"budget\" led to P2130 as the main one. Also, looking at the top property results, P2130's description says it's for estimated cost of a film. So the query seems correct.\n\nI think that's it. The SPARQL query using Q44578 and P2130 gives the correct budget. So the answer is 200 million dollars."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-9f6cce3057301b9b",
+            "name": "answer",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?budget WHERE { wd:Q44578 wdt:P2130 ?budget }",
+              "answer": "$200,000,000"
+            },
+            "result": "Stopping"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 453,
+          "prompt_tokens": 5225,
+          "total_tokens": 5678
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/prop/qualifier/value/P2121",
+    "http://www.wikidata.org/entity/Q738840",
+    "http://www.wikidata.org/prop/reference/value/P1114",
+    "http://www.wikidata.org/prop/P5897",
+    "http://www.wikidata.org/prop/qualifier/value/P5897",
+    "http://www.wikidata.org/prop/reference/value/P2130",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2130",
+    "http://www.wikidata.org/entity/P2130",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2218",
+    "http://www.wikidata.org/prop/qualifier/P2284",
+    "http://www.wikidata.org/prop/P1114",
+    "http://www.wikidata.org/prop/reference/P2121",
+    "http://www.wikidata.org/entity/Q44578",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2218",
+    "http://www.wikidata.org/prop/direct/P1114",
+    "http://www.wikidata.org/prop/direct-normalized/P2284",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2121",
+    "http://www.wikidata.org/prop/qualifier/value/P2769",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2121",
+    "http://www.wikidata.org/prop/direct/P2130",
+    "http://www.wikidata.org/prop/reference/value/P2284",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1114",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P5897",
+    "http://www.wikidata.org/prop/statement/P2121",
+    "http://www.wikidata.org/prop/direct/P2121",
+    "http://www.wikidata.org/prop/direct-normalized/P2769",
+    "http://www.wikidata.org/prop/statement/value/P2121",
+    "http://www.wikidata.org/entity/Q6147467",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1114",
+    "http://www.wikidata.org/prop/qualifier/value/P2218",
+    "http://www.wikidata.org/prop/reference/value/P2218",
+    "http://www.wikidata.org/prop/direct-normalized/P2555",
+    "http://www.wikidata.org/prop/qualifier/P111",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2284",
+    "http://www.wikidata.org/prop/P2555",
+    "http://www.wikidata.org/prop/statement/P5897",
+    "http://www.wikidata.org/entity/Q1197729",
+    "http://www.wikidata.org/entity/Q2099497",
+    "http://www.wikidata.org/prop/direct-normalized/P2130",
+    "http://www.wikidata.org/prop/statement/value-normalized/P111",
+    "http://www.wikidata.org/prop/qualifier/P2555",
+    "http://www.wikidata.org/prop/qualifier/P2218",
+    "http://www.wikidata.org/prop/direct-normalized/P111",
+    "http://www.wikidata.org/entity/Q679670",
+    "http://www.wikidata.org/prop/qualifier/P1114",
+    "http://www.wikidata.org/prop/statement/value/P2284",
+    "http://www.wikidata.org/prop/statement/value-normalized/P5897",
+    "http://www.wikidata.org/prop/statement/P2402",
+    "http://www.wikidata.org/prop/qualifier/P2769",
+    "http://www.wikidata.org/entity/P2769",
+    "http://www.wikidata.org/entity/P2121",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2769",
+    "http://www.wikidata.org/prop/P2218",
+    "http://www.wikidata.org/entity/P2402",
+    "http://www.wikidata.org/prop/P2130",
+    "http://www.wikidata.org/prop/reference/P2284",
+    "http://www.wikidata.org/prop/reference/P5897",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2402",
+    "http://www.wikidata.org/prop/qualifier/P2121",
+    "http://www.wikidata.org/prop/qualifier/value/P2555",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2284",
+    "http://www.wikidata.org/prop/reference/P2130",
+    "http://www.wikidata.org/entity/P1114",
+    "http://www.wikidata.org/prop/P2769",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1114",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2555",
+    "http://www.wikidata.org/entity/Q1889132",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2769",
+    "http://www.wikidata.org/prop/statement/value/P1114",
+    "http://www.wikidata.org/prop/reference/value/P2402",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2130",
+    "http://www.wikidata.org/entity/Q1426605",
+    "http://www.wikidata.org/prop/statement/value/P2130",
+    "http://www.wikidata.org/prop/qualifier/value/P2402",
+    "http://www.wikidata.org/entity/P111",
+    "http://www.wikidata.org/prop/qualifier/value/P1114",
+    "http://www.wikidata.org/prop/statement/P2555",
+    "http://www.wikidata.org/prop/qualifier/value/P111",
+    "http://www.wikidata.org/prop/qualifier/value/P2130",
+    "http://www.wikidata.org/prop/direct/P2555",
+    "http://www.wikidata.org/prop/direct-normalized/P1114",
+    "http://www.wikidata.org/prop/direct-normalized/P2402",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2130",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2402",
+    "http://www.wikidata.org/prop/statement/value/P5897",
+    "http://www.wikidata.org/prop/statement/value/P2218",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2284",
+    "http://www.wikidata.org/entity/P2555",
+    "http://www.wikidata.org/prop/reference/P2769",
+    "http://www.wikidata.org/prop/statement/value/P2769",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P111",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2769",
+    "http://www.wikidata.org/prop/direct-normalized/P2218",
+    "http://www.wikidata.org/prop/direct/P2769",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2121",
+    "http://www.wikidata.org/prop/qualifier/P5897",
+    "http://www.wikidata.org/prop/reference/value/P5897",
+    "http://www.wikidata.org/prop/P2284",
+    "http://www.wikidata.org/prop/statement/P2218",
+    "http://www.wikidata.org/entity/Q25173",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2555",
+    "http://www.wikidata.org/prop/direct/P2218",
+    "http://www.wikidata.org/prop/direct/P2284",
+    "http://www.wikidata.org/prop/qualifier/P2402",
+    "http://www.wikidata.org/prop/reference/value/P2555",
+    "http://www.wikidata.org/prop/statement/P111",
+    "http://www.wikidata.org/prop/P2402",
+    "http://www.wikidata.org/prop/direct/P2402",
+    "http://www.wikidata.org/prop/reference/P1114",
+    "http://www.wikidata.org/entity/P2284",
+    "http://www.wikidata.org/prop/qualifier/value/P2284",
+    "http://www.wikidata.org/prop/statement/value/P111",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2402",
+    "http://www.wikidata.org/prop/statement/P1114",
+    "http://www.wikidata.org/prop/reference/P2218",
+    "http://www.wikidata.org/prop/reference/P2555",
+    "http://www.wikidata.org/prop/direct/P111",
+    "http://www.wikidata.org/prop/P2121",
+    "http://www.wikidata.org/prop/statement/P2769",
+    "http://www.wikidata.org/prop/qualifier/P2130",
+    "http://www.wikidata.org/prop/statement/value/P2555",
+    "http://www.wikidata.org/prop/reference/value/P2769",
+    "http://www.wikidata.org/prop/statement/P2284",
+    "http://www.wikidata.org/prop/reference/value-normalized/P5897",
+    "http://www.wikidata.org/prop/reference/value-normalized/P111",
+    "http://www.wikidata.org/prop/direct-normalized/P2121",
+    "http://www.wikidata.org/prop/reference/P111",
+    "http://www.wikidata.org/prop/direct/P5897",
+    "http://www.wikidata.org/entity/Q1416989",
+    "http://www.wikidata.org/entity/P2218",
+    "http://www.wikidata.org/prop/statement/value/P2402",
+    "http://www.wikidata.org/entity/P5897",
+    "http://www.wikidata.org/prop/statement/P2130",
+    "http://www.wikidata.org/prop/reference/value/P2121",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2218",
+    "http://www.wikidata.org/prop/direct-normalized/P5897",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2555",
+    "http://www.wikidata.org/prop/reference/P2402",
+    "http://www.wikidata.org/prop/P111",
+    "http://www.wikidata.org/prop/reference/value/P111"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/CompMix_table_simple_qa.csv",
+  "row_index": 256,
+  "question": "What was the cost to make Titanic?",
+  "reference_answer": "$200 million"
+}
