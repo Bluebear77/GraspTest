@@ -1,0 +1,204 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?end WHERE {\n  wd:Q7340095 wdt:P582 ?end\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Rob Dyrdek's Fantasy Factory (wd:Q7340095):\n  - American reality television series\n  - is instance of television series\n\nUsing properties:\n- end time (wd:P582 as wdt), also known as \"abolished\", \"cease date\", \"cease operation\", \"cease time\", \"closed\", etc.:\n  - moment when an entity ceases to exist and a statement stops being entirely valid or no longer be true",
+    "result": "Got 1 row and 1 column:\n| end                                 |\n| ----------------------------------- |\n| 2015-03-05T00:00:00Z (xsd:dateTime) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "2015-03-05",
+    "formatted": "2015-03-05\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?end WHERE {\n  wd:Q7340095 wdt:P582 ?end\n}\n```\n\nUsing entities:\n- Rob Dyrdek's Fantasy Factory (wd:Q7340095):\n  - American reality television series\n  - is instance of television series\n\nUsing properties:\n- end time (wd:P582 as wdt), also known as \"abolished\", \"cease date\", \"cease operation\", \"cease time\", \"closed\", etc.:\n  - moment when an entity ceases to exist and a statement stops being entirely valid or no longer be true\n\nExecution result:\nGot 1 row and 1 column:\n| end                                 |\n| ----------------------------------- |\n| 2015-03-05T00:00:00Z (xsd:dateTime) |"
+  },
+  "elapsed": 30.95143,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "when did rob dyrdek's fantasy factory end"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "912612e701cb4611b18bf66a5801d267",
+        "message": null,
+        "reasoning": {
+          "id": "8665116946bf4dea9f50dd7c07357a2b",
+          "content": "Okay, let's see. The user is asking when \"Rob Dyrdek's Fantasy Factory\" ended. First, I need to figure out what exactly they're referring to. Rob Dyrdek is a well-known figure, especially in skateboarding and reality TV. \"Fantasy Factory\" sounds like a TV show.\n\nSo, the first step is to confirm the correct entity for \"Rob Dyrdek's Fantasy Factory\" in Wikidata. I should use the search_entity function to find the exact item. Let me call that with the query \"rob dyrdek fantasy factory\".\n\nWait, but \"Rob Dyrdek's Fantasy Factory\" might have a specific title. Maybe the official title is \"Rob Dyrdek's Fantasy Factory\" or something similar. Let me search for that exact phrase.\n\nUsing search_entity(kg=\"wikidata\", query=\"rob dyrdek fantasy factory\"). Let's see what comes up. If that gives me the correct entity, then I can proceed. If not, I might need to adjust the query.\n\nAssuming the first result is the right one, I'll need to get the end date. So the property for the end of a TV series would typically be wdt:P576 (end date) or maybe wdt:P577 (official end date). Wait, actually, for TV shows, sometimes they have the end date under the duration, like end date or the last air date.\n\nWait, in Wikidata, the property for the end date of a series is usually P576 (end date). Let me check that. So once I have the entity, I need to find the value of wdt:P576.\n\nBut first, let's find the correct entity. Let me execute the search_entity function.\n\nAfter getting the entity ID, say Q18161453 (I'll assume that's the right one for now), then I can query for the end date. The SPARQL query would be SELECT ?end WHERE { wd:Q18161453 wdt:P576 ?end }.\n\nWait, but maybe it's better to use the exact property. Let me verify if P576 is the correct property. Maybe it's P577 (end time in UTC), but I think for shows, P576 is the end date. Let me confirm by checking the properties of the entity once I find it.\n\nBut since I can't look it up right now, I'll proceed with the search_entity step first. Let's do that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-8b08b53eba295a4a",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "rob dyrdek fantasy factory"
+            },
+            "result": "Top 10 entity alternatives:\n1. Rob Dyrdek's Fantasy Factory (wd:Q7340095):\n  - American reality television series\n  - is instance of television series\n2. list of Rob Dyrdek's Fantasy Factory episodes (wd:Q6595701):\n  - is instance of Wikimedia list article\n  - Wikimedia list article\n3. Rob Dyrdek (wd:Q723496), also known as \"Robert Stanley Dyrdek\":\n  - American skateboarder\n  - has occupation actor\n  - has occupation businessperson\n  - has occupation film producer\n  - has occupation screenwriter\n  - has occupation skateboarder\n  - has occupation television presenter\n  - has occupation voice actor\n  - is instance of human\n4. Rog (factory) (wd:Q24639943):\n  - Evicted social centre in Slovenia\n  - is instance of temporary use\n5. Category:ro:Fantasy (wd:Q135457919):\n  - is instance of Wikimedia category\n  - Wikimedia category\n6. Factory Job (wd:Q108298534):\n  - is instance of scholarly article\n  - journal article from 'WSQ: Women's Studies Quarterly' published in 2017\n7. A Factory Job (wd:Q111569507):\n  - 2022 video game\n  - is instance of video game\n8. Mob Factory (wd:Q123404685):\n  - 2023 video game\n  - is instance of video game\n9. Factory Row  Weavers Cottages (wd:Q26536538):\n  - cottage in Seend, Wiltshire, England, UK\n  - is instance of cottage\n10. RABIF (wd:Q18031003, matched via \"RAB interacting factor\"), also known as \"MSS4\", \"RAB interacting factor\", \"RASGFR3\", \"RASGRF3\":\n  - is instance of gene\n  - is subclass of protein-coding gene\n  - protein-coding gene in the species Homo sapiens"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 561,
+          "prompt_tokens": 3751,
+          "total_tokens": 4312
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "57e2885c09c94f36b48083c85fbdf9ee",
+        "message": null,
+        "reasoning": {
+          "id": "5bd1ec2bb5374f25bfaa7f61b931275b",
+          "content": "Okay, let's see. The user is asking when \"Rob Dyrdek's Fantasy Factory\" ended. From the search_entity results, the top match is wd:Q7340095, which is the TV series. So I need to find the end date for that series.\n\nFirst, I should figure out the correct property in Wikidata for the end date of a TV series. The common properties are P576 for \"end time\" (though sometimes P577 is used for \"start time\"), but maybe for TV shows, the end date is stored in a specific property.\n\nWait, in Wikidata, the standard property for the end date of a work is P576 (end time). Let me confirm. For example, the series \"Friends\" would have its end date under P576. So I should use wdt:P576.\n\nSo the SPARQL query needs to select the end date (P576) for the entity wd:Q7340095.\n\nLet me structure the query. The basic SPARQL would be:\n\nSELECT ?end WHERE { wd:Q7340095 wdt:P576 ?end }\n\nBut I should check if the property exists. Maybe the end date isn't directly in wdt:P576 but in another way. Wait, P576 is \"end time\" which is a time value, so it should have the end date.\n\nAlternatively, sometimes series have a property like P577 for \"end time\" as well. But according to Wikidata's documentation, P576 is used for the end time of a series.\n\nLet me verify with another example. For instance, the TV series \"The Office (US)\", the end date is under P576. Let's check that in mind. If I were to look it up, but since I can't, I'll proceed with P576.\n\nSo the query should be straightforward. Let's make it as a SELECT query returning ?end, using the entity Q7340095.\n\nWait, but in the initial step, the search gave wd:Q7340095 as the entity for Rob Dyrdek's Fantasy Factory. So the query should use that ID.\n\nNow, I should execute this query to see what the result is. But since I can't run it yet, I'll have to make sure the SPARQL is correct.\n\nAlternatively, maybe the series has an \"end date\" stored as a statement. So the SPARQL should use the direct property wdt:P576.\n\nWait, the 'wdt:' prefix is for direct properties, so it's the correct way to access the main value.\n\nSo the SPARQL is:\n\nSELECT ?end WHERE { wd:Q7340095 wdt:P576 ?end }\n\nNow, I need to check if this returns the correct end date. The user probably expects a date like \"2015\" or \"2014-12-15\" or similar.\n\nWait, the series \"Rob Dyrdek's Fantasy Factory\" is a reality TV show that aired on MTV. From what I recall, it ended in 2018 or 2019, but I need to rely on the data.\n\nAssuming the query works, the result will have the end date. If it returns nothing, maybe the right property is different.\n\nAnother possibility is that the end date is in a qualifier or a different property. But the most common one is P576.\n\nAlternatively, sometimes for TV series, the end date might be under P577 (original air date end). Wait, P577 is \"start time\", not end. Let me double-check the property numbers.\n\nLooking up Wikidata properties: P576 is \"end time\", P577 is \"start time\". So the correct one is P576.\n\nSo I think the query is correct. Let's proceed to call execute with this SPARQL."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a3573facda4d5e7f",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?end WHERE { wd:Q7340095 wdt:P576 ?end }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 904,
+          "prompt_tokens": 4287,
+          "total_tokens": 5191
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "282894c34d864c9eb6cd39f1011d346f",
+        "message": null,
+        "reasoning": {
+          "id": "bfa194f8e8b740c1aa7101a7035b94fd",
+          "content": "Okay, let's see. The user is asking when \"Rob Dyrdek's Fantasy Factory\" ended. I first searched for the entity using search_entity and found that the correct entity is wd:Q7340095, which is the TV series \"Rob Dyrdek's Fantasy Factory\". Then I tried to execute a SPARQL query to get the end date using wdt:P576 (which is the property for end date). But the query returned no results.\n\nHmm, maybe the property is not P576. Wait, in Wikidata, P576 is \"end date\", but maybe the show hasn't ended yet, so it's not listed, or maybe the correct property is different. Or perhaps the user meant the series ended, but the data might not have that info. Let me check.\n\nWait, maybe the show is still ongoing. Let me verify. Rob Dyrdek's Fantasy Factory is a reality TV show that aired on MTV. I think it ran from 2010 to 2013. But I need to confirm via Wikidata.\n\nWait, the query returned no rows, so maybe the property isn't P576. Let me check the possible properties for the series. Maybe it uses a different property, like P582 for end date in some contexts. Wait, no, P576 is \"end date\" (as it's the direct property). Alternatively, maybe the show's end date is stored under a different qualifier or another property.\n\nWait, let's look up the entity Q7340095 on Wikidata to check its properties. Since I can't do that here, I'll try another approach. Maybe use the list of properties for that entity. Let's see, perhaps the show has an end date in the timeline. Let me think about the structure.\n\nAlternatively, maybe the correct property is P576, but the data isn't there. Let me try another property. Wait, sometimes \"end date\" is also referred to as \"end\" or \"ended\", but the standard Wikidata property for end date is P576. Let me check if the query was correct.\n\nWait, the SPARQL query was SELECT ?end WHERE { wd:Q7340095 wdt:P576 ?end }. The \"wdt:\" prefix means the direct statement of the property, which should have the value. If there's no result, maybe the show has no end date in Wikidata, or it's still ongoing.\n\nWait, maybe the series ended, but the data isn't present. Alternatively, maybe the property is part of a qualifier. Wait, no, the end date for a series is typically stored directly. Let me check another way. Let's try to find other properties.\n\nWait, maybe the series' end date is in P582. Let me recall. P582 is \"end time\", but I think P576 is \"end date\". Wait, no, P582 is \"end time\" as per Wikidata's property. Let me check: P576 is \"end date\" (e.g., for a person's death date, but also for the end of a TV show's run). P582 is \"end time\" (e.g., a specific date and time). Wait, but for TV shows, the end date might be listed under P576.\n\nAlternatively, maybe the show's end is stored in a statement with a qualifier, but that's less common. Let's try using the list function to see the properties of wd:Q7340095.\n\nWait, I can use the list function with subject wd:Q7340095 to see what properties it has. So, let's call list(kg=\"wikidata\", subject=\"wd:Q7340095\"). That should show all the properties associated with the entity.\n\nOnce I have that list, I can check which property corresponds to the end date. Let's do that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-99024cd82bcc675f",
+            "name": "list",
+            "args": {
+              "kg": "wikidata",
+              "subject": "wd:Q7340095"
+            },
+            "result": "Got 78 rows and 3 columns, showing the first 10 rows below:\n| subject                                    | property                                        | object                                                         |\n| ------------------------------------------ | ----------------------------------------------- | -------------------------------------------------------------- |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | instance of (wdt:P31)                           | television series (wd:Q5398426)                                |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | title (wdt:P1476)                               | Rob Dyrdek's Fantasy Factory (lang:en)                         |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | Freebase ID (wdt:P646)                          | /m/05ms0sx                                                     |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | country of origin (wdt:P495)                    | United States (wd:Q30)                                         |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | genre (wdt:P136)                                | reality television (wd:Q182415)                                |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | official website (wdt:P856)                     | http://www.mtv.com/shows/fantasy_factory/season_4/series.jhtml |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | IMDb ID (wdt:P345)                              | tt1344970                                                      |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | start time (wdt:P580)                           | 2009-02-08T00:00:00Z (xsd:dateTime)                            |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | end time (wdt:P582)                             | 2015-03-05T00:00:00Z (xsd:dateTime)                            |\n| Rob Dyrdek's Fantasy Factory (wd:Q7340095) | original language of film or TV show (wdt:P364) | English (wd:Q1860)                                             |\n| ...                                        | ...                                             | ...                                                            |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 884,
+          "prompt_tokens": 4357,
+          "total_tokens": 5241
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "d30ce887da484cb0bc73b8e09d9a29d9",
+        "message": null,
+        "reasoning": {
+          "id": "21179b1c07a4455ca213afb9c8e625e9",
+          "content": "Okay, let's see. The user is asking when \"Rob Dyrdek's Fantasy Factory\" ended. I first searched for the entity using search_entity and found that the correct entity is wd:Q7340095. Then I tried to execute a SPARQL query with wdt:P576 (end date) but got no results. But then when I used the list function on the subject wd:Q7340095, the results showed that there's a property wdt:P582 for \"end time\", which has a value of 2015-03-05.\n\nWait, the user's question was about when the show ended, so the correct property should be P582, not P576. P576 is \"end time\" for a person's lifespan, but for a TV show, it's usually P582 (end time). So my first attempt used the wrong property. The list results show that P582 has the correct end date. So I should construct a SPARQL query using P582 to get the end date.\n\nLet me check the list output again. The 9th row in the list for subject wd:Q7340095 has property wdt:P582 (end time) with value 2015-03-05. So the correct query should be:\n\nSELECT ?end WHERE { wd:Q7340095 wdt:P582 ?end }.\n\nThat should return the end date. The previous query used P576, which is probably for something else. Now, executing this corrected SPARQL should give the answer."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-8003f82fc08bd701",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?end WHERE { wd:Q7340095 wdt:P582 ?end }"
+            },
+            "result": "Got 1 row and 1 column:\n| end                                 |\n| ----------------------------------- |\n| 2015-03-05T00:00:00Z (xsd:dateTime) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 413,
+          "prompt_tokens": 4951,
+          "total_tokens": 5364
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "9a05b3e9e1f04828b9ed4126eb5f6d02",
+        "message": null,
+        "reasoning": {
+          "id": "b68b7e381e58498080e1acfb7c658ea5",
+          "content": "Okay, let's see. The user asked when Rob Dyrdek's Fantasy Factory ended. I first searched for the entity \"rob dyrdek fantasy factory\" and found that the correct entity is wd:Q7340095, which is the television series.\n\nThen I tried to get the end time using wdt:P582, which is the property for end time. The first SPARQL query I ran with P576 (which is ended) didn't work, but when I checked using the list function on the subject, I saw that the correct property is P582 for end time. So I corrected the query to use P582 instead of P576.\n\nThe execute query with P582 returned the date 2015-03-05T00:00:00Z. Now, I need to present this as the answer. Since the question is about when the show ended, the answer should be March 5, 2015. I should format it in a user-friendly way, maybe just the date without the time. But the SPARQL result includes the time, so I'll extract the date part.\n\nWait, the result is in ISO 8601 format. The date part is 2015-03-05, so the end date is March 5, 2015. I should check if that's the correct format. The user probably wants the date, so the answer is March 5, 2015. Let me confirm using the list function which showed end time as 2015-03-05T00:00:00Z. Yes, so the year, month, day. So the show ended on March 5, 2015. The answer should be that date."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b278bae53cde91f0",
+            "name": "answer",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?end WHERE { wd:Q7340095 wdt:P582 ?end }",
+              "answer": "2015-03-05"
+            },
+            "result": "Stopping"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 461,
+          "prompt_tokens": 5058,
+          "total_tokens": 5519
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/entity/P31",
+    "http://www.wikidata.org/entity/P856",
+    "http://www.wikidata.org/entity/Q182415",
+    "http://www.wikidata.org/prop/direct/P364",
+    "http://www.wikidata.org/prop/direct/P582",
+    "http://www.wikidata.org/entity/P136",
+    "http://www.wikidata.org/prop/direct/P31",
+    "http://www.wikidata.org/entity/Q108298534",
+    "http://www.wikidata.org/entity/Q111569507",
+    "http://www.wikidata.org/entity/P364",
+    "http://www.wikidata.org/entity/Q6595701",
+    "http://www.wikidata.org/entity/Q5398426",
+    "http://www.wikidata.org/entity/Q7340095",
+    "http://www.wikidata.org/entity/Q18031003",
+    "http://www.wikidata.org/entity/P582",
+    "http://www.mtv.com/shows/fantasy_factory/season_4/series.jhtml",
+    "http://www.wikidata.org/entity/P495",
+    "http://www.wikidata.org/entity/Q1860",
+    "http://www.wikidata.org/entity/Q30",
+    "http://www.wikidata.org/prop/direct/P1476",
+    "http://www.wikidata.org/entity/Q123404685",
+    "http://www.wikidata.org/entity/Q723496",
+    "http://www.wikidata.org/prop/direct/P646",
+    "http://www.wikidata.org/entity/P646",
+    "http://www.wikidata.org/entity/Q135457919",
+    "http://www.wikidata.org/prop/direct/P495",
+    "http://www.wikidata.org/entity/Q24639943",
+    "http://www.wikidata.org/prop/direct/P856",
+    "http://www.wikidata.org/entity/P580",
+    "http://www.wikidata.org/entity/P1476",
+    "http://www.wikidata.org/prop/direct/P136",
+    "http://www.wikidata.org/prop/direct/P580",
+    "http://www.wikidata.org/entity/P345",
+    "http://www.wikidata.org/entity/Q26536538",
+    "http://www.wikidata.org/prop/direct/P345"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/NQ_table_test_simple.csv",
+  "row_index": 852,
+  "question": "when did rob dyrdek's fantasy factory end",
+  "reference_answer": "March 5, 2015"
+}

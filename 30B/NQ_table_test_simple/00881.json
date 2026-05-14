@@ -1,0 +1,563 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P289 ?class .\n  ?class rdfs:label ?classLabel .\n  FILTER(LANG(?classLabel) = 'en')\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Carnival Glory (wd:Q933950), also known as \"IMO 9198367\":\n  - Cruise ship built in 2003\n  - is instance of cruise ship\n\nUsing properties:\n- vessel class (wd:P289 as wdt), also known as \"class of vessel\", \"ship class\", \"spacecraft class\", \"submarine class\", \"watercraft class\":\n  - series of vessels or other watercraft built to the same design of which this vessel is a member",
+    "result": "Got 1 row and 1 column:\n| classLabel                           |\n| ------------------------------------ |\n| Conquest-class cruise ship (lang:en) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?classLabel WHERE { wd:Q933950 wdt:P289 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }\", \"answer\": \"Conquest-class\"}}",
+    "formatted": "{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?classLabel WHERE { wd:Q933950 wdt:P289 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }\", \"answer\": \"Conquest-class\"}}\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P289 ?class .\n  ?class rdfs:label ?classLabel .\n  FILTER(LANG(?classLabel) = 'en')\n}\n```\n\nUsing entities:\n- Carnival Glory (wd:Q933950), also known as \"IMO 9198367\":\n  - Cruise ship built in 2003\n  - is instance of cruise ship\n\nUsing properties:\n- vessel class (wd:P289 as wdt), also known as \"class of vessel\", \"ship class\", \"spacecraft class\", \"submarine class\", \"watercraft class\":\n  - series of vessels or other watercraft built to the same design of which this vessel is a member\n\nExecution result:\nGot 1 row and 1 column:\n| classLabel                           |\n| ------------------------------------ |\n| Conquest-class cruise ship (lang:en) |"
+  },
+  "elapsed": 68.796554,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "what class of ship is the carnival glory"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "dda6b8a68180456d92a8c21776d8837e",
+        "message": null,
+        "reasoning": {
+          "id": "7fcbf743420d4920ba24366b4d4a1e2b",
+          "content": "Okay, let's tackle this question: \"what class of ship is the carnival glory\". Hmm, first I need to figure out what's being asked. The user wants to know the class of the ship named Carnival Glory.\n\nFirst, I should check if \"Carnival Glory\" is a known ship. Carnival is a cruise line, so Carnival Glory is probably a cruise ship. The question is about its class, which I think means the ship class or type, like maybe the \"Valor-class\" or similar.\n\nBut I need to get this from Wikidata. Let's start by searching for the entity \"Carnival Glory\" in Wikidata. I should use the search_entity function to find the correct entity.\n\nWait, the user mentioned \"class of ship\", so the ship's class would be a property in Wikidata. Let's assume the entity exists. Let's look for \"Carnival Glory\" using search_entity.\n\nSo I'll call search_entity with kg=\"wikidata\" and query=\"carnival glory\".\n\nOnce I get the entity, probably something like wd:Q252558 or similar, then I need to find the property that describes the ship class. In Wikidata, ship classes might be under a property like \"instance of\" (P31) but maybe there's a specific property for ship class. Wait, the class of a ship is often a subclass. For example, the Carnival Glory might belong to a class like \"Carnival Class\" but I need to confirm.\n\nAlternatively, there might be a property for ship class. Let's see. Let's think about the properties. Ship classes could be part of the ship's instance. Wait, maybe the ship's class is stored as \"subclass of\" (P279) but that's a bit unclear. Alternatively, maybe the ship has a specific property like \"ship class\" (P1099?) or similar.\n\nWait, perhaps the correct property to look for in Wikidata would be \"official name\" or \"ship class\". Wait, no. Let me recall: In Wikidata, the property for ship class might be P1099 (class of ship) or maybe another property. Let me check.\n\nAlternatively, maybe the \"operator\" of the ship is Carnival Cruise Line, but the class is different. The user is asking for the class of the ship, so the specific hull class.\n\nWait, perhaps I should search for the property related to ship class. Let's use search_property with query \"class of ship\". But the user's question is in English, so searching for \"class of ship\" should find the relevant property.\n\nWait, let's first get the entity for Carnival Glory. Let's do the search_entity first.\n\nSo step 1: Use search_entity to find the correct entity for Carnival Glory.\n\nAssuming the search gives us an entity like wd:Q123456 (hypothetically), then we need to find its ship class property.\n\nBut maybe the ship class is a property like \"subclass of\" (P279) where the value would be a ship class.\n\nAlternatively, maybe the ship has a direct property like \"ship class\" (wdt:P1099?), but I need to confirm.\n\nWait, perhaps I should first find the entity, then look up its properties. So first, get the entity.\n\nLet's proceed with the search_entity function.\n\nCall search_entity(kg=\"wikidata\", query=\"carnival glory\").\n\nAssuming the result shows that \"Carnival Glory\" is a ship, entity Q56789 (made up example), then check the properties of that entity.\n\nBut to find the correct property, maybe we need to look for which property in Wikidata corresponds to ship class.\n\nAlternatively, perhaps the ship's class is listed under \"instance of\" as \"cruise ship\" but the user wants the specific class like \"Carnival Valor\" or something. Wait, Carnival Glory might belong to a class like \"Carnival Victory-class\" or similar.\n\nAlternatively, maybe the ship's class is part of its name. Wait, Carnival Glory was part of the Carnival class, but I'm not sure. Wait, actually, Carnival Cruise Line has different ship classes: for example, the \"Carnival Glory\" might be part of the \"Carnival Class\", but I should check.\n\nAlternatively, let's use the search_property function to find a property related to ship class.\n\nWait, but maybe the correct approach is to first find the entity, then find the relevant property. So let's do search_entity first.\n\nAssuming the search_entity returns the entity wd:Q252558 (which I think might be the correct one), then we can use list(kg, subject=wd:Q252558) to see what properties it has.\n\nBut since I can't actually run the functions yet, I'll have to simulate.\n\nAlternatively, maybe the ship class is stored as a property. Let's assume that the correct property for ship class in Wikidata is \"instance of\" (P31) but that's probably not. Wait, instance of would be \"cruise ship\" (Q718793), but the specific class (like a type of ship) might be under a different property.\n\nWait, maybe in Wikidata, there's a property \"ship class\" (P1099). Let me check. For example, the USS Constitution is of class \"Constitution-class\", so the property might be P1099. Wait, but I'm not sure. Let's proceed.\n\nSo, steps:\n\n1. Find the entity for Carnival Glory via search_entity.\n2. Once we have the entity, check its properties to find the ship class (e.g., the value of the relevant property).\n\nAssuming search_entity returns the correct entity, let's say it's wd:Q252558. Then, we can look for the property that lists the ship class.\n\nAlternatively, if we can't find the property directly, maybe the ship class is a subclass. For example, if the ship's class is \"Carnival-class\", then the ship might have \"instance of\" a subclass of ship classes.\n\nBut let's get back to the process. Let's start with the search_entity.\n\nSo, the first step is to call search_entity with the query \"carnival glory\".\n\nWait, but the user is asking for the \"class of ship\", so maybe the ship's class is part of the ship's name. For example, the Carnival Glory might be part of a class called \"Carnival Glory-class\", but I think Carnival ships are grouped into classes like \"Carnival Triumph-class\" or similar.\n\nAlternatively, perhaps the class is a specific term. Let's assume that the correct way is to find the entity, then find the property.\n\nSo, let's proceed with search_entity."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-984d44d46f8fe8d4",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "carnival glory"
+            },
+            "result": "Top 10 entity alternatives:\n1. Carnival Glory (wd:Q933950), also known as \"IMO 9198367\":\n  - Cruise ship built in 2003\n  - is instance of cruise ship\n2. Carnival Story (wd:Q2175638):\n  - 1954 film by Kurt Neumann in English\n  - is instance of film\n3. Cardinal Lory (wd:Q664917), also known as \"Chalcopsitta cardinalis\":\n  - is instance of taxon\n  - species of bird\n4. Category:Carnival Glory (ship, 2003) (wd:Q83956121):\n  - is instance of Wikimedia category\n  - Wikimedia category\n5. Glory Glory (wd:Q1532152), also known as \"Hooded Angels\":\n  - 2000 film by Paul Taunton Matthews\n  - is instance of film\n6. Glory! Glory! (wd:Q16982150):\n  - 1989 film by Lindsay Anderson\n  - is instance of film\n7. Glory Glory (wd:Q1526793):\n  - is instance of single\n  - terrace chant sung in association football\n8. Glory, Glory (wd:Q5571553):\n  - is instance of Wikimedia disambiguation page\n  - Wikimedia disambiguation page\n9. Glou (wd:Q5571999, matched via \"Glou/Glory\"), also known as \"Glou/Glory\":\n  - album by Glory\n  - is instance of album\n10. Glory Glory (wd:Q11221667):\n  - 1999 single by Folder\n  - is instance of single"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1464,
+          "prompt_tokens": 3749,
+          "total_tokens": 5213
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "316d90193a054e06bdf92122a3f8089b",
+        "message": null,
+        "reasoning": {
+          "id": "7bcd9834598547c6bd6c2e523ce8d3c9",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". From the search_entity results, the top match is Carnival Glory (wd:Q933950), which is a cruise ship built in 2003 and is an instance of cruise ship. But the question is about the class of ship, not just the type.\n\nI need to find the specific ship class. In Wikidata, ship classes are usually under the \"subclass of\" or \"class\" property. The main property for ship class might be wdt:P31 (instance of) but that's for the type, like cruise ship. Wait, maybe there's a property for the specific class name, like \"ship class\" which in Wikidata is often p:P1840. Let me check.\n\nWait, the user wants the class, not the type. For example, the Carnival Glory might be part of a specific class like \"Carnival Destiny-class\" or something similar. So I need to find the property that links the ship to its class.\n\nLooking at the available properties, maybe the \"subclass of\" property (P279) or perhaps \"ship class\" (P1840). Let me recall some common properties. In Wikidata, ship class can be found using property P31 (instance of) if it's a class, but more likely, there's a specific property like P1840 for \"ship class\".\n\nWait, the search result shows that the entity Carnival Glory (Q933950) is an instance of cruise ship. To find its class, maybe the correct property is wdt:P1840. Let's check if that's the case.\n\nI should look up the properties of Carnival Glory. Maybe use the list function on the entity. But since I can't do that directly, maybe I can search for properties related to ship class.\n\nAlternatively, use the search_property function to look for \"ship class\" and see which property ID it is. Let me try that.\n\nWait, but the user needs the answer, so maybe I should construct a SPARQL query to get the ship class. Let's assume that the property for ship class is P1840 (I think in Wikidata, P1840 is \"ship class\").\n\nSo the SPARQL query would be:\n\nSELECT ?class WHERE {\n  wd:Q933950 wdt:P1840 ?class.\n}\n\nBut I need to make sure that P1840 is the correct property. Let's confirm. If Carnival Glory is the entity Q933950, then checking its properties for 'ship class' would use P1840.\n\nAlternatively, maybe it's under P31 (instance of) but the ship class is a subclass. Wait, the ship class itself would be an instance of a class, so P31 for the ship would be \"cruise ship\", but the specific class name (like the class name as a category) would be P1840.\n\nWait, looking at other examples: for example, the ship \"Titanic\" has a property for hull class, which is P1840. So I think P1840 is the right property here.\n\nSo, constructing the query to get P1840 for Carnival Glory (Q933950).\n\nThe query would be:\n\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P1840 ?class.\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"en\". }\n  ?class rdfs:label ?classLabel.\n}\n\nBut the rules say not to use SERVICE wikibase:label, so instead, use rdfs:label directly.\n\nWait, the instructions say: \"Do not use SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" So I need to get the label through rdfs:label.\n\nSo the query would be:\n\nSELECT ?class ?classLabel WHERE {\n  wd:Q933950 wdt:P1840 ?class.\n  ?class rdfs:label ?classLabel.\n  FILTER(LANG(?classLabel) = 'en')\n}\n\nBut wait, the results should be in English. So adding the filter for language.\n\nBut let's make sure that the property P1840 exists for Carnival Glory. Let's test this with a SPARQL query.\n\nAlternatively, maybe the ship class is stored under another property. Let's check using the list function on the entity.\n\nBut since I can't do that, maybe another approach. Let's see the top entity from the search result: Carnival Glory (wd:Q933950) is a cruise ship, so the question is asking for its class, like the class name (e.g., 'Carnival Glory' might be part of the 'Carnival Destiny-class' or similar).\n\nWait, the user might be confusing \"class\" as in a type (e.g., cruise ship) versus the specific class name. But the question says \"class of ship\", which in maritime terms usually refers to the specific class, like \"Olympic class\" for Titanic.\n\nSo I need to find the exact class name. Let's assume that the correct property is P1840. Let's run the SPARQL query.\n\nWait, the search_entity result has the entity Q933950 as the Carnival Glory. So using that entity ID.\n\nSo the SPARQL query would use wd:Q933950 and P1840.\n\nLet me draft the SPARQL query.\n\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P1840 ?class.\n  ?class rdfs:label ?classLabel.\n  FILTER(LANG(?classLabel) = 'en')\n}\n\nIf this returns a result, then that's the answer. If not, maybe the property is different.\n\nBut I need to execute it. So I'll use the execute function to run this query."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-804459d71cbc310c",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?classLabel WHERE { wd:Q933950 wdt:P1840 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1353,
+          "prompt_tokens": 4207,
+          "total_tokens": 5560
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "d22bb2040bff4803806a705fc2f1f3eb",
+        "message": null,
+        "reasoning": {
+          "id": "13f8d3bf4a9c4016a7d2f4b2c8598d0c",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". I first searched for \"carnival glory\" using search_entity and found that the top result is wd:Q933950, which is the Carnival Glory cruise ship.\n\nThen I tried to get its class using a SPARQL query. The query I used was SELECT ?classLabel WHERE { wd:Q933950 wdt:P1840 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }. But it returned no rows. Hmm, maybe the property P1840 isn't the right one.\n\nWait, what's the correct property for ship class? Maybe I should check the properties for Carnival Glory. Let me think. Sometimes ship classes are listed under wdt:P31 (instance of), but that's usually for broader categories. Wait, Carnival Glory is a cruise ship, so maybe it has an instance of ship class. Let me look up the properties for wd:Q933950.\n\nAlternatively, maybe the property for ship class is p:P31, but I need to check. Wait, in Wikidata, ship classes can have properties like wdt:P528 (ship class) or maybe another property. Wait, let's check the property IDs.\n\nWait, the user might be referring to the ship class name, like \"Conquest-class\" or something. Let me recall that the Carnival Glory is part of the Conquest-class cruise ships. So maybe the class is Conquest-class, and the property to get that is wdt:P528.\n\nWait, but I need to confirm. Let's check the actual Wikidata item for Carnival Glory. Since I can't browse, I need to use the tools. Let me try the list function for the entity wd:Q933950 to see its properties.\n\nSo, I'll call list with kg=\"wikidata\", subject=\"wd:Q933950\" to see all the properties and objects. That should show which properties are used for the ship class.\n\nWait, the function list(kg, subject, property, object) requires the subject. Let me set subject as wd:Q933950 and property as null. Wait, but the parameters for list need subject, property, object. So I should set subject to wd:Q933950, and leave property and object as null to get all triples for that subject.\n\nSo executing list(kg=\"wikidata\", subject=\"wd:Q933950\"). Let's see what comes back. Then from that, I can identify the correct property for the class.\n\nWait, the user's previous query used P1840, which might be incorrect. Maybe the correct property is P31 (instance of), but that would be the category. Wait, if Carnival Glory is a Conquest-class ship, then its instance of (P31) would be the specific ship class. Wait, no. The ship class is a subclass. For example, the Conquest-class might have an item in Wikidata, and Carnival Glory would be an instance of that class.\n\nWait, in Wikidata, the class (like Conquest-class) would have an item, say wd:Q123, and then Carnival Glory's P31 (instance of) would be wd:Q123. So to find the ship class, I need to find what's the instance of (P31) of wd:Q933950.\n\nWait, so let's try that. Let's look up the value of P31 for Carnival Glory. So the SPARQL query would be SELECT ?class WHERE { wd:Q933950 wdt:P31 ?class. }.\n\nEarlier, I used P1840, which might not be the correct property. Let's try that.\n\nWait, but in the previous attempt, the user tried P1840 (which is ship class in some contexts?), but it didn't return anything. Maybe P1840 is for something else. Let me check.\n\nAlternatively, let's use the list function to see what properties are present. So I'll call list(kg=\"wikidata\", subject=\"wd:Q933950\") to get all the properties of the Carnival Glory entity. Then I can see what property corresponds to the ship class.\n\nLet me proceed with that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a3c25c99867e88d4",
+            "name": "list",
+            "args": {
+              "kg": "wikidata",
+              "subject": "wd:Q933950"
+            },
+            "result": "Got 72 rows and 3 columns, showing the first 10 rows below:\n| subject                     | property                     | object                                                                   |\n| --------------------------- | ---------------------------- | ------------------------------------------------------------------------ |\n| Carnival Glory (wd:Q933950) | instance of (wdt:P31)        | cruise ship (wd:Q39804)                                                  |\n| Carnival Glory (wd:Q933950) | Commons category (wdt:P373)  | IMO 9198367                                                              |\n| Carnival Glory (wd:Q933950) | image (wdt:P18)              | http://commons.wikimedia.org/wiki/Special:FilePath/Carnival%20glory3.jpg |\n| Carnival Glory (wd:Q933950) | Freebase ID (wdt:P646)       | /m/0b771x                                                                |\n| Carnival Glory (wd:Q933950) | official website (wdt:P856)  | https://www.carnival.com/cruise-ships/carnival-glory.aspx                |\n| Carnival Glory (wd:Q933950) | significant event (wdt:P793) | ship launching (wd:Q596643)                                              |\n| Carnival Glory (wd:Q933950) | owned by (wdt:P127)          | Carnival Corporation & plc (wd:Q1044059)                                 |\n| Carnival Glory (wd:Q933950) | operator (wdt:P137)          | Carnival Cruise Line (wd:Q656554)                                        |\n| Carnival Glory (wd:Q933950) | length (wdt:P2043)           | 290.2 (xsd:decimal)                                                      |\n| Carnival Glory (wd:Q933950) | manufacturer (wdt:P176)      | Fincantieri (wd:Q1327429)                                                |\n| ...                         | ...                          | ...                                                                      |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 982,
+          "prompt_tokens": 4300,
+          "total_tokens": 5282
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "535227053bbe413c8ada9866f9bbffa6",
+        "message": null,
+        "reasoning": {
+          "id": "262da6f81ff24363a02a61a01c0d122d",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". From the search_entity results, the top match is Carnival Glory (wd:Q933950), which is a cruise ship. The user wants to know its class.\n\nFirst, I need to figure out what \"class\" means here. In ship terminology, the class usually refers to the type or category, like the name of the ship class (e.g., \"Voyager-class\" for cruise ships). The initial SPARQL query tried using wdt:P1840, which might be a property for the class, but it returned nothing.\n\nLooking at the list results from the 'list' function, the subject (Carnival Glory) has an instance of cruise ship (wd:Q39804). But that's just the broader category, not the specific class. So maybe the relevant property is something else.\n\nWait, maybe the class is listed under a different property. Let's think. In Wikidata for ships, the class might be under a property like 'ship class' (wdt:P1852) or maybe 'subclass of' (wdfs:P176). Wait, looking at the available properties, perhaps 'ship class' is a specific property.\n\nLet me check the properties for Carnival Glory. The list showed properties like instance of (P31), which is cruise ship, but we need the specific class. Let's see if there's a property that points to the ship class.\n\nMaybe the ship class is a subclass under the cruise ship's class. Alternatively, in Wikidata, some entries have a 'ship class' property. Let's check the list again. The 'list' command returned 72 rows. Let me see if any of them have a property related to class.\n\nLooking at the list data provided: The subject is Carnival Glory, properties include instance of (P31), Commons category, image, etc. There's no 'ship class' mentioned there. Wait, maybe it's under a different property. Let's check the properties of the cruise ship (Q39804) to see what properties are common for ships.\n\nBut since I don't have direct access to that, maybe I should think of common properties. For example, in Wikidata, the property for ship class might be wd:Q18970395 (P1852: ship class) or perhaps a different property.\n\nWait, let's try searching for the property \"ship class\" using the search_property function. But since I can't do that right now, based on prior knowledge, in Wikidata, the property for ship class is often P1852.\n\nSo maybe the correct property is wdt:P1852. Let's form a SPARQL query using that. So the query would be: SELECT ?classLabel WHERE { wd:Q933950 wdt:P1852 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }.\n\nWait, in the initial attempt, the user used wdt:P1840. Maybe that's a typo or wrong property. Let's check what P1852 is. If P1852 is the ship class property, then that's the right one.\n\nAlternatively, maybe the ship's class is listed under a different property. Another approach: look at the cruise ship entry (Q39804) and find what properties it has. But that's not directly helpful here.\n\nWait, the list query showed that Carnival Glory's instance of is cruise ship (Q39804), but the specific class might be a subclass of that. So if we take the instance of ship class (Q39804), but no. Wait, no. The Carnival Glory is a specific ship, so the class might be the name of the class it belongs to, like \"Carnival Victory-class\" or something.\n\nLet me think of real examples. For example, the Carnival Glory might be part of the \"Carnival Glory-class\", but actually, Carnival ships often have classes like \"Spirit-class\", \"Conquest-class\", etc. Wait, maybe Carnival Glory is part of the \"Vista-class\" or similar. But I need to confirm.\n\nWait, let's go back to the list results. The user's list results show the property 'instance of' as cruise ship (Q39804). There's also a property called 'Commons category' which is \"IMO 9198367\", but that's the IMO number, not the class. The manufacturer is Fincantieri, but that's the shipbuilder.\n\nAnother possible property could be 'sub-class' or 'ship class'. Let's assume that the correct property to look for is 'ship class', which in Wikidata is P1852. So let's try that.\n\nSo executing a query with wdt:P1852. Let's write the SPARQL:\n\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P1852 ?class.\n  ?class rdfs:label ?classLabel.\n  FILTER(LANG(?classLabel) = 'en')\n}\n\nIf that returns something, then that's the answer. If not, maybe the property is different. But in the previous attempt, using P1840 didn't work. Maybe P1852 is the right one.\n\nAlternatively, maybe the ship is classified under a different property. Let's check, for example, in Wikidata, the Carnival Glory's page might have the ship class listed.\n\nWait, but since I can't access the live data, I need to rely on the available functions. The next step is to execute the SPARQL with P1852."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-84e844a9541cf284",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?classLabel WHERE { wd:Q933950 wdt:P1852 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1302,
+          "prompt_tokens": 4817,
+          "total_tokens": 6119
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "0c30ec4285294d3b9d7bb55183eb48cb",
+        "message": null,
+        "reasoning": {
+          "id": "b5ff9123980040979b13ab1a2b3a9021",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". From the previous steps, I tried searching for the entity \"Carnival Glory\" using the search_entity function, and the top result was wd:Q933950, which is a cruise ship built in 2003.\n\nThen I tried to get the class of the ship using the property P1840 (which I thought might be the class) with a SPARQL query. But that returned no results. Then I used the list function on the subject wd:Q933950 and found that the instance of (wdt:P31) is cruise ship (wd:Q39804). But the user is asking for the \"class of ship\", which might not be the same as the instance. Maybe there's a different property that specifies the class, like the class name or a specific category.\n\nWait, the list results showed that it's an instance of a cruise ship, but maybe the class they're referring to is a specific subclass. For example, Carnival Glory might belong to a class of ships like the \"Carnival Victory-class\" or something similar. In Wikidata, ships often have a \"ship class\" property, which is usually P1852 (though I tried that and got no results). Wait, the previous attempt with P1852 didn't work. Let me check the available properties.\n\nAlternatively, maybe the ship class is listed under the property \"subclass of\" or another relevant property. Let's look at the list of properties for wd:Q933950 again. The user tried P1852, which might not be the correct property. Let's see what other properties are related to ship classes.\n\nWait, the ship might be part of a specific class, like the \"Carnival Glory-class\", but I'm not sure. Maybe the class is a separate entity. Maybe I need to search for the ship's class directly. The user is asking for the class, so perhaps the answer is the class name, like \"Carnival Glory-class\", but how to find that in Wikidata.\n\nAnother approach: Maybe the \"ship class\" property in Wikidata is P1852, but perhaps it's not used here. Let's check the list again. The list of properties for Carnival Glory (wd:Q933950) includes P31 (instance of) as cruise ship, but no other properties related to class. Wait, maybe it's under another property. Let's try to look up what properties are used for ship classes.\n\nAlternatively, maybe the class is the same as the ship's model or type. For example, the \"Carnival Glory\" might be part of the \"Sovereign-class\" or another class. Wait, I recall that Carnival ships have different classes like \"Conquest Class\", \"Conquest II\", \"Carnival Glory\" itself might be a class. Wait, but the user is asking for the class of the ship, so if the ship is named \"Carnival Glory\", perhaps its class is \"Carnival Glory-class\" or it's a member of a specific class.\n\nBut how to find that in Wikidata. Let's try to check if there's a property for ship class. The property P1852 is \"ship class\", but maybe in this case, the entry for Carnival Glory doesn't have that property filled. Let's try using another property. Wait, maybe the correct property is P1357 (subclass of ship class) or something else. Wait, maybe I should look up the typical property used for ship classes in Wikidata.\n\nAlternatively, perhaps the ship belongs to a category in Wikidata where the class is listed. For example, the category might be \"Carnival Glory-class ships\". Let's try to search for that.\n\nWait, the previous search with P1840 (which I thought was the ship class) didn't work. Maybe the correct property for the class is P1852. Let me check the Wikidata page for Carnival Glory. (Since I can't browse, I have to rely on the data I have.)\n\nLooking back at the list of triples for wd:Q933950, the properties are:\n\n- instance of (P31): cruise ship (Q39804)\n- Commons category: IMO 9198367\n- image\n- Freebase ID\n- official website\n- significant event: ship launching\n- owned by (P127): Carnival Corporation & plc (Q1044059)\n- operator (P137): Carnival Cruise Line (Q656554)\n- length (P2043): 290.2\n- manufacturer (P176): Fincantieri (Q1327429)\n\nSo none of these properties directly give the ship class. Hmm. Maybe the ship class is not explicitly stated, or perhaps the \"cruise ship\" under P31 is the answer. But the user is asking for the \"class\", not the general type. For example, a class might refer to a specific model like \"Queen Elizabeth-class\" for Royal Caribbean ships.\n\nWait, maybe the class is the \"Carnival Glory\" itself. Wait, sometimes ship class names are the same as the ship's name. So if the ship is called Carnival Glory, maybe its class is the same. But the user is asking \"what class\", so perhaps the answer is \"Carnival Glory-class\".\n\nAlternatively, maybe I should check if there's a different property. Let's try to find all possible properties related to ship classes. Let me use the search_property function for \"class\" to see what properties exist.\n\nWait, the user hasn't tried that yet. Let me call search_property with query \"class\" to see relevant properties.\n\nWait, but the previous steps are trying to build the SPARQL query. Let's see, I tried P1840 and P1852. Let's see what properties are available for \"class\" in Wikidata. Using the search_property function.\n\nBut according to the tools provided, I can use search_property. So I should call that to find the correct property. Let's do that first before proceeding."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-84686c632ae48d6b",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "class"
+            },
+            "result": "Top 10 property alternatives:\n1. class (wd:P2308 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"type\":\n  - qualifier to define a property constraint in combination with \"property constraint\" (P2302)\n2. school class (wd:P7174 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"class\"), also known as \"class\", \"cohort\", \"grade\", \"school cohort\", \"stage\":\n  - (qualifier) class of a given year/time period to which the person belonged in an educational institution\n3. definition domain (wd:P1568 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"domain\", \"domain of definition\", \"domain of function\", \"from\", \"function domain\":\n  - set of \"input\" or argument values for which a mathematical function is defined\n4. location (wd:P276 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"based in\", \"city\", \"exact location\", \"from\", \"held by\", etc.:\n  - location of the object, structure or event; use P131 to ... entities; use P7153 for locations associated with the object\n5. genomic start (wd:P644 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"from\", \"Genloc From\", \"Genloc Start\", \"genomic from\", \"start coordinate\":\n  - genomic starting coordinate of the biological sequence (e.g. a gene)\n6. start time (wd:P580 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"air date\", \"began\", \"began airing\", \"began broadcasting\", \"began streaming\", etc.:\n  - time an entity begins to exist or a statement starts being valid\n7. location of formation (wd:P740 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"comes from\", \"formation location\", \"formation place\", \"formed in\", \"founded in\", etc.:\n  - location where a group or organization was formed\n8. start point (wd:P1427 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"departed from\", \"flight origin\", \"from\", \"journey origin\", \"journey start\", etc.:\n  - starting place of this journey, flight, voyage, trek, migration etc.\n9. terminus location (wd:P609 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"between\", \"departure point\", \"destination\", \"from\", \"to\":\n  - location of the terminus of a linear feature\n10. conferred by (wd:P1027 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"from\"), also known as \"awarded by\", \"bestowed by\", \"by\", \"conceded by\", \"degree awarded by\", etc.:\n  - person or organization who grants an award, certification, grant, or role"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1359,
+          "prompt_tokens": 4910,
+          "total_tokens": 6269
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "2aacdf0b7d7345c4aa0f34cd26161037",
+        "message": null,
+        "reasoning": {
+          "id": "98d1fc44404a486fb9d958cec206014d",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". From the previous steps, I've tried using the entity \"Carnival Glory\" (Q933950) and looked for its class. The first attempt used P1840, which didn't return anything. Then I tried P1852, which also returned nothing.\n\nLooking at the list of properties from the search_property function, the term \"class\" might relate to the ship's classification. The properties listed include school class, definition domain, etc., but none directly about ship class. However, in Wikidata, ship classes are often represented under properties like \"class\" (P2308) or possibly \"subclass of\" (P279), but that's more about the hierarchy.\n\nWait, the user wants the class of ship, like the specific class name (e.g., \"Conquest class\", \"Panamax\", etc.). In maritime terms, ship classes are often listed under a property. Let me check possible properties. The \"instance of\" property (P31) shows it's a cruise ship (Q39804), but that's the type, not the specific class.\n\nAnother approach: in the list of triples for Q933950, the properties include \"instance of\" as cruise ship. But maybe there's a specific class property. Let me think. The ship \"Carnival Glory\" is part of the Carnival Cruise Line, and the Carnival ships are sometimes classified under specific classes. For example, the Carnival Glory is part of the \"Conquest class\" of ships. But how is this represented in Wikidata?\n\nChecking the \"list\" results again, the triples for Q933950 don't show a class property. Wait, maybe the class is under \"subclass of\" (P279). Let's try that.\n\nAlternatively, maybe the ship's class is listed under a property like \"ship class\" (if such a property exists). The search_property for \"class\" might have missed the exact property. Let me check again.\n\nIn the search_property results, the first entry is \"class (wd:P2308)\". So P2308 is the property for \"class\". Let's try using that. The SPARQL should be something like:\n\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P2308 ?class.\n  ?class rdfs:label ?classLabel.\n  FILTER(LANG(?classLabel) = 'en')\n}\n\nWait, but in the previous steps, when I tried P1840 and P1852, which might not be the correct properties. Let's try P2308, which is the \"class\" property.\n\nSo the correct SPARQL query should use wdt:P2308 as the property. Let me set that up."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-ab6ab5ee296748f1",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?classLabel WHERE { wd:Q933950 wdt:P2308 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 687,
+          "prompt_tokens": 5792,
+          "total_tokens": 6479
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "04289516b5894eb6bc9eb265e947f93c",
+        "message": null,
+        "reasoning": {
+          "id": "9d607e3d49434afb90f1d734c477c131",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". From the previous steps, I've tried using various properties like P1840 and P1852, but those didn't return any results. Then I searched for properties related to \"class\" and found that P2308 might be the right one, but using that also didn't work.\n\nLooking back at the list of properties when I did the search_property for \"class\", the first entry was \"class (wd:P2308 as wdt/p/ps/...)\", which is a bit confusing. Wait, maybe P2308 isn't the correct property for ship class. Let me check the actual Wikidata entries.\n\nWait, the initial list from the search_entity showed that Carnival Glory (Q933950) has an \"instance of\" (P31) as cruise ship (Q39804). But the user is asking for the \"class\" of ship, not the type. In ship terms, \"class\" refers to a specific type or design, like the \"Carnival class\" or something similar. For example, ships of the same class share the same design.\n\nIn Wikidata, the property for ship class might be different. I should check if there's a specific property for ship class. Let me think: for ships, common properties include P2308 (class), but maybe it's P1852? Wait, the previous attempts used P1852 and P1840. Wait, the user is asking for the ship's class, so perhaps it's the \"ship class\" property.\n\nWait, let's check the list from the \"list\" command. The subject Q933950 (Carnival Glory) has various properties. Let me look for a property that might indicate its ship class.\n\nIn the list results, there's \"instance of (wdt:P31) cruise ship (wd:Q39804)\". But that's the general type, not the class. For example, a ship class might be \"Carnival Glory-class\" or something specific.\n\nLooking at the top entity results from the first search, the first entry says \"also known as 'IMO 9198367'\" and \"is instance of cruise ship\". Maybe the ship class is linked via another property.\n\nWait, in Wikipedia, the Carnival Glory is part of the \"Carnival Spirit-class\" or similar. Let me check how this is structured in Wikidata. Alternatively, maybe the property for ship class is P2308.\n\nWait, the search_property for \"class\" gave P2308 as the first candidate, which is called \"class\" with qualifier info. Let's try using that again, but maybe the actual property name is different. Wait, in Wikidata, the property for ship class might be \"ship class\" which is a different property.\n\nWait, maybe I should look up the actual property for ship class. Let me recall: common properties for ships are things like P1852 (ship class), P2308 (class), but maybe it's P1852. Wait, when I tried P1852, it didn't return anything. Let me check.\n\nAlternatively, maybe the ship class is listed under a different property. Let's look at the data from the \"list\" command. For example, looking at the \"object\" column for the subject Q933950, there's no obvious \"ship class\" entry. But maybe it's stored elsewhere.\n\nWait, perhaps the ship class is linked through the \"operator\" or \"builder\". But the user wants the class name, like \"Carnival Glory class\".\n\nWait, another approach: in Wikidata, for the ship Carnival Glory, the property that might indicate its class could be P2308. Let's try to execute the query again with that.\n\nWait, the previous query was: SELECT ?classLabel WHERE { wd:Q933950 wdt:P2308 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }.\n\nBut it returned no results. Maybe the property is not P2308. Let's check the list of properties again.\n\nWait, looking at the search_property results, the second property was \"school class (wd:P7174)\", which is not relevant. Maybe the correct property for ship class is P1852. Wait, I tried P1852 earlier, but let's confirm.\n\nWait, in the list of properties from the search, the first entry is P2308 for \"class\", so maybe that's the right one. But why isn't the query working?\n\nAlternatively, maybe the data isn't there. Let me check the actual Wikidata page for Carnival Glory (Q933950). But since I can't browse, I have to rely on the data provided.\n\nWait, the initial entity search shows that the first alternative is \"Carnival Glory (wd:Q933950)\", which has \"is instance of cruise ship\". But the user wants the class, not the type. The type is \"cruise ship\", but the class would be like \"Carnival Glory-class\" or \"Conquest-class\" or something else.\n\nWait, perhaps the ship class is a subclass of the cruise ship. For example, in Wikidata, the ship class might be a separate entity. Let's think: if Carnival Glory is part of a ship class, then there would be a property linking it to that class entity.\n\nWait, for example, if Carnival Glory is in the \"Carnival Glory-class\", then there's a class entity and the ship has a property pointing to it. The property used for ship classes in Wikidata is often P1852 (ship class), as per some knowledge.\n\nWait, let's try to find if P1852 is the correct property. Let me check the property list on Wikidata. P1852 is \"ship class\" according to some references. So maybe the query should be using P1852.\n\nEarlier, the user tried P1852 with the query \"SELECT ?classLabel WHERE { wd:Q933950 wdt:P1852 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }\", but it returned no results.\n\nWait, maybe the ship class property is not directly linked for this ship. Let me check the list of properties again. The \"list\" command for subject Q933950 shows various properties, but none that look like ship class.\n\nAlternatively, maybe the ship's class is not stored in Wikidata, or it's stored under a different property. Let's try another property. Another common property for ship class is P2121 (ship class), but I'm not sure.\n\nWait, perhaps the correct property is P31 (instance of) but for a subclass of \"ship class\". Wait, that seems different.\n\nWait, maybe the ship is a member of a ship class, which is a different entity. So the ship class entity would have \"instance of ship class\", and the ship would have a property linking to that class.\n\nBut how to find that property? Let's look for the ship class property. Let's try searching for \"ship class\" in the properties.\n\nWait, the user has access to the search_property function. Let me do that again to find the correct property.\n\nWait, earlier, when I searched for \"class\", P2308 came up. Let's try searching for \"ship class\".\n\nBut the user instructions say to use the given functions. So I should call search_property again with query \"ship class\".\n\nWait, the previous search was for \"class\". Let's try \"ship class\".\n\nWait, the user's previous step used search_property with \"class\", so I can try again with \"ship class\".\n\nBut let's proceed. Let's assume that the correct property for ship class is P1852. But since the previous attempts didn't work, maybe there's a typo in the property.\n\nWait, in Wikidata, the property for ship class is actually P1852. Let me confirm that.\n\nYes, looking up (in my mind), P1852 is \"ship class\" in Wikidata. So the query should be using P1852. But earlier, when I used P1852, the query didn't return anything. Maybe the entry for Carnival Glory doesn't have that property filled in. Or perhaps the data is structured differently.\n\nWait, the \"list\" command showed 72 rows for Q933950. Let me check the list again. The properties listed are P31, P373, P18, P646, P856, etc. There's no mention of P1852. So perhaps the ship class is not documented in Wikidata for this entry. But the user is asking for it, so maybe the answer is not available.\n\nAlternatively, maybe the ship class is related to the operator or the builder. For example, Carnival Cruise Line might have a ship class. Wait, the \"operator\" for Carnival Glory is Carnival Cruise Line (Q656554), but I don't know if that's the way to find the class.\n\nAlternatively, the ship's class might be part of the \"model\" or \"subclass\" properties. Wait, another thought: in some cases, the ship class is stored under \"subclass of\" (P279) but that's a bit different.\n\nAlternatively, the \"class\" might be the ship's class name, like \"Carnival Glory Class\", so perhaps it's stored in a different property. Let's check if there's a property like \"ship class name\".\n\nWait, maybe I should look for the class name using the property P2308 (class) again, but with a different approach. Let's try using the property P2308 but perhaps the value is not a label but a different object.\n\nWait, the query uses ?class rdfs:label to get the name, but if there's no label, or the class is not a proper entity, maybe the property isn't set.\n\nAlternatively, maybe the ship class is stored under a different property. Let's try using a different property.\n\nWait, let's think differently. If the ship is a Carnival Glory, perhaps the ship class is the same name. But the user is asking for the class, so the answer would be \"Carnival Glory-class\", but is that the case?\n\nWait, let's check online (though I can't, but as per common knowledge), Carnival Glory is part of the \"Carnival Glory-class\", which is a class of ships. However, in Wikidata, maybe it's under P1852.\n\nAlternatively, maybe the correct property is P407 (ship class) but I'm not sure. Wait, no, P407 is for language.\n\nWait, maybe the problem is that the initial entity search was for \"carnival glory\" which matched the ship, but the ship's ship class is not linked. So the answer might not be in Wikidata. But the user expects an answer, so perhaps I need to use another approach.\n\nWait, the list of properties from \"list\" for the ship shows no ship class. Let's try another function: search_with_filter. For example, find all ships with the ship class.\n\nBut since the user is asking for a specific ship, maybe we can search for ships that belong to a class, but that might not help directly.\n\nWait, another idea: the ship's class might be represented by its ICAO code or IMO number. Wait, the listing shows \"Commons category (wdt:P373) IMO 9198367\". The IMO number is 9198367. But the IMO number is for the vessel, not the class.\n\nWait, ship classes are typically named, like \"Liberation class\", \"Freedom class\", etc. For Carnival Cruise Line, the ships might have class names like \"Carnival Spirit-class\", but the specific ship Carnival Glory might be part of a class named after the ship itself? Or perhaps it's part of the \"Conquest-class\" or \"Serenity-class\".\n\nWait, I recall that Carnival Glory is part of the \"Carnival Glory-class\", but I need to verify via Wikidata.\n\nSince the initial query for P2308 didn't work, and P1852 didn't work, maybe the correct property is something else. Let's try using property search for \"ship class\" to find the correct property.\n\nWait, the user has the search_property function. Let's call that again with \"ship class\" as the query.\n\nSo next step: search_property(kg=\"wikidata\", query=\"ship class\") to get the correct property.\n\nThen, once the correct property is found, try the SPARQL query again."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b9b243916028969d",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "ship class"
+            },
+            "result": "Top 10 property alternatives:\n1. vessel class (wd:P289 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"ship class\"), also known as \"class of vessel\", \"ship class\", \"spacecraft class\", \"submarine class\", \"watercraft class\":\n  - series of vessels or other watercraft built to the same design of which this vessel is a member\n2. vessel (wd:P1876 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"ship\"), also known as \"boat\", \"craft\", \"orbiter\", \"ship\", \"spacecraft\", etc.:\n  - vessel involved in this mission, navigation or event\n3. volume as quantity (wd:P2234 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"tonnage\"), also known as \"fluid capacity\", \"liquid capacity\", \"quantity as volume\", \"spatial volume\", \"tonnage\", etc.:\n  - quantity of three-dimensional space\n4. category for ship name (wd:P7782 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"Commons category for ship name\":\n  - Commons category for a name of a ship\n5. armament (wd:P520 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"ship armament\"), also known as \"armed with\", \"ship armament\", \"weapon\", \"wields\":\n  - equippable weapon item for the subject\n6. pennant number (wd:P879 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"hull number\"), also known as \"hull classification symbol\", \"hull number\", \"pendant number\":\n  - the number or designation associated with individual ships, often painted on the hull\n7. Admiralty number (wd:P3562 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - identifier of lighthouses by United Kingdom Hydrographic Office\n8. yard number (wd:P617 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"hull number\"), also known as \"hull number\":\n  - identifier of a ship assigned by its builder (shipyard)\n9. member of the crew of (wd:P5096 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"crew of\"), also known as \"crewmember of\", \"crew of\", \"member of crew\", \"served aboard\", \"served on\", etc.:\n  - person who has been a member of a crew associated with the ... crew members (P1029), backup or reserve team or crew (P3015)\n10. IMO ship number (wd:P458 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - identifier for a ship, ship owner or ship manager per the International Maritime Organization"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 2798,
+          "prompt_tokens": 5885,
+          "total_tokens": 8683
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "13fb5e3aba7c4165bd8aedfada55a5bc",
+        "message": null,
+        "reasoning": {
+          "id": "2ae7ce57040543a1a28a6c67d0a8b399",
+          "content": "Okay, let's see. The user is asking \"what class of ship is the carnival glory\". From the previous steps, I've tried using various properties like P1840, P1852, and P2308, but none of those returned results. Then I searched for the property \"ship class\" and found that vessel class (P289) seems relevant.\n\nEarlier, when I used the list function on wd:Q933950 (Carnival Glory), I saw that it's a cruise ship under instance of (P31), but the class might be a more specific category. The vessel class property (P289) should link to the class, like \"Carnival Victory-class\" or something similar.\n\nSo, I need to check if P289 is the correct property for the ship class. Let's try executing a SPARQL query using P289. The query should select the class label where Carnival Glory (Q933950) has the vessel class property (P289), then get the label of that class.\n\nWait, in the list results from the subject wd:Q933950, the properties listed include things like instance of, owner, operator, etc., but not vessel class. Maybe the vessel class isn't directly in the main data, but perhaps another property. Let me verify.\n\nWait, in the search_property results for \"ship class\", the first result was vessel class (P289), which is a property that indicates the series of vessels. So, the Carnival Glory should have a value for P289 pointing to the class it belongs to, like the \"Carnival Glory-class\" or something.\n\nSo the correct SPARQL would be:\n\nSELECT ?classLabel WHERE {\n  wd:Q933950 wdt:P289 ?class.\n  ?class rdfs:label ?classLabel.\n  FILTER(LANG(?classLabel) = 'en')\n}\n\nLet me check if that's the right property. The user's question is about the class of ship, which in nautical terms is often called the \"vessel class\" or \"ship class\". So P289 is the correct property here.\n\nEarlier attempts used other properties (P1840, P1852, P2308) which didn't return results, but P289 is the vessel class. Let me execute this query."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a54caf3c2840b121",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?classLabel WHERE { wd:Q933950 wdt:P289 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }"
+            },
+            "result": "Got 1 row and 1 column:\n| classLabel                           |\n| ------------------------------------ |\n| Conquest-class cruise ship (lang:en) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 591,
+          "prompt_tokens": 6689,
+          "total_tokens": 7280
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "46e025f01a39469d94b743bd0f1fac3f",
+        "message": "{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?classLabel WHERE { wd:Q933950 wdt:P289 ?class. ?class rdfs:label ?classLabel. FILTER(LANG(?classLabel) = 'en') }\", \"answer\": \"Conquest-class\"}}",
+        "reasoning": {
+          "id": "18c1272758034600931eff1ef1eaadec",
+          "content": "Okay, let's see. The user asked, \"what class of ship is the carnival glory.\" So I need to find the ship class for Carnival Glory.\n\nFirst, I used search_entity to look up \"carnival glory\" on Wikidata. The top result was wd:Q933950, which is listed as a cruise ship built in 2003. That's a good start.\n\nThen I tried to find the class using wdt:P1840, but that didn't return any results. Maybe that's not the right property. Next, I checked the list of properties for the entity. The list showed that Carnival Glory is an instance of cruise ship (wd:Q39804), but that's the general category, not the specific ship class.\n\nI tried searching for \"class\" as a property and found wdt:P2308, but using that with the entity also didn't give results. Then I searched for \"ship class\" and found vessel class (wd:P289) as a relevant property. \n\nI ran a query with wdt:P289 and got the answer: Conquest-class cruise ship. So the ship class is Conquest-class. The other attempts with different properties didn't work, but this one did. Let me confirm if Conquest-class is the correct class. The answer from the SPARQL query says it's \"Conquest-class cruise ship,\" so that's the specific class. I should format the answer to just the class name, which is Conquest-class."
+        },
+        "tool_calls": [],
+        "usage": {
+          "completion_tokens": 401,
+          "prompt_tokens": 6803,
+          "total_tokens": 7204
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/prop/direct/P1427",
+    "http://www.wikidata.org/prop/direct-normalized/P276",
+    "http://www.wikidata.org/entity/P127",
+    "http://www.wikidata.org/prop/qualifier/P5096",
+    "http://www.wikidata.org/prop/P617",
+    "http://www.wikidata.org/prop/direct-normalized/P740",
+    "http://www.wikidata.org/prop/reference/P276",
+    "http://www.wikidata.org/prop/direct/P31",
+    "http://www.wikidata.org/prop/qualifier/P1427",
+    "http://www.wikidata.org/prop/P740",
+    "http://www.wikidata.org/prop/direct/P1876",
+    "http://www.wikidata.org/entity/P609",
+    "http://www.wikidata.org/prop/qualifier/value/P2234",
+    "http://www.wikidata.org/prop/qualifier/value/P617",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2308",
+    "http://www.wikidata.org/prop/direct/P879",
+    "http://www.wikidata.org/prop/reference/P3562",
+    "http://www.wikidata.org/prop/reference/P1876",
+    "http://www.wikidata.org/prop/reference/value-normalized/P458",
+    "http://www.wikidata.org/prop/statement/P3562",
+    "http://www.wikidata.org/prop/reference/value/P1427",
+    "http://www.wikidata.org/prop/statement/P580",
+    "http://www.wikidata.org/prop/direct-normalized/P5096",
+    "http://www.wikidata.org/prop/qualifier/value/P7174",
+    "http://www.wikidata.org/prop/qualifier/P617",
+    "http://www.wikidata.org/prop/reference/value/P740",
+    "http://www.wikidata.org/prop/reference/value-normalized/P5096",
+    "http://www.wikidata.org/prop/direct/P458",
+    "http://www.wikidata.org/prop/statement/value/P879",
+    "http://www.wikidata.org/prop/statement/value/P458",
+    "http://www.wikidata.org/entity/Q596643",
+    "http://www.wikidata.org/entity/P2043",
+    "http://www.wikidata.org/prop/P7174",
+    "http://www.wikidata.org/prop/P289",
+    "http://www.wikidata.org/prop/qualifier/value/P644",
+    "http://www.wikidata.org/prop/reference/value-normalized/P7174",
+    "http://www.wikidata.org/entity/P458",
+    "http://www.wikidata.org/prop/direct-normalized/P2308",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1876",
+    "http://www.wikidata.org/prop/qualifier/P2234",
+    "http://www.wikidata.org/prop/reference/P289",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2308",
+    "http://www.wikidata.org/prop/reference/P7174",
+    "http://www.wikidata.org/entity/P520",
+    "http://www.wikidata.org/entity/Q1327429",
+    "http://www.wikidata.org/prop/qualifier/value/P7782",
+    "http://www.wikidata.org/prop/statement/value/P617",
+    "http://www.wikidata.org/prop/qualifier/value/P458",
+    "http://www.wikidata.org/prop/statement/value-normalized/P276",
+    "http://www.wikidata.org/entity/Q1044059",
+    "http://www.wikidata.org/prop/direct/P740",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P580",
+    "http://www.wikidata.org/prop/statement/value/P609",
+    "http://www.wikidata.org/prop/statement/value-normalized/P3562",
+    "http://www.wikidata.org/prop/direct/P5096",
+    "http://www.wikidata.org/prop/statement/value-normalized/P879",
+    "http://www.wikidata.org/prop/statement/value/P289",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P289",
+    "http://www.wikidata.org/entity/P856",
+    "http://www.wikidata.org/entity/Q2175638",
+    "http://www.wikidata.org/entity/P7174",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2308",
+    "http://www.wikidata.org/prop/qualifier/value/P5096",
+    "http://www.wikidata.org/prop/statement/P644",
+    "http://www.wikidata.org/prop/reference/value-normalized/P609",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P644",
+    "http://www.wikidata.org/prop/direct/P289",
+    "http://www.wikidata.org/entity/P879",
+    "http://www.wikidata.org/entity/Q16982150",
+    "http://www.wikidata.org/prop/P2308",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1568",
+    "http://www.wikidata.org/prop/direct/P793",
+    "http://www.wikidata.org/prop/reference/P644",
+    "http://www.wikidata.org/prop/direct-normalized/P1568",
+    "http://www.wikidata.org/prop/qualifier/value/P580",
+    "http://www.wikidata.org/prop/reference/value/P2234",
+    "http://www.wikidata.org/prop/qualifier/P1876",
+    "http://www.wikidata.org/prop/direct-normalized/P609",
+    "http://www.wikidata.org/prop/P1027",
+    "http://www.wikidata.org/prop/statement/value/P2234",
+    "http://www.wikidata.org/entity/Q1532152",
+    "http://commons.wikimedia.org/wiki/Special:FilePath/Carnival%20glory3.jpg",
+    "http://www.wikidata.org/prop/direct-normalized/P644",
+    "http://www.wikidata.org/prop/reference/value/P879",
+    "http://www.wikidata.org/prop/direct-normalized/P3562",
+    "http://www.wikidata.org/prop/qualifier/P879",
+    "http://www.wikidata.org/prop/reference/value/P609",
+    "http://www.wikidata.org/entity/P176",
+    "http://www.wikidata.org/prop/direct/P856",
+    "http://www.wikidata.org/prop/direct-normalized/P617",
+    "http://www.wikidata.org/prop/reference/value/P1568",
+    "http://www.wikidata.org/prop/qualifier/P7174",
+    "http://www.wikidata.org/prop/statement/value/P1027",
+    "http://www.wikidata.org/prop/statement/P2234",
+    "http://www.wikidata.org/prop/direct/P520",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1027",
+    "http://www.wikidata.org/prop/statement/P520",
+    "http://www.wikidata.org/prop/statement/value/P520",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P3562",
+    "http://www.wikidata.org/prop/statement/value/P2308",
+    "http://www.wikidata.org/prop/statement/value/P276",
+    "http://www.wikidata.org/prop/qualifier/P580",
+    "http://www.wikidata.org/prop/reference/value/P2308",
+    "http://www.wikidata.org/prop/direct/P137",
+    "http://www.wikidata.org/prop/reference/value-normalized/P580",
+    "http://www.wikidata.org/prop/reference/P580",
+    "http://www.wikidata.org/prop/statement/P609",
+    "http://www.wikidata.org/prop/statement/P1027",
+    "http://www.wikidata.org/prop/qualifier/P289",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1876",
+    "http://www.wikidata.org/prop/qualifier/value/P520",
+    "http://www.wikidata.org/prop/direct-normalized/P7782",
+    "http://www.wikidata.org/entity/P1427",
+    "http://www.wikidata.org/prop/direct/P176",
+    "http://www.wikidata.org/prop/P1568",
+    "http://www.wikidata.org/prop/qualifier/value/P1568",
+    "http://www.wikidata.org/prop/statement/P276",
+    "http://www.wikidata.org/prop/direct/P3562",
+    "http://www.wikidata.org/prop/direct-normalized/P289",
+    "http://www.wikidata.org/prop/reference/value/P276",
+    "http://www.wikidata.org/prop/statement/value/P7174",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2234",
+    "http://www.wikidata.org/prop/P609",
+    "http://www.wikidata.org/prop/qualifier/value/P276",
+    "http://www.wikidata.org/prop/reference/value/P644",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2234",
+    "http://www.wikidata.org/prop/P5096",
+    "http://www.wikidata.org/entity/P31",
+    "http://www.wikidata.org/prop/P1876",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P5096",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2234",
+    "http://www.wikidata.org/prop/qualifier/P740",
+    "http://www.wikidata.org/prop/statement/value/P644",
+    "http://www.wikidata.org/prop/P644",
+    "http://www.wikidata.org/prop/reference/value/P3562",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1027",
+    "http://www.wikidata.org/prop/qualifier/value/P289",
+    "http://www.wikidata.org/entity/P18",
+    "http://www.wikidata.org/entity/P3562",
+    "http://www.wikidata.org/prop/qualifier/value/P609",
+    "http://www.wikidata.org/prop/reference/value/P289",
+    "http://www.wikidata.org/entity/P617",
+    "http://www.wikidata.org/prop/statement/value-normalized/P458",
+    "http://www.wikidata.org/prop/qualifier/P1568",
+    "http://www.wikidata.org/entity/P2234",
+    "http://www.wikidata.org/prop/qualifier/P644",
+    "http://www.wikidata.org/prop/qualifier/value/P1027",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P609",
+    "http://www.wikidata.org/prop/direct/P18",
+    "http://www.wikidata.org/prop/qualifier/P458",
+    "http://www.wikidata.org/prop/direct/P373",
+    "http://www.wikidata.org/prop/direct-normalized/P1427",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P879",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P740",
+    "http://www.wikidata.org/entity/P646",
+    "http://www.wikidata.org/prop/qualifier/value/P2308",
+    "http://www.wikidata.org/entity/P5096",
+    "http://www.wikidata.org/prop/direct/P276",
+    "http://www.wikidata.org/prop/P3562",
+    "http://www.wikidata.org/prop/reference/P7782",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1027",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P7782",
+    "http://www.wikidata.org/entity/P276",
+    "http://www.wikidata.org/prop/statement/P1568",
+    "http://www.wikidata.org/prop/direct/P617",
+    "http://www.wikidata.org/entity/P373",
+    "http://www.wikidata.org/prop/reference/value-normalized/P7782",
+    "http://www.wikidata.org/entity/P2308",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1427",
+    "http://www.wikidata.org/prop/direct-normalized/P580",
+    "http://www.wikidata.org/prop/direct/P7174",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1427",
+    "http://www.wikidata.org/prop/reference/value/P520",
+    "http://www.wikidata.org/prop/statement/value-normalized/P7782",
+    "http://www.wikidata.org/prop/statement/P617",
+    "http://www.wikidata.org/prop/statement/P1427",
+    "http://www.wikidata.org/prop/statement/value-normalized/P617",
+    "http://www.wikidata.org/prop/statement/P7174",
+    "http://www.wikidata.org/entity/Q5571553",
+    "http://www.wikidata.org/prop/direct/P580",
+    "http://www.wikidata.org/prop/reference/value/P7782",
+    "http://www.wikidata.org/entity/Q664917",
+    "http://www.wikidata.org/prop/reference/value/P580",
+    "http://www.wikidata.org/prop/direct-normalized/P879",
+    "http://www.wikidata.org/prop/direct-normalized/P2234",
+    "http://www.wikidata.org/entity/Q11221667",
+    "http://www.wikidata.org/prop/reference/P458",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P7174",
+    "http://www.wikidata.org/prop/qualifier/value/P3562",
+    "http://www.wikidata.org/prop/reference/P2308",
+    "http://www.wikidata.org/prop/statement/P1876",
+    "http://www.wikidata.org/prop/reference/value/P617",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P276",
+    "http://www.wikidata.org/entity/Q1526793",
+    "http://www.wikidata.org/entity/P1027",
+    "http://www.wikidata.org/prop/P2234",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1568",
+    "http://www.wikidata.org/prop/P276",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1568",
+    "http://www.wikidata.org/prop/direct/P646",
+    "http://www.wikidata.org/prop/reference/P1568",
+    "http://www.wikidata.org/entity/P740",
+    "http://www.wikidata.org/prop/P1427",
+    "http://www.wikidata.org/prop/reference/value/P458",
+    "http://www.wikidata.org/prop/statement/value/P580",
+    "http://www.wikidata.org/prop/statement/value/P5096",
+    "http://www.wikidata.org/prop/direct/P644",
+    "http://www.wikidata.org/entity/P289",
+    "http://www.wikidata.org/prop/direct/P2043",
+    "http://www.wikidata.org/prop/reference/value-normalized/P289",
+    "http://www.wikidata.org/prop/statement/P2308",
+    "http://www.wikidata.org/prop/statement/value/P1876",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P458",
+    "http://www.wikidata.org/prop/reference/P5096",
+    "http://www.wikidata.org/prop/reference/P617",
+    "http://www.wikidata.org/prop/direct/P127",
+    "http://www.wikidata.org/prop/direct-normalized/P1876",
+    "http://www.wikidata.org/prop/statement/P289",
+    "http://www.wikidata.org/prop/statement/value-normalized/P289",
+    "http://www.wikidata.org/prop/qualifier/P2308",
+    "http://www.wikidata.org/prop/qualifier/value/P1876",
+    "http://www.wikidata.org/prop/P7782",
+    "http://www.wikidata.org/prop/statement/value/P3562",
+    "http://www.wikidata.org/prop/reference/value-normalized/P3562",
+    "http://www.wikidata.org/prop/reference/value-normalized/P617",
+    "http://www.wikidata.org/prop/statement/P740",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1427",
+    "http://www.wikidata.org/entity/Q5571999",
+    "http://www.wikidata.org/prop/reference/P1027",
+    "http://www.wikidata.org/entity/P644",
+    "http://www.wikidata.org/prop/direct/P1568",
+    "http://www.wikidata.org/prop/statement/value-normalized/P520",
+    "http://www.wikidata.org/prop/statement/value-normalized/P644",
+    "http://www.wikidata.org/prop/reference/P879",
+    "http://www.wikidata.org/prop/qualifier/P3562",
+    "http://www.wikidata.org/prop/reference/value/P5096",
+    "http://www.wikidata.org/prop/reference/value/P7174",
+    "http://www.wikidata.org/prop/reference/value-normalized/P644",
+    "http://www.wikidata.org/prop/statement/value-normalized/P7174",
+    "http://www.wikidata.org/prop/statement/value/P1427",
+    "http://www.wikidata.org/prop/reference/P2234",
+    "http://www.wikidata.org/prop/reference/value-normalized/P276",
+    "http://www.wikidata.org/prop/qualifier/P7782",
+    "http://www.wikidata.org/prop/P580",
+    "http://www.wikidata.org/prop/statement/value-normalized/P580",
+    "http://www.wikidata.org/prop/reference/P740",
+    "http://www.wikidata.org/prop/qualifier/P609",
+    "http://www.wikidata.org/prop/qualifier/P276",
+    "http://www.wikidata.org/prop/reference/value/P1027",
+    "http://www.wikidata.org/prop/direct/P7782",
+    "http://www.wikidata.org/prop/statement/value/P7782",
+    "http://www.wikidata.org/entity/P1876",
+    "http://www.wikidata.org/entity/P1568",
+    "http://www.wikidata.org/prop/P520",
+    "http://www.wikidata.org/prop/direct/P2234",
+    "http://www.wikidata.org/entity/P7782",
+    "http://www.wikidata.org/prop/qualifier/value/P1427",
+    "http://www.wikidata.org/prop/direct/P609",
+    "http://www.wikidata.org/prop/statement/value/P1568",
+    "http://www.wikidata.org/prop/statement/value-normalized/P609",
+    "http://www.wikidata.org/entity/P137",
+    "http://www.wikidata.org/prop/qualifier/P1027",
+    "http://www.wikidata.org/prop/direct-normalized/P1027",
+    "http://www.wikidata.org/prop/reference/value-normalized/P740",
+    "http://www.wikidata.org/entity/Q656554",
+    "http://www.wikidata.org/prop/reference/P609",
+    "http://www.wikidata.org/prop/P879",
+    "http://www.wikidata.org/prop/qualifier/value/P879",
+    "http://www.wikidata.org/prop/reference/P520",
+    "http://www.wikidata.org/prop/statement/value-normalized/P5096",
+    "http://www.wikidata.org/prop/statement/P458",
+    "http://www.wikidata.org/entity/Q933950",
+    "http://www.wikidata.org/prop/direct-normalized/P458",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P617",
+    "http://www.wikidata.org/entity/Q83956121",
+    "http://www.wikidata.org/prop/direct/P1027",
+    "http://www.wikidata.org/prop/P458",
+    "http://www.wikidata.org/prop/reference/value-normalized/P520",
+    "http://www.wikidata.org/prop/statement/value/P740",
+    "https://www.carnival.com/cruise-ships/carnival-glory.aspx",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1876",
+    "http://www.wikidata.org/prop/direct-normalized/P520",
+    "http://www.wikidata.org/prop/statement/value-normalized/P740",
+    "http://www.wikidata.org/prop/statement/P7782",
+    "http://www.wikidata.org/prop/reference/P1427",
+    "http://www.wikidata.org/prop/reference/value-normalized/P879",
+    "http://www.wikidata.org/prop/qualifier/value/P740",
+    "http://www.wikidata.org/prop/direct/P2308",
+    "http://www.wikidata.org/prop/qualifier/P520",
+    "http://www.wikidata.org/entity/P793",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P520",
+    "http://www.wikidata.org/entity/Q39804",
+    "http://www.wikidata.org/prop/direct-normalized/P7174",
+    "http://www.wikidata.org/prop/statement/P5096",
+    "http://www.wikidata.org/entity/P580",
+    "http://www.wikidata.org/prop/statement/P879",
+    "http://www.wikidata.org/prop/reference/value/P1876"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/NQ_table_test_simple.csv",
+  "row_index": 881,
+  "question": "what class of ship is the carnival glory",
+  "reference_answer": "Conquest-class cruise ship"
+}
