@@ -1,0 +1,378 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wdt: <http://www.wikidata.org/prop/direct/>\nPREFIX pq: <http://www.wikidata.org/prop/qualifier/>\nPREFIX ps: <http://www.wikidata.org/prop/statement/>\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX p: <http://www.wikidata.org/prop/>\nSELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370 .\n  wd:Q260725 p:P166 ?statement .\n  ?statement ps:P166 wd:Q604370 .\n  ?statement pq:P585 ?date .\n  BIND(YEAR(?date) AS ?year)\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- Megan Rapinoe (wd:Q260725), also known as \"Megan Anna Rapinoe\", \"Pinoe\":\n  - American soccer player\n  - has occupation actor\n  - has occupation association football player\n  - has occupation entrepreneur\n  - is instance of human\n- Time 100 (wd:Q604370), also known as \"TIME 100\", \"Time 100 most influential people in the world\", \"TIME's 100 Most Influential People\", \"World's Most Influential People\":\n  - is instance of award\n  - is instance of hectad\n  - Time Magazine's annual listing of 100 influential people\n\nUsing properties:\n- award received (wd:P166 as p/ps/wdt), also known as \"award\", \"awarded\", \"awards\", \"awards received\", \"award won\", etc.:\n  - award or recognition received by a person, organization or creative work\n- point in time (wd:P585 as pq), also known as \"as of\", \"at time\", \"by date\", \"date\", \"during\", etc.:\n  - date something took place, existed or a statement was true; for providing time use the \"refine date\" property (P4241)",
+    "result": "Got 1 row and 1 column:\n| year           |\n| -------------- |\n| 2022 (xsd:int) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "2022",
+    "formatted": "2022\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nPREFIX pq: <http://www.wikidata.org/prop/qualifier/>\nPREFIX ps: <http://www.wikidata.org/prop/statement/>\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX p: <http://www.wikidata.org/prop/>\nSELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370 .\n  wd:Q260725 p:P166 ?statement .\n  ?statement ps:P166 wd:Q604370 .\n  ?statement pq:P585 ?date .\n  BIND(YEAR(?date) AS ?year)\n}\n```\n\nUsing entities:\n- Megan Rapinoe (wd:Q260725), also known as \"Megan Anna Rapinoe\", \"Pinoe\":\n  - American soccer player\n  - has occupation actor\n  - has occupation association football player\n  - has occupation entrepreneur\n  - is instance of human\n- Time 100 (wd:Q604370), also known as \"TIME 100\", \"Time 100 most influential people in the world\", \"TIME's 100 Most Influential People\", \"World's Most Influential People\":\n  - is instance of award\n  - is instance of hectad\n  - Time Magazine's annual listing of 100 influential people\n\nUsing properties:\n- award received (wd:P166 as p/ps/wdt), also known as \"award\", \"awarded\", \"awards\", \"awards received\", \"award won\", etc.:\n  - award or recognition received by a person, organization or creative work\n- point in time (wd:P585 as pq), also known as \"as of\", \"at time\", \"by date\", \"date\", \"during\", etc.:\n  - date something took place, existed or a statement was true; for providing time use the \"refine date\" property (P4241)\n\nExecution result:\nGot 1 row and 1 column:\n| year           |\n| -------------- |\n| 2022 (xsd:int) |"
+  },
+  "elapsed": 56.861467,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "In what year was Megan Rapinoe named one of Time Magazine's 100 most influential people"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "adcf4be4cdfc4945b922aa533fb618ab",
+        "message": null,
+        "reasoning": {
+          "id": "409724f94bb44c1090e8f071ab3b041a",
+          "content": "Okay, let's tackle this question: \"In what year was Megan Rapinoe named one of Time Magazine's 100 most influential people?\"\n\nFirst, I need to figure out the year Megan Rapinoe was listed in Time's 100 most influential people. To do this, I should use Wikidata since it's a knowledge graph that includes such information.\n\nStep 1: Identify the entity for Megan Rapinoe. I'll use the search_entity function to find her Wikidata ID. The query would be \"Megan Rapinoe\".\n\nCall search_entity(kg=\"wikidata\", query=\"Megan Rapinoe\"). Let's see what comes up. The search should return her entity, probably something like Q20865261.\n\nAssuming that works, then I need to find the property that links her to Time's 100 most influential people. I'll search for the relevant property. The question is about being named one of Time's 100, so the property might be related to awards or lists. In Wikidata, the property for being listed in Time 100 is often p:P1933 (listed in Time 100 list).\n\nWait, but I should confirm. Maybe using search_property to look for \"Time 100\" or \"100 most influential people\".\n\nAlternatively, check the entity's properties. After getting Megan Rapinoe's ID, I can look up her properties to see which one corresponds to Time 100.\n\nBut first, let's get her entity ID. Let's proceed step by step.\n\nFirst, search for the entity. Let's call search_entity with \"Megan Rapinoe\". Let's say the result is wd:Q20865261. Now, check her properties. Maybe use search_property_of_entity(kg=\"wikidata\", entity=\"wd:Q20865261\", query=\"Time 100\").\n\nAlternatively, use list(kg=\"wikidata\", subject=\"wd:Q20865261\") to see her properties. But since the list function might not show the property IDs, maybe better to use search_property_of_entity.\n\nWait, the problem is that in Wikidata, being named to Time 100 is an instance of a statement. So the property would be something like P1933 (listed in the Time 100 people). Let me confirm that. Let me think: P1933 is \"time 100 list\" in Wikidata. Yes, from past knowledge, P1933 is the property for being listed in Time magazine's 100 most influential people.\n\nSo, the plan is:\n\n1. Find Megan Rapinoe's Wikidata ID using search_entity.\n2. Find the statement where her ID has property P1933.\n3. The value of that statement is the year, which is a year (so maybe a time-based value).\n\nWait, but the year would be part of the statement. Wait, no. The Time 100 list is an annual list. So, the statement would be \"Megan Rapinoe was listed in Time 100 [year]\". So the year would be the value of the statement. Wait, but P1933 is the property that points to the Time 100 list, but the year might be in another property. Wait, maybe I'm confused here.\n\nWait, the property P1933 is \"Time 100 list\" (Q922722), which is the list itself. But each entry in the list would have a year associated. So perhaps the statement would be something like:\n\nwd:Q20865261 p:P1933 [some qualifier with a year].\n\nAlternatively, the date might be captured with a different property. Wait, perhaps the Time 100 entry's year is a qualifier on the statement. So the correct approach would be to get the statement where the subject is Megan Rapinoe, the property is P1933 (Time 100 list), and then look for a qualifier that gives the year.\n\nWait, let's check. In Wikidata, the Time 100 entry for a person would typically have a statement with the property as P1933 (Time 100 list) and the value as the Time 100 list entity (Q922722), but then to get the year, we need the qualifier, which is often done via a qualifier like P585 (point in time) or P806 (date).\n\nWait, perhaps the Time 100 list is considered a list that's published each year, so the entry would have the year as part of the qualifier. Let's assume that.\n\nSo the query would be:\n\nSELECT ?year WHERE {\n  wd:Q20865261 wdt:P1933 ?list.\n  ?list wdt:P585 ?year.\n}\n\nWait, but actually, the qualifier on the statement would use the qualifier property. So, the main statement is subject (Megan) property (P1933) object (Time 100 list entity), but the year would be attached as a qualifier to the statement. So the correct SPARQL might be:\n\nSELECT ?year WHERE {\n  wd:Q20865261 p:P1933 ?statement.\n  ?statement ps:P1933 wd:Q922722.\n  ?statement pq:P585 ?year.\n}\n\nWait, but I need to confirm what property is used for the year. Let's think: The qualifier for the year in Time 100 is probably P585 (point in time). Let's assume that for now.\n\nBut maybe first, I should get the entity for Megan Rapinoe.\n\nLet's first use search_entity to find her ID.\n\nCalling search_entity with \"Megan Rapinoe\" on Wikidata.\n\nAssuming that returns Q20865261. Then, to check her properties, maybe use list(kg=\"wikidata\", subject=\"wd:Q20865261\", property=\"wdt:P1933\") to see if she has that property. Wait, but the list function may not be the best. Alternatively, use search_property_of_entity.\n\nWait, the process is: first find the entity, then find the right property.\n\nBut since I can't actually run the tools yet, I have to proceed with the thinking.\n\nSo, step 1: Find Megan Rapinoe's ID.\n\nStep 2: Look for the property that links her to Time 100.\n\nAssuming that property is P1933, and then the year is in another property.\n\nWait, another way: check if there's a statement with P1933 (Time 100 list) and then the year is in the qualifier.\n\nAlternatively, use the property wd:P1933, which points to the item Q922722 (Time 100 list). Wait, no. The property P1933 is the \"Time 100 list\" property, so the statement would have as value the specific year's list. Wait, perhaps each entry in the list is a different year, so the qualifier P585 (point in time) would have the year. So, the correct query would use the qualifier.\n\nAnother approach: search for the entity \"Time 100\" to find that the list is part of a series. But maybe easier to just construct the SPARQL assuming the standard structure.\n\nSo, SPARQL structure:\n\nSELECT ?year WHERE {\n  wd:Q20865261 p:P1933 ?statement.\n  ?statement ps:P1933 ?time100.\n  ?statement pq:P585 ?year.\n}\n\nWait, no. The property P1933 is the statement property. Wait, no: wd:P1933 is the property that links a person to being in the Time 100 list for a certain year. Wait, perhaps in Wikidata, to get the year, the structure would be:\n\n- The person's statement for P1933 has a qualifier P585 (point in time) which gives the year.\n\nSo, the SPARQL for that would be:\n\nSELECT ?year WHERE {\n  wd:Q20865261 wdt:P1933 ?statement.\n  ?statement wdt:P585 ?year.\n}\n\nBut I'm not sure. Wait, the standard SPARQL for such a pattern is:\n\nSELECT ?year\nWHERE {\n  wd:Q20865261 p:P1933 ?statement.\n  ?statement ps:P1933 wd:Q922722.  # if the value of the statement is the Time 100 list\n  ?statement pq:P585 ?year.\n}\n\nWait, this is getting complicated. Let's take a step back.\n\nLooking up the real data: In Wikidata, Megan Rapinoe (Q20865261) has a statement that she was listed in Time 100. Checking her page, for example, she was listed in 2019. So the year should be 2019.\n\nBut for the query, we need to get that year.\n\nAssuming that the Time 100 list entry in Wikidata uses P1933 as the property, and the qualifier P585 for the year.\n\nSo, the correct SPARQL would be:\n\nSELECT ?year\nWHERE {\n  wd:Q20865261 p:P1933 ?statement.\n  ?statement ps:P1933 wd:Q922722.\n  ?statement pq:P585 ?year.\n}\n\nBut wait, the Time 100 list is a specific item (Q922722), so the statement's value (ps:P1933) should be that item. Wait, no. The value of the statement (ps:P1933) would be the list entry, but in Wikidata, the \"Time 100 list\" is a series. The specific year's Time 100 list is a different item. So perhaps the value (ps:P1933) is a specific year entry, but I think it's not.\n\nAlternatively, maybe the Time 100 list is represented as a single item (Q922722), and each year's list is a qualifier. So the statement is for the person (Megan) with P1933 (Time 100 list), and the qualifier for the year.\n\nAlternatively, the value of the property P1933 would be the year. Wait, but P1933 is a property that links to the Time 100 list, not the year. So the year is probably a qualifier.\n\nSo the correct way is:\n\nSELECT ?year\nWHERE {\n  wd:Q20865261 p:P1933 ?statement.\n  ?statement pq:P585 ?year.\n}\n\nBut perhaps to ensure that the Time 100 list is correct, we should have the value (ps:P1933) as the item Q922722. Let's confirm with a real example.\n\nLet's look up a known entry. For example, Lady Gaga was listed in Time 100. Her Wikidata page: Q613563. Checking her statements, under 'Listed in Time 100 people' (P1933), the qualifier is P585 (point in time) with the year 2008.\n\nSo the SPARQL for her would be:\n\nSELECT ?year WHERE {\n  wd:Q613563 p:P1933 ?statement.\n  ?statement pq:P585 ?year.\n}\n\nBut in her case, the value (ps:P1933) would be set to the Time 100 list entity. However, since there might be many entries, perhaps the ps:P1933 value is Q922722 (the Time 100 list), which means that the statement is for being included in the Time 100 list, and the year is a qualifier.\n\nWait, but if all Time 100 entries have the same value (Q922722) for the property P1933, then we don't need to check that value. We just need the qualifier. So the simpler query would be:\n\nSELECT ?year\nWHERE {\n  wd:Q20865261 p:P1933 ?statement.\n  ?statement pq:P585 ?year.\n}\n\nBut to be safe, maybe we should also check that the statement's value (ps:P1933) is Q922722. However, in practice, the entry for Megan Rapinoe would have that, so including it would prevent false positives.\n\nBut for the sake of the query, perhaps the first version is sufficient.\n\nNow, the challenge is to get Megan Rapinoe's ID. Let's proceed step by step using the tools.\n\nFirst, search_entity for \"Megan Rapinoe\" to get her ID."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-87996d250a61d167",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "Megan Rapinoe"
+            },
+            "result": "Top 10 entity alternatives:\n1. Megan Rapinoe (wd:Q260725), also known as \"Megan Anna Rapinoe\", \"Pinoe\":\n  - American soccer player\n  - has occupation actor\n  - has occupation association football player\n  - has occupation entrepreneur\n  - is instance of human\n2. Pod Save America - \"Megan Rapinoe!!!\" (BONUS episode) (wd:Q109654662, matched via \"\"Megan Rapinoe!!!\" (BONUS episode)\"), also known as \"\"Megan Rapinoe!!!\" (BONUS episode)\":\n  - is instance of podcast episode\n  - podcast episode of Pod Save America\n3. Megan Rain (wd:Q24450343), also known as \"Kiana Coleman\", \"Megan Rains\", \"Megan Reins\":\n  - American pornographic actress\n  - has occupation pornographic actor\n  - is instance of human\n4. Megan B. Marine (wd:Q87217816, matched via \"Megan Marine\"), also known as \"Megan Marine\":\n  - associate professor of clinical radiology & imaging sciences\n  - has occupation researcher\n  - has occupation university teacher\n  - is instance of human\n5. Megan B Marine (wd:Q92691092, matched via \"Megan Marine\"), also known as \"Megan Marine\":\n  - has occupation researcher\n  - is instance of human\n  - researcher (ORCID 0000-0003-0656-3157)\n6. Jean Racine (wd:Q742), also known as \"Jean Baptiste Racine\", \"Jean-Baptiste Racine\", \"Racine\":\n  - French dramatist (1639-1699)\n  - has occupation historian\n  - has occupation librettist\n  - has occupation playwright\n  - has occupation poet\n  - has occupation translator\n  - has occupation writer\n  - is instance of human\n7. Meghan Trainor (wd:Q17403494), also known as \"Meghan Elizabeth Trainor\":\n  - American singer-songwriter (born 1993)\n  - has occupation composer\n  - has occupation musician\n  - has occupation record producer\n  - has occupation singer\n  - has occupation singer-songwriter\n  - has occupation television personality\n  - is instance of human\n8. Jean Raine (wd:Q1132644), also known as \"Jean Geenen\", \"Jean Raine (ps.)\":\n  - Belgian painter, poet, writer and film maker (1927-1986)\n  - has occupation filmmaker\n  - has occupation painter\n  - has occupation poet\n  - has occupation writer\n  - is instance of human\n9. Egan Range (wd:Q5347682):\n  - is instance of mountain range\n  - mountain range in White Pine and Lincoln counties in Nevada, United States\n10. Megan Mylan (wd:Q6808722):\n  - American filmmaker\n  - has occupation documentary filmmaker\n  - has occupation film director\n  - is instance of human"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 2910,
+          "prompt_tokens": 3762,
+          "total_tokens": 6672
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "6bf5d06d20f24334b32ae2eae2850fa6",
+        "message": null,
+        "reasoning": {
+          "id": "2a4b1bb44e484a1e8418b514c8187eed",
+          "content": "Okay, let's tackle this question: \"In what year was Megan Rapinoe named one of Time Magazine's 100 most influential people?\"\n\nFirst, I need to find Megan Rapinoe's Wikidata entry. The user already used search_entity for \"Megan Rapinoe\" and the top result is wd:Q260725. Let's check that entity.\n\nNow, I need to find when she was named to Time's 100 most influential people. So, I should look for a property on her Wikidata page that refers to \"Time 100\" or similar. The Time 100 is a list published by Time Magazine, so the relevant property might be something like \"Time 100 list\" or \"Time 100 honoree\".\n\nIn Wikidata, the property for being on the Time 100 list is usually under a specific property ID. Common properties for lists like this are related to \"list\" or \"honoree\". Let's recall some standard properties. For example, the property for being named in Time's 100 Most Influential People might be p:P31 (instance of) but more likely a specific statement.\n\nWait, in Wikidata, the entry for Time 100 honorees often uses the property wdt:P135 (member of) or another specific property. Alternatively, it might be a reference to the list via a property like \"Time 100 honoree\". Let me check the actual Wikidata structure.\n\nBut since I can't browse, I need to think. Let's try to find the relevant property. The standard way is to look for statements on her page. For example, using the search_property function for \"Time 100\" to find the correct property ID.\n\nSo, next step: Use search_property with query \"Time 100\" to find the correct property.\n\nWait, but the user hasn't done that yet. So my next action should be to call search_property with query \"Time 100\" to find the property ID.\n\nWait, but the current step is after finding Megan Rapinoe's entity. Now, I need to find the property that indicates she was listed in Time's 100 most influential people.\n\nSo, let's use search_property function to find properties related to \"Time 100\".\n\nThen, once I have the property ID (like, perhaps, wdt:P143), I can look for statements where her entity (wd:Q260725) has that property, and the value would be the year or a reference to the list.\n\nWait, but the Time 100 list is released annually, so the year would be part of the statement. For example, the statement might have a date (via wdt:P585) or the year in the value (if it's a numeric value).\n\nAlternatively, the property might be \"named in Time 100\", and the year is specified via a qualifier.\n\nLet me outline the steps:\n\n1. Search for the property related to \"Time 100\" in Wikidata.\n2. Once the property ID is found, query the SPARQL to get the value (year) for Megan Rapinoe's entry.\n\nSo first, let's call search_property with \"Time 100\"."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a3aa7035145196d2",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "Time 100"
+            },
+            "result": "Top 10 property alternatives:\n1. HowLongToBeat ID (wd:P2816 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"How Long to Beat\"), also known as \"HLTB\", \"How Long to Beat\", \"time to complete video game\":\n  - identifier of a video game at the website HowLongToBeat\n2. record held (wd:P1000 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P1000\"):\n  - notable record achieved by a person or entity, include qualifiers for dates held\n3. Research Vocabularies Australia ID (wd:P10000 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P10000\"), also known as \"Australian Research Vocabularies ID\", \"Research Vocabularies Australia identifier\", \"RVA ID\":\n  - identifier of a vocabulary in Research Vocabularies Australia\n4. signature (wd:P109 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P109\"), also known as \"autograph\", \"facsimiles\", \"image of signature\", \"signature image\":\n  - image of a person's signature\n5. video (wd:P10 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P10\"), also known as \"animation\", \"audiovisual media\", \"media\", \"trailer\", \"vid\", etc.:\n  - relevant video; use property P18 for images; for film ... video available on Wikimedia Commons\" (Q89347362)\n6. member of political party (wd:P102 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P102\"), also known as \"member of\", \"member of party\", \"party\", \"party membership\", \"political party\", etc.:\n  - the political party of which a person is or has been a member or otherwise affiliated\n7. field of work (wd:P101 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P101\"), also known as \"academic area\", \"academic discipline\", \"academic subject\", \"activity\", \"activity domain\", etc.:\n  - specialization of a person or organization; see P106 for the occupation\n8. Iran statistics ID (wd:P1010 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P1010\"):\n  - identifier for places in Iran\n9. employer (wd:P108 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P108\"), also known as \"employed by\", \"of employer\", \"organisation\", \"organization\", \"worked at\", etc.:\n  - person or organization for which the subject works or worked\n10. MTB Data rider ID (wd:P10190 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"P10190\"), also known as \"mtbdata.com rider ID\":\n  - identifier of a rider on the MTB Data website"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 738,
+          "prompt_tokens": 4517,
+          "total_tokens": 5255
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "07dfc1347f4c4c389a243566de95b62a",
+        "message": null,
+        "reasoning": {
+          "id": "00637abeb6c54ec794b11625ba2f843b",
+          "content": "Okay, let's see. The user is asking for the year Megan Rapinoe was named one of Time Magazine's 100 most influential people.\n\nFirst, I need to confirm the correct entity for Megan Rapinoe. The previous search used \"Megan Rapinoe\" and the first result was wd:Q260725, which is the correct athlete. So that's settled.\n\nNext, I need to find the property that links to Time Magazine's 100 list. The user mentioned \"Time Magazine's 100 most influential people,\" which in Wikidata is likely associated with a specific list entry. The property for \"Time 100\" might be related to an item like \"Time 100\" (wd:Q118401278), but I need to check how it's structured.\n\nWait, the previous search for \"Time 100\" as a property didn't yield the right results. The top properties were things like HowLongToBeat ID, record held, etc., but not related to Time Magazine. So maybe the property isn't \"Time 100\" but rather an instance of a list or a specific list entry in Wikidata.\n\nIn Wikidata, Time Magazine's 100 most influential people would be a list, and being named in it would be a statement like \"position in the list\" or \"list membership.\" The property might be something like \"has part\" or \"member of list,\" but more likely, it's a statement with a reference to the Time 100 list.\n\nLet me think. The Time 100 is an annual list, and each year's list is its own entity. The person would have a statement like \"Time 100 list\" with a qualifier for the year. But how is this structured in Wikidata?\n\nLooking up the entity for Time 100 (wd:Q5342966), which is \"Time 100,\" the property for being a member might be \"Time 100\" (wdt:P1320), but I need to verify. Wait, maybe the property is \"recipient of\" or \"time 100\" as a property.\n\nAlternatively, perhaps the entry for Megan Rapinoe has a statement that she was \"named in Time 100\" with a year as a qualifier. So I need to find the property that indicates she was named on that list.\n\nThe user's question is about the year she was named, so the answer would involve finding the time period or year she was included in the Time 100 list.\n\nLet me use the search_entity to get Megan Rapinoe's Wikidata ID, which we have as Q260725.\n\nThen, I need to find properties related to her being on the Time 100 list. Let's search for properties related to \"Time 100\" again, but maybe more carefully. Wait, the previous search for \"Time 100\" as a property came up with irrelevant things. Maybe the actual property used in Wikidata is a specific one.\n\nAlternatively, perhaps the list is called \"Time 100\" and the property is something like \"Time 100\" (wdt:P1320). Let me check if that's a valid property.\n\nWait, maybe I should look for a property that's used in Wikidata for Time 100. Another approach: search the property using 'Time 100' as the query again, but perhaps the index type might have a better match. But the first search didn't find anything good.\n\nAlternatively, maybe the property is \"member of the Time 100\" which would be represented as a statement where the property is a specific one.\n\nWait, maybe the correct property is \"time 100\" or \"member of Time 100,\" so I should look for the property in Wikidata using search_property with query \"Time 100\" again, but perhaps the system didn't find it because the label is \"Time 100 list\" or something.\n\nWait, in the first property search, the top result was \"HowLongToBeat ID,\" but maybe the property is under a different label. Let me think of similar properties. For example, there's a property called \"Time 100\" in Wikidata. Let me check online, but since I can't, I'll have to rely on the tools.\n\nAlternatively, perhaps the correct way is to use the entity for Time 100 (Q5342966) and find people who are members of that list. But the user wants the year, so the time period for her inclusion.\n\nSo, possible steps:\n\n1. Confirm Megan Rapinoe's Wikidata ID: Q260725.\n\n2. Look for statements where she is a member of the Time 100 list. The property might be \"instance of\" a list membership, but more likely, there's a property like \"Time 100 list\" (wdt:P1320) that points to the specific year's list.\n\nAlternatively, in Wikidata, the Time 100 list for a year is an instance of the list, and individuals can have a property indicating their entry in a particular year.\n\nFor example, the statement might be: Q260725 (Megan) wdt:P1320 Q123456 (Time 100 2021) or similar.\n\nBut I need to find the correct property. Let me try using search_property again with \"Time 100\" but perhaps more precise.\n\nWait, there's another function called search_property_of_entity. Let's use that. Since we have the entity (Q260725), we can search for properties related to \"Time 100\" for that entity.\n\nSo, call search_property_of_entity with kg=wikidata, entity=wd:Q260725, query=\"Time 100\".\n\nThat might return the specific property used in her entry.\n\nLet me structure the next tool call as that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-bc6840968947fb10",
+            "name": "search_property_of_entity",
+            "args": {
+              "kg": "wikidata",
+              "entity": "wd:Q260725",
+              "query": "Time 100"
+            },
+            "result": "Top 10 property alternatives:\n1. occupation (wd:P106 as wdt/p, matched via \"P106\"), also known as \"avocation\", \"career\", \"craft\", \"employ\", \"employment\", etc.:\n  - occupation of a person. See also \"field of work\" ... (Property:P452), \"members have occupation\" (Property:P3989).\n2. Nationale Thesaurus voor Auteursnamen ID (wd:P1006 as wdtn/wdt/p, matched via \"P1006\"), also known as \"data.bibliotheken.nl ID\", \"Dutch National Thesaurus for Author Names ID\", \"Dutch Thesaurus for Author Names ID\", \"Nationale Thesaurus voor Auteurs\", \"National Thesaurus for Author Names ID\", etc.:\n  - identifier for person names (not: works nor organisations) ... Thesaurus for Author names (which also contains non-authors)\n3. BIBSYS ID (wd:P1015 as wdtn/wdt/p, matched via \"P1015\"), also known as \"BARE identifier\", \"Norwegian Authority File: Persons and Corporate Bodies\":\n  - Norwegian Authority File: Persons and Corporate Bodies\n4. Golden ID (wd:P7502 as wdt/p):\n  - ID page in Golden knowledge base\n5. Personality Database profile ID (wd:P10757 as wdt/p, matched via \"P10757\"), also known as \"PDB ID\", \"PDB identifier\", \"PDB profile\", \"PDB profile ID\", \"Personality Database ID\", etc.:\n  - identifier of a human, fictional character, or other entity on the Personality Database website\n6. unmarried partner (wd:P451 as wdt/p, matched via \"P451\"), also known as \"boyfriend\", \"cohabitant\", \"domestic partner\", \"enbyfriend\", \"girlfriend\", etc.:\n  - someone with whom the person is in a relationship without being married. Use \"spouse\" (P26) for married couples\n7. award received (wd:P166 as wdt/p, matched via \"win\"), also known as \"award\", \"awarded\", \"awards\", \"awards received\", \"award won\", etc.:\n  - award or recognition received by a person, organization or creative work\n8. member of sports team (wd:P54 as wdt/p, matched via \"team\"), also known as \"club played for\", \"member of team\", \"of team\", \"part of team\", \"played for\", etc.:\n  - sports teams or clubs that the subject represents or represented\n9. height (wd:P2048 as wdt/p, matched via \"P2048\"), also known as \"depth over terrain\", \"heighth\", \"size\":\n  - vertical length of an entity\n10. Open Library ID (wd:P648 as wdtn/wdt/p, matched via \"OLID\"), also known as \"OL ID\", \"OLID\", \"Open Library author ID\", \"OpenLibrary author ID\", \"Open Library book ID\", etc.:\n  - identifier for a work (\"W\"), edition (\"M\") or author (\"A\") for book data of the Internet Archive"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1353,
+          "prompt_tokens": 5377,
+          "total_tokens": 6730
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "4ccec28979f64475b2248499265b906b",
+        "message": null,
+        "reasoning": {
+          "id": "da676eb7010d4b769d788d9e43c8eeb5",
+          "content": "Okay, let's see. The user is asking for the year Megan Rapinoe was named one of Time Magazine's 100 most influential people.\n\nFirst, I need to find the correct entity for Megan Rapinoe. Earlier, the search_entity result showed \"Megan Rapinoe (wd:Q260725)\" as the top result, so that's the entity to use.\n\nNext, I need to figure out the correct property that connects her to being named in Time's 100 most influential. The user mentioned \"Time Magazine's 100 most influential people,\" which is a specific list. So I should look for a property related to awards or recognitions.\n\nIn the previous search_property_of_entity for \"Time 100,\" the top properties were things like occupation, BIBSYS ID, etc. But none directly related to Time 100. Wait, under the properties, option 7 was \"award received (wd:P166)\" which is for awards. So I should check if the \"Time 100\" list is under awards received.\n\nSo the next step is to check the statements for Megan Rapinoe (Q260725) under the award received property (P166) to see if Time 100 is listed there. If it is, then the year would be a qualifier or part of the statement.\n\nBut since I can't execute a SPARQL query yet, maybe I should use the list function to see what awards are associated with her. Wait, the list tool can be used to find triples where the subject is Q260725 and the property is P166. But the user mentioned using the search_property_of_entity tool. Let me try to use the list function with the entity and property.\n\nWait, the user has already done search_entity and found the entity Q260725, and then search_property_of_entity for \"Time 100\" under her entity. The top property was award received (P166), so the next step is to check if there's a statement for award received with Time 100.\n\nBut since we need the year, the award might have a qualifier like \"award date\" (P585) or something similar. So the plan is:\n\n1. Get all award received statements for Megan Rapinoe (P166).\n2. Filter for the award named \"Time 100\" or related.\n3. Get the year from the qualifier.\n\nSo first, I should get the award received statements. Let's try using the list function with subject=Q260725, property=P166.\n\nWait, the tools available include the \"list\" function. Let's use that to find the relevant award.\n\nSo execute list with kg=wikidata, subject=wd:Q260725, property=wdt:P166.\n\nThat should show her awards. Then we can check if \"Time 100\" is among them. If yes, look for the year.\n\nAlternatively, maybe the time 100 is stored as an award with a specific value. Let's assume that's the case.\n\nSo let's make that tool call."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a82e272cc6fab23c",
+            "name": "list",
+            "args": {
+              "kg": "wikidata",
+              "subject": "wd:Q260725",
+              "property": "wdt:P166"
+            },
+            "result": "Got 7 rows and 3 columns:\n| subject                    | property                  | object                                                    |\n| -------------------------- | ------------------------- | --------------------------------------------------------- |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | BBC 100 Women (wd:Q16153104)                              |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | Sports Illustrated Sportsperson of the Year (wd:Q1653207) |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | Presidential Medal of Freedom (wd:Q17144)                 |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | The Best FIFA Women's Player (wd:Q28196702)               |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | Ballon d'Or Féminin (wd:Q59411480)                        |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | Time 100 (wd:Q604370)                                     |\n| Megan Rapinoe (wd:Q260725) | award received (wdt:P166) | The Guardian Footballer of the Year (wd:Q80650331)        |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 728,
+          "prompt_tokens": 6144,
+          "total_tokens": 6872
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "b91bc9e733244c07a2aca64a4440d62e",
+        "message": null,
+        "reasoning": {
+          "id": "5e32850e127944a6a092eb5fb02c3c31",
+          "content": "Okay, let's see. The user is asking for the year Megan Rapinoe was named to Time Magazine's 100 most influential people. From the previous steps, I found that Megan Rapinoe's entity is wd:Q260725. Then, I searched for the Time 100 property and found that she has an entry under award received (wdt:P166) with the object Time 100 (wd:Q604370).\n\nNow, the next step is to figure out the year she was named to the Time 100 list. The list command showed that she has \"Time 100 (wd:Q604370)\" as one of her awards. But the list doesn't include the year. So I need to find the year associated with that award.\n\nIn Wikidata, awards often have qualifiers, like the year they were awarded. So I should look for the statement where the award is Time 100 and check for a qualifier like \"year\" or \"date\".\n\nThe property for the award year might be a qualifier on the award received statement. The direct property for the award is P166, but the year might be a qualifier, maybe PQ8795 (for award year) or similar. Wait, qualifiers for dates in Wikidata are often using the P585 (point in time) as a qualifier on the statement.\n\nWait, let me think. For example, when a person receives an award, the statement would have the award as the object (P166), and then a qualifier like P585 (date) for when it was awarded.\n\nSo I need to query the statement for Megan Rapinoe's Time 100 award and get the date.\n\nLet me check the SPARQL structure. To get the date, I can use a query like:\n\nSELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370;\n          p:P166 ?statement.\n  ?statement ps:P166 wd:Q604370;\n            pq:P585 ?time.\n  BIND(year(?time) AS ?year)\n}\n\nWait, but first, I need to confirm if the Time 100 entry has a date. Let me see. The Time 100 is an annual list, so each entry would have a year. So in Wikidata, the Time 100 entry should have a qualifier on the award received statement with the year.\n\nAlternatively, maybe the Time 100 list itself has a property for the year. But since it's an annual list, the award received statement for the specific year would have that year.\n\nWait, another way: The Time 100 award might have a statement where the year is part of the award's label or description, but more likely, it's a qualifier on Megan's award statement.\n\nLooking back at the list results, when we did the list command, it showed \"Time 100 (wd:Q604370)\" as the award. So the object of the P166 statement is wd:Q604370, which is the Time 100 list entry.\n\nThen, the actual year would be in the qualifier of that statement. So to get the year, we need to get the time qualifier (P585) for the statement.\n\nSo the correct approach is to get the statement of Megan Rapinoe having award received P166 as Time 100 (wd:Q604370), and then get the qualifier P585.\n\nLet me structure the SPARQL query.\n\nFirst, find the statement for the award, then get the qualifier's value.\n\nThe SPARQL might look like:\n\nSELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370.\n  wd:Q260725 p:P166 ?statement.\n  ?statement ps:P166 wd:Q604370.\n  ?statement pq:P585 ?time.\n  BIND(year(?time) AS ?year)\n}\n\nWait, but P585 is the property for the point in time (date) as a qualifier. So the pq:P585 would be the qualifier.\n\nBut in Wikidata, the qualifiers for date would use the p: property qualifiers. So the correct path would be:\n\nwd:Q260725 p:P166 ?statement.\n?statement ps:P166 wd:Q604370.\n?statement pq:P585 ?date.\n\nThen, to get the year, we might need to use the xsd:gYear or extract the year from the date.\n\nAlternatively, the date is stored as a time string, like \"2019-01-01T00:00:00Z\", so using the year function might work.\n\nWait, but in QLever, which uses SPARQL, the year can be extracted using the YEAR() function, but I need to check if QLever supports it. However, according to the problem statement, we should not perform additional computation, so perhaps the date is stored as a date format that we can directly return.\n\nWait, but the user wants the year, so we need to extract just the year part. The standard is to use the YEAR function in SPARQL, but not all SPARQL endpoints support it. However, Wikidata uses a specific way.\n\nAlternatively, the date might be stored in the time property, so using BIND function to extract the part.\n\nBut since the user is asking for the year, let's proceed to build the SPARQL query.\n\nWait, but maybe the Time 100 entry has a date directly. Let me check if there's a direct property.\n\nAnother approach: The Time 100 list's year might be part of the award's properties, but no, the award received statement is specific to the year.\n\nWait, the Time 100 is an annual list. So when someone is listed, it's for a specific year, so the award received entry would have that year as a qualifier.\n\nSo the correct query is to get the qualifier P585 for the award statement.\n\nTesting with the previous list, the Time 100 is listed as an award without the year, so the year must be in the qualifier.\n\nI'll construct the query to retrieve the year from the qualifier.\n\nSo the SPARQL should be:\n\nSELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370.\n  wd:Q260725 p:P166 ?statement.\n  ?statement ps:P166 wd:Q604370.\n  ?statement pq:P585 ?date.\n  BIND(YEAR(?date) AS ?year)\n}\n\nBut let's make sure that the qualifier property is correct. P585 is the qualifying property for point in time.\n\nWait, in the Wikidata schema, the qualifier for date is P585, so this should work.\n\nNow, let's check if this will return the correct year.\n\nBut since I can't execute the query yet, I need to make sure the query is correctly structured.\n\nAnother way: The statement for Megan Rapinoe's Time 100 award should have a qualifier for the year, which is P585.\n\nSo the query is correct.\n\nWait, but sometimes qualifiers can have multiple entries, but for this case, it's probably one year.\n\nSo the final SPARQL query should return the year.\n\nLet me test this in my mind. If the Time 100 award for Megan Rapinoe is from 2019, then the query would return 2019.\n\nNow, the next step is to execute this query.\n\nWait, the user asked to return the actual identifier and the year. So the answer should be the year.\n\nBut the query needs to be executed to get the result.\n\nSo I'll write the SPARQL query as above and call execute."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a891300e33c36625",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370.\n  wd:Q260725 p:P166 ?statement.\n  ?statement ps:P166 wd:Q604370.\n  ?statement pq:P585 ?date.\n  BIND(YEAR(?date) AS ?year)\n}"
+            },
+            "result": "Got 1 row and 1 column:\n| year           |\n| -------------- |\n| 2022 (xsd:int) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1866,
+          "prompt_tokens": 6568,
+          "total_tokens": 8434
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "58848143bd514c22a3f2b4df903d9a49",
+        "message": null,
+        "reasoning": {
+          "id": "eb5826ee3d43458180bd4e62f2fa74bc",
+          "content": "Okay, let's see. The user is asking for the year Megan Rapinoe was named one of Time Magazine's 100 most influential people.\n\nFirst, I used search_entity to find Megan Rapinoe on Wikidata, which gave me her ID wd:Q260725. Then, I searched for the property related to \"Time 100\" using search_property, but the results didn't directly show the correct property. So I tried searching for Time 100 properties associated with her entity (wd:Q260725) using search_property_of_entity, which listed some properties, including award received (wd:P166).\n\nNext, I used the list function to check the awards she's received, and it showed that Time 100 (wd:Q604370) is one of them. Then, I constructed a SPARQL query to get the year when she received that award. The query linked her to the award, found the statement with the date qualifier (pq:P585), and extracted the year.\n\nThe execute returned 2022. To confirm, I should check if Time Magazine's 100 list for 2022 included her. But since the Wikidata entry states 2022, that's the answer. The query seems correct as it's using the correct properties and qualifiers. So the answer should be 2022."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-89ee34fcc1028cc6",
+            "name": "answer",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?year WHERE {\n  wd:Q260725 wdt:P166 wd:Q604370.\n  wd:Q260725 p:P166 ?statement.\n  ?statement ps:P166 wd:Q604370.\n  ?statement pq:P585 ?date.\n  BIND(YEAR(?date) AS ?year)\n}",
+              "answer": "2022"
+            },
+            "result": "Stopping"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 435,
+          "prompt_tokens": 6730,
+          "total_tokens": 7165
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/prop/P109",
+    "http://www.wikidata.org/prop/P101",
+    "http://www.wikidata.org/entity/Q604370",
+    "http://www.wikidata.org/prop/statement/value-normalized/P109",
+    "http://www.wikidata.org/prop/direct/P109",
+    "http://www.wikidata.org/entity/Q17144",
+    "http://www.wikidata.org/entity/Q17403494",
+    "http://www.wikidata.org/prop/reference/value-normalized/P108",
+    "http://www.wikidata.org/prop/qualifier/P10190",
+    "http://www.wikidata.org/prop/qualifier/value/P2816",
+    "http://www.wikidata.org/prop/reference/value/P1000",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1010",
+    "http://www.wikidata.org/prop/P106",
+    "http://www.wikidata.org/prop/reference/value-normalized/P10000",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P101",
+    "http://www.wikidata.org/prop/direct/P108",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P10000",
+    "http://www.wikidata.org/entity/P166",
+    "http://www.wikidata.org/prop/qualifier/P109",
+    "http://www.wikidata.org/prop/reference/value/P10000",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1010",
+    "http://www.wikidata.org/entity/Q742",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2816",
+    "http://www.wikidata.org/prop/qualifier/P101",
+    "http://www.wikidata.org/prop/qualifier/value/P10",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1000",
+    "http://www.wikidata.org/entity/P102",
+    "http://www.wikidata.org/prop/reference/P108",
+    "http://www.wikidata.org/prop/reference/value/P109",
+    "http://www.wikidata.org/prop/direct-normalized/P10000",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P10",
+    "http://www.wikidata.org/prop/direct/P54",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P102",
+    "http://www.wikidata.org/prop/reference/value/P102",
+    "http://www.wikidata.org/prop/direct/P7502",
+    "http://www.wikidata.org/prop/P648",
+    "http://www.wikidata.org/prop/reference/P10000",
+    "http://www.wikidata.org/prop/direct/P2048",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P108",
+    "http://www.wikidata.org/prop/direct/P10",
+    "http://www.wikidata.org/prop/direct/P648",
+    "http://www.wikidata.org/entity/P648",
+    "http://www.wikidata.org/prop/reference/value/P2816",
+    "http://www.wikidata.org/prop/statement/P1010",
+    "http://www.wikidata.org/entity/Q87217816",
+    "http://www.wikidata.org/prop/reference/value/P101",
+    "http://www.wikidata.org/prop/statement/value-normalized/P10000",
+    "http://www.wikidata.org/entity/Q109654662",
+    "http://www.wikidata.org/entity/P7502",
+    "http://www.wikidata.org/prop/direct-normalized/P108",
+    "http://www.wikidata.org/prop/statement/value-normalized/P10190",
+    "http://www.wikidata.org/prop/direct/P1010",
+    "http://www.wikidata.org/entity/Q24450343",
+    "http://www.wikidata.org/entity/Q5347682",
+    "http://www.wikidata.org/prop/qualifier/P2816",
+    "http://www.wikidata.org/prop/reference/value/P10",
+    "http://www.wikidata.org/entity/Q16153104",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2816",
+    "http://www.wikidata.org/prop/statement/value/P108",
+    "http://www.wikidata.org/prop/P166",
+    "http://www.wikidata.org/prop/reference/value-normalized/P10",
+    "http://www.wikidata.org/prop/statement/value-normalized/P102",
+    "http://www.wikidata.org/prop/P1010",
+    "http://www.wikidata.org/prop/P10",
+    "http://www.wikidata.org/prop/direct/P451",
+    "http://www.wikidata.org/entity/P1010",
+    "http://www.wikidata.org/prop/qualifier/P10000",
+    "http://www.wikidata.org/prop/qualifier/value/P102",
+    "http://www.wikidata.org/prop/direct/P10757",
+    "http://www.wikidata.org/prop/reference/value/P108",
+    "http://www.wikidata.org/prop/statement/P108",
+    "http://www.wikidata.org/prop/P1006",
+    "http://www.wikidata.org/prop/direct/P102",
+    "http://www.wikidata.org/prop/P7502",
+    "http://www.wikidata.org/prop/qualifier/P1000",
+    "http://www.wikidata.org/prop/direct/P10190",
+    "http://www.wikidata.org/prop/statement/P10190",
+    "http://www.wikidata.org/prop/direct-normalized/P1006",
+    "http://www.wikidata.org/prop/P2816",
+    "http://www.wikidata.org/prop/reference/P101",
+    "http://www.wikidata.org/prop/statement/value-normalized/P108",
+    "http://www.wikidata.org/prop/direct/P106",
+    "http://www.wikidata.org/prop/reference/P10",
+    "http://www.wikidata.org/prop/reference/P1000",
+    "http://www.wikidata.org/prop/direct/P10000",
+    "http://www.wikidata.org/prop/statement/P2816",
+    "http://www.wikidata.org/entity/P1006",
+    "http://www.wikidata.org/prop/statement/P10",
+    "http://www.wikidata.org/prop/direct-normalized/P1015",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1010",
+    "http://www.wikidata.org/prop/direct-normalized/P1010",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1000",
+    "http://www.wikidata.org/prop/P451",
+    "http://www.wikidata.org/prop/P10190",
+    "http://www.wikidata.org/entity/P1015",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2816",
+    "http://www.wikidata.org/prop/direct-normalized/P1000",
+    "http://www.wikidata.org/prop/P10000",
+    "http://www.wikidata.org/entity/Q92691092",
+    "http://www.wikidata.org/prop/qualifier/P10",
+    "http://www.wikidata.org/prop/qualifier/value/P101",
+    "http://www.wikidata.org/entity/Q6808722",
+    "http://www.wikidata.org/entity/P10000",
+    "http://www.wikidata.org/prop/direct-normalized/P101",
+    "http://www.wikidata.org/prop/statement/value/P10190",
+    "http://www.wikidata.org/prop/statement/value/P102",
+    "http://www.wikidata.org/prop/qualifier/value/P109",
+    "http://www.wikidata.org/prop/P1000",
+    "http://www.wikidata.org/entity/Q59411480",
+    "http://www.wikidata.org/prop/statement/value-normalized/P101",
+    "http://www.wikidata.org/entity/P10757",
+    "http://www.wikidata.org/prop/qualifier/P108",
+    "http://www.wikidata.org/entity/P109",
+    "http://www.wikidata.org/entity/P451",
+    "http://www.wikidata.org/entity/Q260725",
+    "http://www.wikidata.org/prop/direct/P166",
+    "http://www.wikidata.org/prop/qualifier/P1010",
+    "http://www.wikidata.org/prop/qualifier/value/P10000",
+    "http://www.wikidata.org/prop/reference/value/P10190",
+    "http://www.wikidata.org/entity/Q1653207",
+    "http://www.wikidata.org/entity/Q80650331",
+    "http://www.wikidata.org/entity/P10190",
+    "http://www.wikidata.org/prop/direct/P1015",
+    "http://www.wikidata.org/prop/statement/value/P10",
+    "http://www.wikidata.org/entity/P2048",
+    "http://www.wikidata.org/prop/statement/P102",
+    "http://www.wikidata.org/prop/statement/value/P101",
+    "http://www.wikidata.org/prop/direct/P101",
+    "http://www.wikidata.org/prop/P108",
+    "http://www.wikidata.org/prop/direct-normalized/P10",
+    "http://www.wikidata.org/prop/reference/value-normalized/P102",
+    "http://www.wikidata.org/prop/P1015",
+    "http://www.wikidata.org/prop/reference/value/P1010",
+    "http://www.wikidata.org/prop/reference/value-normalized/P10190",
+    "http://www.wikidata.org/prop/statement/P101",
+    "http://www.wikidata.org/entity/P2816",
+    "http://www.wikidata.org/prop/P2048",
+    "http://www.wikidata.org/entity/P108",
+    "http://www.wikidata.org/prop/statement/value/P10000",
+    "http://www.wikidata.org/prop/statement/value/P1000",
+    "http://www.wikidata.org/entity/P54",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P10190",
+    "http://www.wikidata.org/prop/qualifier/value/P108",
+    "http://www.wikidata.org/prop/direct-normalized/P109",
+    "http://www.wikidata.org/prop/direct/P2816",
+    "http://www.wikidata.org/prop/reference/P2816",
+    "http://www.wikidata.org/prop/P54",
+    "http://www.wikidata.org/prop/direct-normalized/P10190",
+    "http://www.wikidata.org/prop/direct-normalized/P2816",
+    "http://www.wikidata.org/entity/P10",
+    "http://www.wikidata.org/prop/direct/P1006",
+    "http://www.wikidata.org/prop/reference/P102",
+    "http://www.wikidata.org/prop/reference/P10190",
+    "http://www.wikidata.org/prop/reference/value-normalized/P109",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P109",
+    "http://www.wikidata.org/prop/qualifier/value/P1000",
+    "http://www.wikidata.org/prop/direct/P1000",
+    "http://www.wikidata.org/prop/reference/P1010",
+    "http://www.wikidata.org/prop/direct-normalized/P648",
+    "http://www.wikidata.org/entity/Q28196702",
+    "http://www.wikidata.org/prop/statement/P10000",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1000",
+    "http://www.wikidata.org/entity/P101",
+    "http://www.wikidata.org/prop/qualifier/value/P10190",
+    "http://www.wikidata.org/prop/qualifier/value/P1010",
+    "http://www.wikidata.org/prop/statement/value-normalized/P10",
+    "http://www.wikidata.org/prop/statement/value/P1010",
+    "http://www.wikidata.org/prop/statement/P109",
+    "http://www.wikidata.org/prop/reference/P109",
+    "http://www.wikidata.org/prop/reference/value-normalized/P101",
+    "http://www.wikidata.org/prop/statement/value/P2816",
+    "http://www.wikidata.org/prop/statement/value/P109",
+    "http://www.wikidata.org/prop/P10757",
+    "http://www.wikidata.org/prop/statement/P1000",
+    "http://www.wikidata.org/entity/P1000",
+    "http://www.wikidata.org/entity/P106",
+    "http://www.wikidata.org/prop/qualifier/P102",
+    "http://www.wikidata.org/prop/direct-normalized/P102",
+    "http://www.wikidata.org/entity/Q1132644",
+    "http://www.wikidata.org/prop/P102"
+  ],
+  "id": "unknown",
+  "source_csv": "data/ComplexQA/CompMix_infobox_complex.csv",
+  "row_index": 66,
+  "question": "In what year was Megan Rapinoe named one of Time Magazine's 100 most influential people",
+  "reference_answer": "2020"
+}
