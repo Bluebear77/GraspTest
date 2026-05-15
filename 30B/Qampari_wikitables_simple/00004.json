@@ -1,0 +1,133 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?galaxy ?galaxyLabel WHERE {\n  ?galaxy wdt:P31 wd:Q752374 .\n  ?galaxy rdfs:label ?galaxyLabel .\n  FILTER(LANG(?galaxyLabel) = \"en\")\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- ring galaxy (wd:Q752374):\n  - galaxy with a circle-like appearance\n  - is subclass of peculiar galaxy\n\nUsing properties:\n- instance of (wd:P31 as wdt), also known as \"example of\", \"has type\", \"is a\", \"is a[n]\", \"is an\", etc.:\n  - type to which this subject corresponds/belongs. Different ... is an instance of mountain; volcano is a subclass of mountain",
+    "result": "Got 8 rows and 2 columns:\n| galaxy                         | galaxyLabel                |\n| ------------------------------ | -------------------------- |\n| NGC 985 (wd:Q1040716)          | NGC 985 (lang:en)          |\n| NGC 1015 (wd:Q1040914)         | NGC 1015 (lang:en)         |\n| PGC 16572 (wd:Q117323317)      | PGC 16572 (lang:en)        |\n| Cartwheel galaxy (wd:Q1208155) | Cartwheel galaxy (lang:en) |\n| NGC 6028 (wd:Q2415550)         | NGC 6028 (lang:en)         |\n| PGC 1000714 (wd:Q28362230)     | PGC 1000714 (lang:en)      |\n| AM 0644-741 (wd:Q295479)       | AM 0644-741 (lang:en)      |\n| Hoag's Object (wd:Q872197)     | Hoag's Object (lang:en)    |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "The discovered ring galaxies are: NGC 985, NGC 1015, PGC 16572, Cartwheel galaxy, NGC 6028, PGC 1000714, AM 0644-741, and Hoag's Object.",
+    "formatted": "The discovered ring galaxies are: NGC 985, NGC 1015, PGC 16572, Cartwheel galaxy, NGC 6028, PGC 1000714, AM 0644-741, and Hoag's Object.\n\nSPARQL query over wikidata:\n```sparql\nPREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?galaxy ?galaxyLabel WHERE {\n  ?galaxy wdt:P31 wd:Q752374 .\n  ?galaxy rdfs:label ?galaxyLabel .\n  FILTER(LANG(?galaxyLabel) = \"en\")\n}\n```\n\nUsing entities:\n- ring galaxy (wd:Q752374):\n  - galaxy with a circle-like appearance\n  - is subclass of peculiar galaxy\n\nUsing properties:\n- instance of (wd:P31 as wdt), also known as \"example of\", \"has type\", \"is a\", \"is a[n]\", \"is an\", etc.:\n  - type to which this subject corresponds/belongs. Different ... is an instance of mountain; volcano is a subclass of mountain\n\nExecution result:\nGot 8 rows and 2 columns:\n| galaxy                         | galaxyLabel                |\n| ------------------------------ | -------------------------- |\n| NGC 985 (wd:Q1040716)          | NGC 985 (lang:en)          |\n| NGC 1015 (wd:Q1040914)         | NGC 1015 (lang:en)         |\n| PGC 16572 (wd:Q117323317)      | PGC 16572 (lang:en)        |\n| Cartwheel galaxy (wd:Q1208155) | Cartwheel galaxy (lang:en) |\n| NGC 6028 (wd:Q2415550)         | NGC 6028 (lang:en)         |\n| PGC 1000714 (wd:Q28362230)     | PGC 1000714 (lang:en)      |\n| AM 0644-741 (wd:Q295479)       | AM 0644-741 (lang:en)      |\n| Hoag's Object (wd:Q872197)     | Hoag's Object (lang:en)    |"
+  },
+  "elapsed": 31.25639,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "What are the discovered ring galaxies ?"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "d1098806e68a4751a037ed1e43045a51",
+        "message": null,
+        "reasoning": {
+          "id": "d18dfa9f941c4364bed13f4b525ce85a",
+          "content": "Okay, let's tackle this question: \"What are the discovered ring galaxies?\" Hmm, first I need to figure out what the user is asking for. They want to know the names or identifiers of ring galaxies that have been discovered.\n\nSo, ring galaxies are a type of galaxy, right? In astronomy, a ring galaxy is a galaxy with a ring-shaped structure, like the Cartwheel Galaxy. But to find them in Wikidata, I need to figure out the right properties and entities.\n\nFirst, I should determine the entity for \"ring galaxy.\" In Wikidata, there's likely a category or a specific type for ring galaxies. I'll need to search for the entity that represents ring galaxies. Maybe using the search_entity function with the query \"ring galaxy\".\n\nWait, but \"ring galaxy\" might be a type. So perhaps the entity is a subclass of galaxy. Let me check. Let's call search_entity with \"ring galaxy\" to find the appropriate Wikidata item.\n\nWait, the search_entity function uses the entity index. The index is \"fuzzy\", so it's based on labels and synonyms. So searching for \"ring galaxy\" should give me the right entity.\n\nLet me make sure. Let's do that. So first, execute search_entity for kg=wikidata, query=\"ring galaxy\".\n\nOnce I get that, I can find the entity ID, like maybe Q20012. Then, I need to find all galaxies that are instances of this ring galaxy type.\n\nIn Wikidata, instances of a type are linked via the 'instance of' property, which is p:P31. So the SPARQL would look for items with p:P31 wd:Q20012 (assuming Q20012 is the ring galaxy item).\n\nWait, but first I need to find what the correct entity for ring galaxy is. Let me do the search.\n\nSo first tool call: search_entity with query \"ring galaxy\".\n\nWait, but in the available tools, search_entity is a function. Let's make that call.\n\nAfter getting the entity, maybe it's wd:Q20012 (but I'm not sure, need to check). Then, the next step is to find all items where the instance of (P31) is that ring galaxy entity.\n\nSo the SPARQL would be:\n\nSELECT ?galaxy WHERE {\n  ?galaxy wdt:P31 wd:Q20012.\n}\n\nBut wait, perhaps the ring galaxy is a subclass. Wait, in Wikidata, \"ring galaxy\" might be the instance type, so P31 would point to that.\n\nAlternatively, maybe \"ring galaxy\" is categorized under 'galaxy', and there's a specific property. But usually, the way to find all instances of a particular type is via P31 (instance of) to that type.\n\nSo first, confirm the type entity. Let's proceed step by step.\n\nFirst, use search_entity to find \"ring galaxy\"."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-96d10452118dfd58",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "ring galaxy"
+            },
+            "result": "Top 10 entity alternatives:\n1. ring galaxy (wd:Q752374):\n  - galaxy with a circle-like appearance\n  - is subclass of peculiar galaxy\n2. Galaxy Ring (wd:Q124681243), also known as \"Samsung Galaxy Ring\":\n  - is instance of product model\n  - is subclass of smart ring\n  - smart ring developed by Samsung\n3. Hoag-type galaxy (wd:Q138174639, matched via \"Hoag-type ring galaxy\"), also known as \"Hoag-type\", \"Hoag-type ring galaxy\":\n  - extremely rare type of ring galaxies, resembling Hoag's Object\n  - is instance of astronomical object type\n  - is subclass of ring galaxy\n4. Dwarf ring galaxy (wd:Q68605239):\n  - is instance of scholarly article\n  - scholarly article\n5. GALAXY TOP WING (wd:Q122377703):\n  - 2018 video game\n  - is instance of video game\n6. Galway City Ring Road (wd:Q134029587, matched via \"Galway Ring Road\"), also known as \"Galway Ring Road\", \"Galway Semi-Ring Road\":\n  - is instance of bypass\n  - is instance of proposal\n  - is instance of ring road\n  - Proposed highway in the west of Ireland\n7. A peculiar southern ring galaxy (wd:Q68141110):\n  - is instance of scholarly article\n  - scientific article published in January 1974\n8. Galați Ice Rink (wd:Q5518169), also known as \"Galați Artificial Skating Rink\", \"Galați Skating Rink\":\n  - ice rink in Galaţi, Romania\n  - is instance of ice rink\n9. Galaxy/Galaxy (wd:Q3757508):\n  - 1982 single by Guido and Maurizio De Angelis\n  - is instance of single\n10. Galaxy (wd:Q41777236, matched via \"Gala Galaxy\"), also known as \"Gala Galaxy\":\n  - apple cultivar\n  - is instance of apple cultivar"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 645,
+          "prompt_tokens": 3748,
+          "total_tokens": 4393
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "391ee76ad559473bbe39264c5ee5e2ce",
+        "message": null,
+        "reasoning": {
+          "id": "8fb97034578048799e01b3f625b44ba8",
+          "content": "Okay, let's see. The user is asking \"What are the discovered ring galaxies?\" So first, I need to figure out what exactly they're looking for. Ring galaxies are a type of galaxy, right? But the search_entity result shows that the top result is \"ring galaxy\" (wd:Q752374), which is a type of galaxy with a circular appearance. But the user is asking for the actual discovered ring galaxies, not the type.\n\nWait, the first search result was for the entity \"ring galaxy\" itself, which is a category. But the user wants examples of specific ring galaxies that have been discovered. So I need to find entities that are instances of ring galaxy. The second option, Hoag-type galaxy, is a subtype, but maybe the user wants actual galaxies.\n\nLooking at the list, there's \"Hoag-type galaxy\" (wd:Q138174639) but that's a type, not a specific galaxy. The specific galaxy names would be under entities like Hoag's Object. Wait, Hoag's Object is a well-known ring galaxy. So maybe the entity for Hoag's Object is the one we need.\n\nBut the search didn't return that. Let me check the search_entity results again. The top entries are mainly the category and some other unrelated things like Samsung Galaxy Ring and video games. So the issue is that the initial search might not have found the specific galaxy names because they were listed under the category.\n\nSo the next step is probably to use the entity \"ring galaxy\" (wd:Q752374) and find all instances of it. In Wikidata, to find instances of a class, you would use \"wd:Q752374 p:P31/ps:P31/wd:Q752374\" but wait, the property for instance of is P31. So the correct SPARQL would be something like SELECT ?galaxy WHERE { ?galaxy wdt:P31 wd:Q752374 }.\n\nBut let's confirm. The entity 'ring galaxy' (Q752374) has instances. So we need to find all items that have the instance of (P31) as Q752374. So the SPARQL would use wdt:P31 to get the direct instances.\n\nWait, the property for instance of is P31, so the query would be:\n\nSELECT ?galaxy WHERE { ?galaxy wdt:P31 wd:Q752374 }\n\nBut maybe there are specific galaxies listed under that. Let me check the possible entities. For example, Hoag's Object is a well-known ring galaxy, and it's a specific entity in Wikidata. So the query should return all galaxies that are instances of the ring galaxy type.\n\nSo the next step is to construct that SPARQL query. But before executing it, maybe verify if Q752374 is the correct entity. From the search result, the first entry is \"ring galaxy (wd:Q752374)\", so that's correct.\n\nSo the SPARQL would be to select all entities that are instances of ring galaxy. Let's make sure to use the correct prefixes. Since it's Wikidata, the prefix for instance of (P31) would be wdt:P31.\n\nWait, the standard way to query instances using direct properties is to use wdt:P31. So the query would be:\n\nSELECT ?galaxy WHERE { ?galaxy wdt:P31 wd:Q752374 }\n\nBut perhaps some galaxies have other classifications, but the main way is through P31. So this should retrieve all instances.\n\nWait, but in Wikidata, sometimes the instances might be more specific types. For example, a Hoag-type galaxy might be a subclass, but the main ring galaxy would have P31 wd:Q752374. Let's check if the search entity result for Q752374 has instances. The first entry says \"is subclass of peculiar galaxy\", so Q752374 is the category (subclass of peculiar galaxy). The actual ring galaxies would be instances of Q752374.\n\nSo the query should return all such instances. Let's run this query.\n\nBut to be safe, maybe check with another method. Let's try to find the entity for Hoag's Object. If Hoag's Object is a ring galaxy, its instance should be under P31 wd:Q752374. So if I search for \"Hoag's Object\" in Wikidata, its P31 should be Q752374.\n\nBut since we can't do that right now, let's proceed with the initial plan. The SPARQL query should be as above.\n\nWait, but the user is asking for \"discovered ring galaxies\", so the answer should be the names of these galaxies. So the query should return the labels of these galaxies.\n\nSo the SPARQL query needs to include the labels, but according to the instructions, we should return the actual identifiers (IRIs) and optionally labels. However, the user probably expects labels, so maybe include a label in the query. But the instructions say that labels are optional and should be in optional clauses unless requested. But since the user's question is about the names (discovered ring galaxies), we probably need the labels.\n\nWait, the user is asking \"What are the discovered ring galaxies?\" so the answer should list the names of the galaxies, so their labels. So the query should select the galaxy's labels.\n\nSo the correct SPARQL would be:\n\nSELECT ?galaxy ?galaxyLabel\nWHERE {\n  ?galaxy wdt:P31 wd:Q752374 .\n  SERVICE wikibase:label { bd:serviceParam wikibase:language \"[AUTO_LANGUAGE],en\". }\n}\n\nBut wait, the instructions say not to use SERVICE wikibase:label. So instead, we have to use rdfs:label. So the query would be:\n\nSELECT ?galaxy ?galaxyLabel\nWHERE {\n  ?galaxy wdt:P31 wd:Q752374 .\n  ?galaxy rdfs:label ?galaxyLabel .\n  FILTER (LANG(?galaxyLabel) = \"en\")\n}\n\nBut the problem is that the labels might not all be in English. So the FILTER is necessary. However, the instructions say to not use SERVICE wikibase:label, so this is the correct way.\n\nSo the query should use rdfs:label with a language filter.\n\nTherefore, the SPARQL should be:\n\nSELECT ?galaxy ?galaxyLabel\nWHERE {\n  ?galaxy wdt:P31 wd:Q752374 .\n  ?galaxy rdfs:label ?galaxyLabel .\n  FILTER (LANG(?galaxyLabel) = \"en\")\n}\n\nBut to ensure it's the English label, we need the filter.\n\nNow, let's check if this is correct. Let's make sure Q752374 is the correct category for ring galaxies. From the initial search, yes, the first entity is \"ring galaxy (wd:Q752374)\" which is a galaxy with a circle-like appearance, subclass of peculiar galaxy.\n\nSo this query should return all ring galaxies. However, maybe there's a typo in the entity ID. But the search result shows that the first entry is wd:Q752374, so that should be correct.\n\nNow, executing this query via the execute function should give the list. Let's generate the tools call for executing this SPARQL."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b41f61d12769590a",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?galaxy ?galaxyLabel WHERE { ?galaxy wdt:P31 wd:Q752374 . ?galaxy rdfs:label ?galaxyLabel . FILTER (LANG(?galaxyLabel) = \"en\") }"
+            },
+            "result": "Got 8 rows and 2 columns:\n| galaxy                         | galaxyLabel                |\n| ------------------------------ | -------------------------- |\n| NGC 985 (wd:Q1040716)          | NGC 985 (lang:en)          |\n| NGC 1015 (wd:Q1040914)         | NGC 1015 (lang:en)         |\n| PGC 16572 (wd:Q117323317)      | PGC 16572 (lang:en)        |\n| Cartwheel galaxy (wd:Q1208155) | Cartwheel galaxy (lang:en) |\n| NGC 6028 (wd:Q2415550)         | NGC 6028 (lang:en)         |\n| PGC 1000714 (wd:Q28362230)     | PGC 1000714 (lang:en)      |\n| AM 0644-741 (wd:Q295479)       | AM 0644-741 (lang:en)      |\n| Hoag's Object (wd:Q872197)     | Hoag's Object (lang:en)    |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 1694,
+          "prompt_tokens": 4294,
+          "total_tokens": 5988
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "a53419a3646a450c8143cf3fac77ba64",
+        "message": null,
+        "reasoning": {
+          "id": "3dd15fe302aa40f9a55662154245aa62",
+          "content": "Okay, let's see. The user asked for \"discovered ring galaxies.\" From the initial search, I found that \"ring galaxy\" is a category (wd:Q752374), so I did a query to get all instances of that category. The result returned 8 galaxies with their labels.\n\nWait, the user is asking for \"discovered\" ring galaxies. The query used wdt:P31 wd:Q752374, which is correct for instance of ring galaxy. The results include names like NGC 985, Cartwheel galaxy, Hoag's Object, etc. These are all known ring galaxies, so maybe that's the answer.\n\nBut let me double-check if \"discovered\" adds any nuance. Sometimes \"discovered\" refers to when they were first observed, but the user probably just means confirmed or cataloged ring galaxies. The SPARQL query we ran gets all instances, so those 8 should be the answer.\n\nWait, the list from the execute query shows these 8. The user didn't ask for a specific number or time period, so listing them makes sense. The answer should present these names. Let me confirm if all these are indeed ring galaxies. For example, Hoag's Object is a well-known ring galaxy, Cartwheel is another example. NGC 985 and others are in the list. The labels seem correct.\n\nSo the final answer should list these 8 galaxies. Since the query already retrieved them, we can just present the list. The answer function should include the SPARQL query and the list of galaxy names."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-a49277ef61fdd82a",
+            "name": "answer",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?galaxy ?galaxyLabel WHERE { ?galaxy wdt:P31 wd:Q752374 . ?galaxy rdfs:label ?galaxyLabel . FILTER (LANG(?galaxyLabel) = \"en\") }",
+              "answer": "The discovered ring galaxies are: NGC 985, NGC 1015, PGC 16572, Cartwheel galaxy, NGC 6028, PGC 1000714, AM 0644-741, and Hoag's Object."
+            },
+            "result": "Stopping"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 490,
+          "prompt_tokens": 4694,
+          "total_tokens": 5184
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/entity/Q1040914",
+    "http://www.wikidata.org/entity/Q122377703",
+    "http://www.wikidata.org/entity/Q5518169",
+    "http://www.wikidata.org/entity/Q3757508",
+    "http://www.wikidata.org/entity/Q41777236",
+    "http://www.wikidata.org/entity/Q1040716",
+    "http://www.wikidata.org/entity/Q68605239",
+    "http://www.wikidata.org/entity/Q752374",
+    "http://www.wikidata.org/entity/Q28362230",
+    "http://www.wikidata.org/entity/Q1208155",
+    "http://www.wikidata.org/entity/Q295479",
+    "http://www.wikidata.org/entity/Q117323317",
+    "http://www.wikidata.org/entity/Q872197",
+    "http://www.wikidata.org/entity/Q138174639",
+    "http://www.wikidata.org/entity/Q124681243",
+    "http://www.wikidata.org/entity/Q134029587",
+    "http://www.wikidata.org/entity/Q2415550",
+    "http://www.wikidata.org/entity/Q68141110"
+  ],
+  "id": "unknown",
+  "source_csv": "data/SimpleQA/Qampari_wikitables_simple.csv",
+  "row_index": 4,
+  "question": "What are the discovered ring galaxies ?",
+  "reference_answer": "Cartwheel Galaxy | NGC 6028 | [[Hoags Object]] | NGC 1512 | NGC 1433 | NGC 1533 | NGC 1350 | NGC 1386 | NGC 1387 | NGC 4622 | NGC 7217 | II Zw 28 | [[Mayalls Object]] | Arp 147 | NGC 4650A | NGC 660 | NGC 922 | LEDA 1000714 | NGC 1142 | NGC 3081 | NGC 7020 | NGC 7552 | NGC 7742"
+}
