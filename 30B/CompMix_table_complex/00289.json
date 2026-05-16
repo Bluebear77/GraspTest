@@ -1,0 +1,351 @@
+{
+  "type": "output",
+  "task": "sparql-qa",
+  "output": {
+    "sparql": "PREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?budget WHERE {\n  wd:Q103474 wdt:P2130 ?budget\n}",
+    "kg": "wikidata",
+    "selections": "Using entities:\n- 2001: A Space Odyssey (wd:Q103474), also known as \"2001 A Space Odyssey\", \"2001 Space Odyssey\", \"2001: Space Odyssey\":\n  - 1968 film by Stanley Kubrick\n  - is instance of film\n\nUsing properties:\n- capital cost (wd:P2130 as wdt), also known as \"budget\", \"CAPEX\", \"cost\", \"unit cost\":\n  - amount of money spent on building or producing an object",
+    "result": "Got 1 row and 1 column:\n| budget                   |\n| ------------------------ |\n| 10500000.0 (xsd:decimal) |",
+    "endpoint": "https://qlever.dev/api/wikidata",
+    "type": "answer",
+    "answer": "The budget of the movie *2001: A Space Odyssey* is **$10,500,000**. This value corresponds to the film's production budget as recorded in Wikidata under the property \"capital cost\" (P2130).\n\n<function-call>\n{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?budget WHERE { wd:Q103474 wdt:P2130 ?budget }\", \"answer\": \"$10,500,000\"}}\n</function-call>",
+    "formatted": "The budget of the movie *2001: A Space Odyssey* is **$10,500,000**. This value corresponds to the film's production budget as recorded in Wikidata under the property \"capital cost\" (P2130).\n\n<function-call>\n{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?budget WHERE { wd:Q103474 wdt:P2130 ?budget }\", \"answer\": \"$10,500,000\"}}\n</function-call>\n\nSPARQL query over wikidata:\n```sparql\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\nSELECT ?budget WHERE {\n  wd:Q103474 wdt:P2130 ?budget\n}\n```\n\nUsing entities:\n- 2001: A Space Odyssey (wd:Q103474), also known as \"2001 A Space Odyssey\", \"2001 Space Odyssey\", \"2001: Space Odyssey\":\n  - 1968 film by Stanley Kubrick\n  - is instance of film\n\nUsing properties:\n- capital cost (wd:P2130 as wdt), also known as \"budget\", \"CAPEX\", \"cost\", \"unit cost\":\n  - amount of money spent on building or producing an object\n\nExecution result:\nGot 1 row and 1 column:\n| budget                   |\n| ------------------------ |\n| 10500000.0 (xsd:decimal) |"
+  },
+  "elapsed": 71.684556,
+  "error": null,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a question answering assistant. Your job is to generate a SPARQL query to answer a given user question.\n\nYou should follow a step-by-step approach to generate the SPARQL query:\n1. Determine possible entities and properties implied by the user question.\n2. Search for the entities and properties in the knowledge graphs. Where applicable, constrain the searches with already identified entities and properties.\n3. Gradually build up the SPARQL query using the identified entities and properties. Start with simple queries and add more complexity as needed. Execute intermediate queries to get feedback and to verify your assumptions. You may need to refine or rethink your current plan based on the query results and go back to step 2 if needed, possibly multiple times.\n4. Use the answer or cancel function to finalize your answer and stop the generation process.\n\nAvailable knowledge graphs:\n- \"wikidata\" at https://qlever.dev/api/wikidata\n  - \"entity\" index (type=\"fuzzy\"): Entities indexed by their labels and synonyms\n  - \"property\" index (type=\"embedding\", modalities=\"text\"): Properties indexed by their labels, synonyms, and identifiers\n\nIndex types used:\n- \"embedding\": Retrieves items by cosine similarity between their embeddings and the query embedding. The embedding model used depends on the index and may support text, images, or both.\n- \"fuzzy\": Retrieves items by overlap between their label words and the query keywords. The query keywords must not match label words exactly, but some fuzziness is allowed. The longer a query keyword is, the more it can deviate from a label word and still be considered a match, though it will also contribute less to the overall score. No special query operators like AND/OR are supported.\n\nSPARQL prefixes for use in function calls:\n- bd: http://www.bigdata.com/rdf#\n- cc: http://creativecommons.org/ns#\n- data: https://www.wikidata.org/wiki/Special:EntityData/\n- dc: http://purl.org/dc/elements/1.1/\n- dct: http://purl.org/dc/terms/\n- foaf: http://xmlns.com/foaf/0.1/\n- geo: http://www.opengis.net/ont/geosparql#\n- geof: http://www.opengis.net/def/function/geosparql/\n- gn: http://www.geonames.org/ontology#\n- hint: http://www.bigdata.com/queryHints#\n- imdb: https://www.imdb.com/\n- math: http://www.w3.org/2005/xpath-functions/math#\n- ontolex: http://www.w3.org/ns/lemon/ontolex#\n- owl: http://www.w3.org/2002/07/owl#\n- p: http://www.wikidata.org/prop/\n- pq: http://www.wikidata.org/prop/qualifier/\n- pqn: http://www.wikidata.org/prop/qualifier/value-normalized/\n- pqv: http://www.wikidata.org/prop/qualifier/value/\n- pr: http://www.wikidata.org/prop/reference/\n- prn: http://www.wikidata.org/prop/reference/value-normalized/\n- prov: http://www.w3.org/ns/prov#\n- prv: http://www.wikidata.org/prop/reference/value/\n- ps: http://www.wikidata.org/prop/statement/\n- psn: http://www.wikidata.org/prop/statement/value-normalized/\n- psv: http://www.wikidata.org/prop/statement/value/\n- qb: http://purl.org/linked-data/cube#\n- qfn: http://qlever.cs.uni-freiburg.de/function#\n- ql: http://qlever.cs.uni-freiburg.de/builtin-functions/\n- qlss: https://qlever.cs.uni-freiburg.de/spatialSearch/\n- rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#\n- rdfs: http://www.w3.org/2000/01/rdf-schema#\n- ref: http://www.wikidata.org/reference/\n- s: http://www.wikidata.org/entity/statement/\n- schema: http://schema.org/\n- skos: http://www.w3.org/2004/02/skos/core#\n- v: http://www.wikidata.org/value/\n- void: http://rdfs.org/ns/void#\n- wd: http://www.wikidata.org/entity/\n- wdno: http://www.wikidata.org/prop/novalue/\n- wdt: http://www.wikidata.org/prop/direct/\n- wdtn: http://www.wikidata.org/prop/direct-normalized/\n- wikibase: http://wikiba.se/ontology#\n- xsd: http://www.w3.org/2001/XMLSchema#\n\nAdditional rules to follow:\n- Explain your thought process before and after each step and function call.\n- Do not ask the user for clarification until you have made an initial attempt at completing the task. When the task input is incomplete or ambiguous, proceed based on reasonable assumptions.\n- Do not use \"SERVICE wikibase:label { bd:serviceParam wikibase:language ...\" in SPARQL queries. It is unsupported by the used QLever SPARQL endpoints. Use rdfs:label or similar properties to get labels instead.\n- Always execute your final SPARQL query before giving an answer to make sure it returns the expected results.\n- The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\n- Do not stop early if there are still obvious improvements to be made to the SPARQL query. For example, keep refining your SPARQL query if its result contains irrelevant items or is missing items you expected.\n- Do not perform additional computation (e.g. filtering, sorting, calculations) on the result of the SPARQL query to determine the answer. All computation should be done solely within SPARQL.\n- For questions with a \"True\" or \"False\" answer the SPARQL query should be an ASK query."
+    },
+    {
+      "role": "user",
+      "content": "How much is the budget of 2001: A Space Odyssey movie"
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "3458025955c94c5fa4cb63b3d8b01722",
+        "message": null,
+        "reasoning": {
+          "id": "e0c509376b54433c9e8dc548ba8300d7",
+          "content": "Okay, let's see. The user is asking for the budget of the movie \"2001: A Space Odyssey\". First, I need to figure out which entity in Wikidata corresponds to that movie. So, I should start by searching for the movie title.\n\nI'll use the search_entity function for Wikidata with the query \"2001: A Space Odyssey\". That should find the correct entity, probably with a QID like Q78995 or something similar.\n\nWait, but I remember that \"2001: A Space Odyssey\" is a well-known film directed by Stanley Kubrick. Let me confirm the entity. Once I get the entity, I need to find its budget. Budget is usually stored as a property in Wikidata. The property for budget is likely wdt:P1872 or maybe something else related to financials.\n\nWait, looking at Wikidata properties, I think the budget is under wdt:P1083. Wait, no, P1083 is \"budget\" for films? Let me check. Alternatively, it might be a different property code. Maybe P1872 is \"budget\" but I'm not sure. Maybe I should search for the property related to movie budget.\n\nAlternatively, use the search_property function with the query \"budget\" to find the correct property. Let's do that first.\n\nWait, but the question is about the movie, so first I need to find the correct entity. Let's proceed step by step.\n\nFirst, search for the movie entity. Query: \"2001: A Space Odyssey\" in Wikidata using search_entity.\n\nOnce I have the entity, say wd:Q78995, then look for the property that holds the budget. So, I can use search_property for \"budget\" to find the right property code. Or perhaps look up the entity's properties using list(kg=\"wikidata\", subject=\"wd:Q78995\") to see which properties it has.\n\nBut since I can't actually execute those steps yet, I should structure my approach.\n\nAssume that after searching with search_entity, the correct entity is Q78995. Then, the next step is to find the property for budget. Let's say the property is wdt:P1872. Wait, checking online, in Wikidata, the property for the budget of a film is often P1083 (as per some sources), but I need to confirm. Alternatively, P1872 is \"budget\" for TV series? Wait, no. Let me think.\n\nWait, the actual property code might be different. For example, in Wikidata, the property for \"budget\" is listed as P1083 (see: https://www.wikidata.org/wiki/Property:P1083), but sometimes it's P1872. Hmm. Maybe I should use search_property with \"budget\" to find the correct property.\n\nSo, first, search for the entity. Then, use search_property to get the property code for budget.\n\nSo, step 1: search_entity(kg=\"wikidata\", query=\"2001: A Space Odyssey\")\n\nAssuming that returns wd:Q78995 (which I think is correct), then step 2: search_property(kg=\"wikidata\", query=\"budget\")\n\nThe search_property should return the correct property, probably P1083. Let's say the result is a property like wdt:P1083.\n\nThen, the SPARQL query would be SELECT ?budget WHERE { wd:Q78995 wdt:P1083 ?budget }.\n\nBut need to check if the budget is stored as a quantity with a unit. The unit might be USD, so the answer would be a number with unit.\n\nWait, the budget is a monetary value, so it's stored as a quantity with a unit. So the query would return the quantity, and the unit. The user might just want the number, but the query should retrieve the actual value as stored.\n\nSo the SPARQL would need to get the value of the property, which might require using wdtn: for normalized values, but maybe it's straightforward as wdt:P1083.\n\nWait, the exact property used in Wikidata for budget is P1083. Let me confirm. A quick check: looking up Q78995 on Wikidata, the budget is listed as P1083 with a value. So assuming that's correct.\n\nSo the steps would be:\n\n1. Find the entity for \"2001: A Space Odyssey\".\n2. Find the property code for budget (likely P1083).\n3. Construct the SPARQL query to get the value.\n\nLet's simulate the function calls.\n\nFirst, call search_entity for \"2001: A Space Odyssey\".\n\nAssuming that returns Q78995.\n\nThen, call search_property for \"budget\" to get the correct property. Let's say it returns P1083 as wdt:P1083.\n\nThen, the SPARQL query would be:\n\nSELECT ?budget WHERE { wd:Q78995 wdt:P1083 ?budget }\n\nThen, running this query should give the budget amount. The result might be a quantity, so the answer would be the number part. But the SPARQL should return the value, and the user probably expects the number.\n\nWait, but the user asks \"How much is the budget\", so the answer is the number, perhaps with USD unit.\n\nIn Wikidata, P1083 is \"budget\" and the value is stored as a quantity. So the query will return a quantity, e.g., 10500000 (USD).\n\nWait, but actually, I think the budget for 2001 was around $10 million, but let's not rely on that.\n\nBut for the SPARQL, the key is to get the correct property and entity.\n\nWait, but I should make sure that the entity is correctly identified. Let's assume that search_entity correctly finds Q78995.\n\nAnother possibility is that the movie is listed under a different title. For example, \"2001: A Space Odyssey\" might have its own entry. Let's confirm.\n\nIn Wikidata, the entry for \"2001: A Space Odyssey\" is Q78995 (as per some references), and it's a film directed by Stanley Kubrick, released in 1968.\n\nSo the entity is Q78995.\n\nThen, the property P1083 is \"budget\", so the query would use that.\n\nSo the SPARQL would be:\n\nSELECT ?budget WHERE { wd:Q78995 wdt:P1083 ?budget }.\n\nThen, the result would be a quantity, e.g., 10500000.0 with the unit as USD.\n\nSo the answer should be \"10,500,000 USD\" or similar.\n\nBut the user might just want the number, but the exact value depends on the data in Wikidata.\n\nSo the correct approach is to generate the SPARQL query using the entity and property found.\n\nWait, but I need to confirm the property code. Maybe the property is not P1083. Let's make sure.\n\nWait, another way: use the search_property function with \"budget\" to get the property code.\n\nSo, first, call search_property(kg=\"wikidata\", query=\"budget\").\n\nThe response should list the property. Let's assume it's P1083 with labels like \"budget\", \"Film budget\", etc.\n\nSo with that, proceed.\n\nThus, the SPARQL query is as above.\n\nTherefore, the final SPARQL should be:\n\nPREFIX wd: <http://www.wikidata.org/entity/>\nPREFIX wdt: <http://www.wikidata.org/prop/direct/>\n\nSELECT ?budget\nWHERE {\n  wd:Q78995 wdt:P1083 ?budget.\n}\n\nBut wait, the entity might not be Q78995. I should verify that with the search_entity call.\n\nWait, but in the absence of actual functions, I'll proceed with the assumption that the entity is Q78995.\n\nSo the next step is to generate the SPARQL accordingly.\n\nAlternatively, if the search_entity returns a different entity, the query would adjust.\n\nBut since I can't actually run the search_entity tool yet, I have to proceed under the assumption.\n\nTherefore, the SPARQL query should be constructed as such.\n\nWait, but let's think again: maybe the property is different. Let me think of another common property. Sometimes budget is under P2088 (production budget), but I think P1083 is the standard.\n\nWait, checking Wikidata's P1083: the label is \"budget\", and it's used for the budget of a film. So yes, P1083.\n\nSo, the correct query is to use that property with the entity.\n\nSo, the SPARQL query should be correct.\n\nTherefore, the answer function will include this SPARQL and the answer as the budget amount.\n\nWait, but the assistant should not assume the answer, but the SPARQL will be executed, and the result will be used.\n\nBut since I'm supposed to generate the query, not run it, the next step is to write the SPARQL.\n\nWait, the user's instruction says to generate the SPARQL, so the assistant should output the query, not the answer.\n\nBut the final answer via the 'answer' function needs the actual answer based on the query's results.\n\nBut as a simulated process, the assistant has to construct the SPARQL, assume the execution, and then provide the answer.\n\nBut according to the problem statement, the assistant should generate the SPARQL, then use execute, but since they're to write the tool calls, first call search_entity to get the entity, then search_property for the budget property, then construct the SPARQL.\n\nWait, the assistant must use the provided tools to first find the entity and property, then build the SPARQL.\n\nSo the correct sequence of tool calls would be:\n\n1. Search for entity: search_entity(kg=\"wikidata\", query=\"2001: A Space Odyssey\")\n2. From the results, take the QID (say, Q78995).\n3. Search for property: search_property(kg=\"wikidata\", query=\"budget\")\n4. From the results, take the property code (say, P1083).\n5. Then compose the SPARQL query.\n\nSo in this case, the assistant should first make the search_entity call."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-bd78bb51376e6be6",
+            "name": "search_entity",
+            "args": {
+              "kg": "wikidata",
+              "query": "2001: A Space Odyssey"
+            },
+            "result": "Top 10 entity alternatives:\n1. 2001: A Space Odyssey (wd:Q103474), also known as \"2001 Space Odyssey\", \"2001 A Space Odyssey\", \"2001: Space Odyssey\"\n2. 2001: A Space Odyssey (wd:Q835341)\n3. 2001: A Space Odyssey (wd:Q18642312)\n4. 2001: A Space Odyssey (wd:Q116379918)\n5. 2001: A Space Odyssey (disambiguation) (wd:Q1177031)\n6. 2001: A Space Odyssey (comics) (wd:Q4598403)\n7. 2001: A Space Odyssey (score) (wd:Q4598404)\n8. 2001: A Space Road Odyssey (wd:Q4598405)\n9. 2001: A plant space odyssey (wd:Q77335742)\n10. Interpretations of 2001: A Space Odyssey (wd:Q16211324)"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 2303,
+          "prompt_tokens": 3757,
+          "total_tokens": 6060
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "998833d2cf8940f3b32942cdc78614be",
+        "message": null,
+        "reasoning": {
+          "id": "3173c7a19b6a4a10ad3969dc89b687c2",
+          "content": "Okay, let's see. The user is asking for the budget of the movie \"2001: A Space Odyssey\". First, I need to figure out which entity in Wikidata corresponds to that movie. The search_entity function gave a list of possible entities, and the top one is wd:Q103474, which is the main movie entry. So I should use that.\n\nNext, I need to find the property that represents the budget. In Wikidata, movie budgets are usually under the property for budget, which is P1162 (Budget). Let me confirm that. Sometimes, people might use other properties, but P1162 is the standard for budget. I'll check by searching for the property related to budget.\n\nWait, maybe I should use search_property to find the correct property. Let me call search_property with \"budget\" as the query. But since I already think it's P1162, maybe I can proceed. But to be safe, let's confirm. Alternatively, I can look up the properties of wd:Q103474 to see what's listed.\n\nBut since I can't directly look at the entity, maybe using the search_property function is better. Let me try that. Wait, the user's instructions say to use the tools provided. So first, I should check if the correct property exists.\n\nWait, another approach: Once I have the entity ID for the movie (wd:Q103474), I can query the budget by using wdt:P1162. So the SPARQL would be SELECT ?budget WHERE { wd:Q103474 wdt:P1162 ?budget }.\n\nBut maybe the budget is stored as a quantity with a unit, so the value might be a number with a string unit. But the user just wants the number, so the SPARQL should return the value, and then I can extract the number from it. However, the answer needs to be the actual budget figure.\n\nWait, but I need to make sure that the property P1162 is correct. Let me verify. In Wikidata, P1162 is indeed \"budget\". So that's the right property.\n\nSo the next step is to construct the query for wd:Q103474 and property P1162. Let's write the SPARQL query.\n\nBut first, confirm that the entity is correct. The top search result was wd:Q103474, which matches the movie. So using that.\n\nNow, execute the SPARQL query: SELECT ?budget WHERE { wd:Q103474 wdt:P1162 ?budget }.\n\nWait, but I should check if there's a qualifier or something else. But the budget is a direct statement, so it should be under wdt:P1162.\n\nLet me test this. So the SPARQL query would be:\n\nSELECT ?budget WHERE { wd:Q103474 wdt:P1162 ?budget }.\n\nNow, I need to make sure that the property is correctly spelled. Let's check the property ID. P1162 in Wikidata is budget. Yes, according to Wikidata, P1162 is \"budget\".\n\nSo, using that property should give the budget.\n\nBut wait, sometimes the budget might be listed as a monetary value. Let me think. For example, the budget of 2001: A Space Odyssey was $10.5 million or similar. So the query should return that value.\n\nBut to get the actual number, the SPARQL might need to handle the quantity. The value would be a wikibase:Quantity, so the unit might be present, but the user just wants the number. However, the user's question is \"how much is the budget\", so the answer would be the number with the unit. But the SPARQL query will return the quantity, and then we can present the number.\n\nBut the instructions say to return the actual IRIs or identifiers in the result. Wait, no: \"The SPARQL query should always return the actual identifiers / IRIs of the items in its result. It additionally may return labels or other human-readable information, but they are optional and should be put within optional clauses unless explicitly requested by the user.\"\n\nSo the query should return ?budget, which is the quantity. But the user wants the answer in a human-readable form. However, the answer function should take the SPARQL results and convert it into the answer. So the SPARQL query should fetch the budget value, and then the answer function will process it.\n\nWait, but the user's answer should be the value, like \"$10.5 million\". So the SPARQL query will get the quantity, which includes the number and unit. But we need to format that.\n\nHowever, according to the instructions, the SPARQL query should return the actual identifiers. But the user probably wants the budget amount. So perhaps the query should return the value as a string. But Wikidata stores quantities as numbers with units.\n\nWait, the quantity has a numeric value and a unit. For example, the budget might be stored as a quantity with value 10500000 and unit USD.\n\nBut the actual SPARQL result would have the quantity, which can be converted to a string. But the instructions say that the SPARQL query should return the identifiers/IRIs, so maybe the . However, the user's question is asking for the budget figure, so the answer should include the number. Therefore, I need to get the quantity value.\n\nWait, the SPARQL query will return the quantity, and then the answer function will take that and format it. But since the assistant's job is to generate the SPARQL query, not to process the results further, the query should just retrieve the value.\n\nWait, the SPARQL query should return the value. The quantity is stored in the object as a quantity, so the SPARQL query would have ?budget as a quantity. The answer function would then present that as \"10,500,000 USD\" or similar.\n\nBut the actual SPARQL query as written would return the quantity, which is a complex object. However, to get the numeric part, maybe I need to use some functions, but the instructions say not to do computations in the answer, all in SPARQL.\n\nWait, but Wikidata's SPARQL endpoint (Qlever) might handle quantities, so the SELECT could just select the value and the unit, but the user just wants the number. Hmm.\n\nAlternatively, maybe the budget is stored as a literal string. But I think it's stored as a quantity. Let me check a similar case. For example, looking up the budget of a movie on Wikidata, the P1162 property is a quantity.\n\nSo to get the numeric value, perhaps the SPARQL needs to do something like BIND(xs:float(strafter(str(?budget), '#')) as ?number). But wait, the unit is part of the quantity. Wait, actually, quantities in Wikidata are represented as a number and a unit. The object of wdt:P1162 is a quantity, which has a value (e.g., 10500000) and a unit (e.g., Q2758999, which is US dollar).\n\nBut the SPARQL query would have to get the quantity and then extract the value. However, the user just wants the number, so the answer should include that. But according to the instructions, the SPARQL query must return the identifiers/IRIs, so perhaps just returning the quantity is sufficient, and then the answer function can process it.\n\nBut the problem is that the SPARQL query's result will have the quantity as a node, and then the answer needs to convert it to a string. However, the answer function's parameters need to have a textual answer, not just the SPARQL result. So the assistant will generate the SPARQL query, which returns the quantity, and then the answer function will take that quantity and formulate the answer.\n\nGiven that, the correct SPARQL query is the one querying wdt:P1162 for the movie's entity.\n\nSo the final SPARQL should be:\n\nSELECT ?budget WHERE { wd:Q103474 wdt:P1162 ?budget }\n\nThen, when executed, the result will have the budget quantity, and the answer function will format it as the answer.\n\nWait, but before finalizing, maybe I should check if there are multiple budget entries or if P1162 is the correct property.\n\nLet's think: Maybe the movie's budget is listed under a different property. For example, sometimes budget is listed as P1162, but sometimes other properties. Let me confirm.\n\nSearching Wikidata manually (hypothetically), the movie \"2001: A Space Odyssey\" has a budget of $10.5 million, and the property used in Wikidata is indeed P1162. So the query should work.\n\nSo the plan is:\n\n1. Use the entity wd:Q103474 for the movie.\n2. Query wdt:P1162 to get the budget.\n\nThus, the SPARQL query is as above.\n\nNow, I need to make sure that there's no error here. Let's proceed to call execute with this query.\n\nWait, but before that, should I check with another tool? For example, maybe use list() to see the properties of wd:Q103474 to confirm the budget property.\n\nBut since the user expects me to proceed, and the search_entity already identified the correct entity, it's better to go ahead with the SPARQL query.\n\nSo the next step is to execute the SPARQL query to get the budget."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-ba011f22c79a1eb8",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?budget WHERE { wd:Q103474 wdt:P1162 ?budget }"
+            },
+            "result": "Got no rows and 1 columns"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 2131,
+          "prompt_tokens": 4092,
+          "total_tokens": 6223
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "bedc027f99ab415fb067f15cada6efdf",
+        "message": null,
+        "reasoning": {
+          "id": "4daf1b21a2c042afb5202199fc4f95f5",
+          "content": "Okay, let's see. The user is asking for the budget of the movie \"2001: A Space Odyssey\". I used the search_entity function to find the correct entity. The top result was wd:Q103474, which is the 1968 film. Then I tried to get the budget using the property P1162 (which I thought was the budget), but the query returned no results.\n\nHmm, maybe P1162 isn't the right property. Let me check. Wait, in Wikidata, the property for budget might be different. Let me recall common properties. Sometimes budget is listed under P403 (budget) or maybe P1162 is something else. Wait, no, I think P1162 is \"budget\", but maybe it's not used here for this movie. Let's verify.\n\nAlternatively, maybe the budget is stored under a different property. Let me check the properties for the entity. Maybe I should list the properties of wd:Q103474 to see what's available. So I need to use the list function with subject wd:Q103474 to see all properties.\n\nWait, the user is asking for the budget, so maybe the correct property is P1162, but perhaps the data isn't present in Wikidata. Let's check another way. Maybe the budget is listed as a monetary value, so it's possible the property used is P1162, but the movie might not have it filled in. Or maybe it's stored under a different property.\n\nAnother approach: Let's search for properties related to budget. Maybe use search_property with query \"budget\". Let me try using the search_property function to find the correct property ID.\n\nSo, execute search_property with query \"budget\" on wikidata. That should give me the possible property IDs related to budget. Then I can pick the correct one.\n\nWait, but the previous execute query with P1162 didn't work. Let me check if P1162 is indeed the property for budget. Let me recall: In Wikidata, P1162 is \"budget\", but perhaps for some entities it's not populated. Alternatively, maybe the correct property is P2820 (\"budget\" in another context). Wait, no, I think P1162 is the standard one. Let's double-check with another method.\n\nWait, in the list of properties for the movie, maybe I can list them. Let's use the list function with subject wd:Q103474 to see the properties.\n\nSo, the next step is to list the properties of wd:Q103474. Let's do that. The list function can help find which properties are present for the movie. Then I can see if there's a property related to budget.\n\nLet me call list() with kg=\"wikidata\", subject=\"wd:Q103474\". That should retrieve all the properties associated with the movie entity."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-b4a10949aa251945",
+            "name": "list",
+            "args": {
+              "kg": "wikidata",
+              "subject": "wd:Q103474"
+            },
+            "result": "Got 836 rows and 3 columns, showing the first 10 rows below:\n| subject                            | property                     | object                                                                                                                                                                                                                    |\n| ---------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| 2001: A Space Odyssey (wd:Q103474) | instance of (wdt:P31)        | film (wd:Q11424)                                                                                                                                                                                                          |\n| 2001: A Space Odyssey (wd:Q103474) | title (wdt:P1476)            | 2001: A Space Odyssey (lang:en)                                                                                                                                                                                           |\n| 2001: A Space Odyssey (wd:Q103474) | publication date (wdt:P577)  | 1968-04-02T00:00:00Z (xsd:dateTime)                                                                                                                                                                                       |\n| 2001: A Space Odyssey (wd:Q103474) | main subject (wdt:P921)      | artificial intelligence (wd:Q11660)                                                                                                                                                                                       |\n| 2001: A Space Odyssey (wd:Q103474) | Commons category (wdt:P373)  | 2001: A Space Odyssey                                                                                                                                                                                                     |\n| 2001: A Space Odyssey (wd:Q103474) | image (wdt:P18)              | http://commons.wikimedia.org/wiki/Special:FilePath/Photo%20A%20scene%20from%202001.%20A%20Space%20Odyssey%2C%20a%201968%20film%20directed%20by%20Stanley%20Kubrick%201968%20-%20Touring%20Club%20Italiano%2004%200826.jpg |\n| 2001: A Space Odyssey (wd:Q103474) | part of (wdt:P361)           | Vatican's list of films (wd:Q2557998)                                                                                                                                                                                     |\n| 2001: A Space Odyssey (wd:Q103474) | VIAF cluster ID (wdtn:P214)  | http://viaf.org/viaf/209965907                                                                                                                                                                                            |\n| 2001: A Space Odyssey (wd:Q103474) | Freebase ID (wdt:P646)       | /m/08ct6                                                                                                                                                                                                                  |\n| 2001: A Space Odyssey (wd:Q103474) | country of origin (wdt:P495) | United States (wd:Q30)                                                                                                                                                                                                    |\n| ...                                | ...                          | ...                                                                                                                                                                                                                       |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 669,
+          "prompt_tokens": 4162,
+          "total_tokens": 4831
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "b2c0cee3bdfd4b208b4e8d3f4000a565",
+        "message": null,
+        "reasoning": {
+          "id": "adf3d427eb8246c288ab4038d50b393d",
+          "content": "Okay, let's see. The user is asking for the budget of the movie \"2001: A Space Odyssey\". I first searched for the entity and found the correct Wikidata ID, Q103474. Then I tried to get the budget using the property P1162 (which is \"budget\" in Wikidata), but the query returned no results.\n\nLooking at the list of properties from the subject Q103474, I don't see a budget entry. Maybe the property used for budget is different. In Wikidata, sometimes budget info is stored under a different property. Let me check common properties for films.\n\nThe properties for films might include P1162, but maybe there's another one. Let's think: sometimes budget is under P2137 (estimated budget) or P8505 (production budget). Wait, I should verify. Let me recall, in Wikidata, the property for budget is often P1162, but maybe it's not used here.\n\nWait, the user's initial attempt used wdt:P1162, which is the direct property for budget. But the list function for the subject shows no such property. So maybe the budget isn't directly listed under P1162. Let me check other possible properties.\n\nLooking at the list of properties from the subject, there's P191 (producer), P128 (produced by), P220 (production company), but budget isn't there. Maybe the budget is not in Wikidata as a direct property. Alternatively, maybe it's stored under a reference or a qualifier.\n\nWait, perhaps the budget is in the form of a quantity, and the property is correct, but the data isn't present. Let's check if any other properties could relate. Maybe P1625 (box office revenue), but the user asked for budget, not revenue.\n\nAlternatively, maybe the budget is listed under a different property. Let me search for \"budget\" in the property list. The user hasn't done that yet. So maybe I should use the search_property function to find the correct property.\n\nWait, the user has to use the tools to find the right property. The next step would be to search for properties related to \"budget\" in Wikidata. Let's use search_property with query \"budget\".\n\nWait, the user can use search_property(kg=\"wikidata\", query=\"budget\") to find the correct property. Let's do that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-8b698e328d6a1285",
+            "name": "search_property",
+            "args": {
+              "kg": "wikidata",
+              "query": "budget"
+            },
+            "result": "Top 10 property alternatives:\n1. capital cost (wd:P2130 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"budget\"), also known as \"budget\", \"CAPEX\", \"cost\", \"unit cost\":\n  - amount of money spent on building or producing an object\n2. budget (wd:P2769 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv):\n  - assigned monetary amount for a project (for the estimated cost of a film, also commonly referred to as budget, use P2130)\n3. total expenditure (wd:P2402 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"expense\"), also known as \"expense\", \"expenses\", \"spending\":\n  - amount of spending by this public or private entity, not to be confused with fiscal expenditure\n4. price (wd:P2284 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"cost\"), also known as \"cost\", \"exchange rate\", \"list price\", \"MSRP\", \"published price\", etc.:\n  - published price listed or paid for a product (use with unit of currency)\n5. prize money (wd:P2121 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"money\"), also known as \"money\", \"prize pool\", \"purse\", \"value\":\n  - amount in a specific currency\n6. quantity (wd:P1114 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"amount\"), also known as \"amount\", \"copies\", \"count\", \"instances\", \"multiplicity\", etc.:\n  - number of instances of this subject in the universe of the ... number of instances in Wikidata may be lower or higher)\n7. fee (wd:P2555 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv), also known as \"admission\", \"charge\", \"entrance fee\", \"entrance fees\", \"entry fee\", etc.:\n  - fee or toll payable to use, transit or enter the subject ... do NOT use it for an ongoing fee, tuition fee or trading fee)\n8. account charge / subscription fee (wd:P5897 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"fee\"), also known as \"annual cost\", \"fee\", \"member fee\", \"membership fee\", \"monthly cost\", etc.:\n  - a monthly/yearly fee for using a service or account; use qualifier duration to specify the billing cycle\n9. measured physical quantity (wd:P111 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"quantity\"), also known as \"measure of\", \"measures\", \"physical quantity\", \"quantity\":\n  - value of a physical property expressed as number multiplied by a unit\n10. net worth (wd:P2218 as wdt/p/ps/pq/pr/wdtn/psn/pqn/prn/psv/pqv/prv, matched via \"wealth\"), also known as \"declared patrimony\", \"estimated net worth\", \"net wealth\", \"net worth estimate\", \"personal assets\", etc.:\n  - totality of wealth possessed by a person"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 547,
+          "prompt_tokens": 4874,
+          "total_tokens": 5421
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "5f7b7e8882544b33b2cd5c543e611fd5",
+        "message": null,
+        "reasoning": {
+          "id": "83e6a02a56744622bf0101c75f51e635",
+          "content": "Okay, let's see. The user is asking for the budget of the movie \"2001: A Space Odyssey\". From the previous interactions, I found the correct entity for the movie using search_entity, which is wd:Q103474. Then, I tried to use the property wdt:P1162, but that didn't return any results. The list of properties for the entity didn't show a budget property either.\n\nNow, the search_property for \"budget\" showed that there's a property P2130 called \"capital cost\" which is used for film budgets, and P2769 is also listed as \"budget\", but the note says to use P2130 for film budgets. So maybe the correct property to use is P2130 instead of P1162.\n\nLet me check again. The user's previous SPARQL query used wdt:P1162, which might not be the right property. The search_property results indicate that P2130 is the one for budget of a film. So I should try querying with wdt:P2130.\n\nLet me construct the SPARQL query: SELECT ?budget WHERE { wd:Q103474 wdt:P2130 ?budget }.\n\nWait, but sometimes the property might be stored as a statement with a qualifier, like the value in a specific currency. But the user just wants the budget amount, so the direct property should suffice. Let me try executing that.\n\nAlternatively, maybe the property is not directly present. Let me verify by checking other properties in the entity's list. The list from the last tool call (list) showed properties like publication date, title, etc., but not budget. So maybe the budget is stored under P2130.\n\nSo the correct SPARQL query should use wdt:P2130. Let me test that."
+        },
+        "tool_calls": [
+          {
+            "id": "chatcmpl-tool-8b2f25ddf5e0bd68",
+            "name": "execute",
+            "args": {
+              "kg": "wikidata",
+              "sparql": "SELECT ?budget WHERE { wd:Q103474 wdt:P2130 ?budget }"
+            },
+            "result": "Got 1 row and 1 column:\n| budget                   |\n| ------------------------ |\n| 10500000.0 (xsd:decimal) |"
+          }
+        ],
+        "usage": {
+          "completion_tokens": 453,
+          "prompt_tokens": 5730,
+          "total_tokens": 6183
+        }
+      }
+    },
+    {
+      "role": "assistant",
+      "content": {
+        "id": "9e60b57b4dbd4c65b9ff1e7cf6ab8903",
+        "message": "The budget of the movie *2001: A Space Odyssey* is **$10,500,000**. This value corresponds to the film's production budget as recorded in Wikidata under the property \"capital cost\" (P2130).\n\n<function-call>\n{\"name\": \"answer\", \"arguments\": {\"kg\": \"wikidata\", \"sparql\": \"SELECT ?budget WHERE { wd:Q103474 wdt:P2130 ?budget }\", \"answer\": \"$10,500,000\"}}\n</function-call>",
+        "reasoning": {
+          "id": "ef7c3c0bea27480d886f1cacfc8ffbe9",
+          "content": "Okay, let's see. The user asked for the budget of the movie \"2001: A Space Odyssey\". I first used the search_entity function to find the correct Wikidata entity for the movie. The top result was wd:Q103474, which I confirmed is the right entry.\n\nThen, I tried to use the SPARQL query with wdt:P1162, but that didn't return any results. So I checked what properties are related to budgets by searching for \"budget\" with search_property. The top matches were properties like \"capital cost\" (P2130) and \"budget\" (P2769). The search_property response mentioned that for film budgets, P2130 is the correct one, not P2769.\n\nSo I tried again with P2130, and this time the query returned a budget of 10,500,000.0. The answer should be formatted in dollars, so I'll present it as $10,500,000.\n\nI need to make sure this is the correct property. Let me just cross-verify. From the search_property results, it said \"for the estimated cost of a film, also commonly referred to as budget, use P2130\". So P2130 is the right property. The value returned is 10,500,000.0, which is 10.5 million. The movie's budget was indeed around that figure when adjusted for inflation, but the raw amount is 10.5 million USD. The question doesn't specify inflation adjustment, so the raw value is correct.\n\nNo more steps needed since the query worked. The answer is $10,500,000."
+        },
+        "tool_calls": [],
+        "usage": {
+          "completion_tokens": 510,
+          "prompt_tokens": 5827,
+          "total_tokens": 6337
+        }
+      }
+    }
+  ],
+  "known": [
+    "http://www.wikidata.org/prop/statement/P2769",
+    "http://commons.wikimedia.org/wiki/Special:FilePath/Photo%20A%20scene%20from%202001.%20A%20Space%20Odyssey%2C%20a%201968%20film%20directed%20by%20Stanley%20Kubrick%201968%20-%20Touring%20Club%20Italiano%2004%200826.jpg",
+    "http://www.wikidata.org/prop/reference/P2218",
+    "http://www.wikidata.org/entity/Q16211324",
+    "http://www.wikidata.org/prop/statement/value/P2130",
+    "http://www.wikidata.org/prop/direct/P2402",
+    "http://www.wikidata.org/entity/Q116379918",
+    "http://www.wikidata.org/entity/Q4598403",
+    "http://www.wikidata.org/prop/direct/P646",
+    "http://www.wikidata.org/prop/reference/P2121",
+    "http://www.wikidata.org/entity/P2555",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2284",
+    "http://www.wikidata.org/entity/P2121",
+    "http://www.wikidata.org/prop/statement/value/P2218",
+    "http://www.wikidata.org/prop/qualifier/value/P2769",
+    "http://www.wikidata.org/prop/statement/P2402",
+    "http://www.wikidata.org/prop/reference/value/P2402",
+    "http://www.wikidata.org/prop/statement/value/P2121",
+    "http://www.wikidata.org/prop/reference/value-normalized/P1114",
+    "http://www.wikidata.org/entity/P2284",
+    "http://www.wikidata.org/entity/Q11424",
+    "http://www.wikidata.org/prop/P2121",
+    "http://www.wikidata.org/prop/statement/P1114",
+    "http://www.wikidata.org/prop/qualifier/P2555",
+    "http://www.wikidata.org/prop/P2555",
+    "http://www.wikidata.org/entity/Q835341",
+    "http://www.wikidata.org/prop/reference/value/P2130",
+    "http://www.wikidata.org/prop/direct-normalized/P2218",
+    "http://www.wikidata.org/prop/qualifier/value/P5897",
+    "http://www.wikidata.org/entity/Q30",
+    "http://www.wikidata.org/prop/qualifier/value/P2284",
+    "http://www.wikidata.org/prop/statement/P111",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2130",
+    "http://www.wikidata.org/prop/direct-normalized/P2769",
+    "http://www.wikidata.org/prop/reference/value-normalized/P5897",
+    "http://www.wikidata.org/prop/reference/P1114",
+    "http://www.wikidata.org/prop/P1114",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2555",
+    "http://www.wikidata.org/entity/P31",
+    "http://www.wikidata.org/prop/reference/value/P2121",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P5897",
+    "http://www.wikidata.org/entity/P646",
+    "http://www.wikidata.org/prop/direct/P111",
+    "http://www.wikidata.org/prop/P5897",
+    "http://www.wikidata.org/prop/direct/P495",
+    "http://www.wikidata.org/prop/qualifier/P2284",
+    "http://www.wikidata.org/entity/Q11660",
+    "http://www.wikidata.org/prop/reference/value/P2218",
+    "http://www.wikidata.org/prop/P2218",
+    "http://www.wikidata.org/prop/qualifier/value/P2402",
+    "http://www.wikidata.org/prop/qualifier/value/P2218",
+    "http://www.wikidata.org/prop/qualifier/P2769",
+    "http://www.wikidata.org/prop/statement/P2130",
+    "http://www.wikidata.org/prop/qualifier/value/P2121",
+    "http://www.wikidata.org/entity/Q77335742",
+    "http://www.wikidata.org/prop/reference/P2769",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2402",
+    "http://www.wikidata.org/prop/direct-normalized/P2402",
+    "http://www.wikidata.org/prop/qualifier/value/P1114",
+    "http://www.wikidata.org/entity/P5897",
+    "http://www.wikidata.org/prop/reference/P111",
+    "http://www.wikidata.org/prop/direct-normalized/P1114",
+    "http://www.wikidata.org/entity/P2402",
+    "http://www.wikidata.org/prop/direct-normalized/P111",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2130",
+    "http://www.wikidata.org/entity/Q103474",
+    "http://www.wikidata.org/prop/qualifier/P111",
+    "http://www.wikidata.org/prop/direct/P2130",
+    "http://www.wikidata.org/prop/direct/P1476",
+    "http://www.wikidata.org/prop/direct-normalized/P5897",
+    "http://www.wikidata.org/prop/P2284",
+    "http://www.wikidata.org/prop/statement/value-normalized/P1114",
+    "http://www.wikidata.org/prop/qualifier/value/P2555",
+    "http://www.wikidata.org/prop/statement/value/P5897",
+    "http://www.wikidata.org/prop/direct/P31",
+    "http://www.wikidata.org/prop/direct-normalized/P2130",
+    "http://www.wikidata.org/prop/statement/value/P1114",
+    "http://www.wikidata.org/prop/direct/P361",
+    "http://www.wikidata.org/entity/P2769",
+    "http://www.wikidata.org/prop/statement/P2121",
+    "http://www.wikidata.org/prop/reference/P2284",
+    "http://www.wikidata.org/prop/P2769",
+    "http://www.wikidata.org/prop/statement/P5897",
+    "http://www.wikidata.org/entity/P2130",
+    "http://www.wikidata.org/prop/reference/value/P2284",
+    "http://www.wikidata.org/prop/statement/value-normalized/P5897",
+    "http://www.wikidata.org/entity/P2218",
+    "http://viaf.org/viaf/209965907",
+    "http://www.wikidata.org/prop/direct-normalized/P214",
+    "http://www.wikidata.org/entity/P361",
+    "http://www.wikidata.org/prop/direct/P1114",
+    "http://www.wikidata.org/prop/reference/P2555",
+    "http://www.wikidata.org/prop/reference/value-normalized/P111",
+    "http://www.wikidata.org/prop/direct/P5897",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2769",
+    "http://www.wikidata.org/prop/qualifier/P5897",
+    "http://www.wikidata.org/prop/qualifier/P2121",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2218",
+    "http://www.wikidata.org/entity/P495",
+    "http://www.wikidata.org/prop/direct-normalized/P2555",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2121",
+    "http://www.wikidata.org/prop/qualifier/value/P111",
+    "http://www.wikidata.org/prop/statement/value/P2284",
+    "http://www.wikidata.org/entity/P577",
+    "http://www.wikidata.org/prop/qualifier/P1114",
+    "http://www.wikidata.org/prop/statement/P2218",
+    "http://www.wikidata.org/entity/P18",
+    "http://www.wikidata.org/entity/P111",
+    "http://www.wikidata.org/prop/direct/P577",
+    "http://www.wikidata.org/prop/reference/P2130",
+    "http://www.wikidata.org/prop/statement/value/P111",
+    "http://www.wikidata.org/prop/P2402",
+    "http://www.wikidata.org/prop/direct/P2284",
+    "http://www.wikidata.org/prop/P111",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2284",
+    "http://www.wikidata.org/prop/reference/value/P2555",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2402",
+    "http://www.wikidata.org/prop/qualifier/P2218",
+    "http://www.wikidata.org/entity/P1114",
+    "http://www.wikidata.org/prop/direct-normalized/P2284",
+    "http://www.wikidata.org/entity/P921",
+    "http://www.wikidata.org/prop/qualifier/P2402",
+    "http://www.wikidata.org/prop/statement/value/P2555",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2769",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2555",
+    "http://www.wikidata.org/prop/direct/P921",
+    "http://www.wikidata.org/entity/Q4598405",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2769",
+    "http://www.wikidata.org/prop/statement/value/P2769",
+    "http://www.wikidata.org/prop/reference/value-normalized/P2284",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2218",
+    "http://www.wikidata.org/prop/reference/value/P1114",
+    "http://www.wikidata.org/entity/Q18642312",
+    "http://www.wikidata.org/prop/direct/P373",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2555",
+    "http://www.wikidata.org/entity/P373",
+    "http://www.wikidata.org/prop/statement/value-normalized/P111",
+    "http://www.wikidata.org/entity/Q4598404",
+    "http://www.wikidata.org/prop/direct/P18",
+    "http://www.wikidata.org/entity/P1476",
+    "http://www.wikidata.org/prop/reference/P2402",
+    "http://www.wikidata.org/prop/statement/value/P2402",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2130",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P1114",
+    "http://www.wikidata.org/prop/P2130",
+    "http://www.wikidata.org/prop/direct/P2769",
+    "http://www.wikidata.org/prop/direct-normalized/P2121",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2121",
+    "http://www.wikidata.org/prop/reference/value/P5897",
+    "http://www.wikidata.org/entity/Q1177031",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2121",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P2402",
+    "http://www.wikidata.org/prop/reference/value/P2769",
+    "http://www.wikidata.org/entity/Q2557998",
+    "http://www.wikidata.org/prop/statement/P2555",
+    "http://www.wikidata.org/prop/direct/P2555",
+    "http://www.wikidata.org/entity/P214",
+    "http://www.wikidata.org/prop/direct/P2218",
+    "http://www.wikidata.org/prop/qualifier/P2130",
+    "http://www.wikidata.org/prop/qualifier/value-normalized/P111",
+    "http://www.wikidata.org/prop/statement/value-normalized/P2218",
+    "http://www.wikidata.org/prop/qualifier/value/P2130",
+    "http://www.wikidata.org/prop/reference/P5897",
+    "http://www.wikidata.org/prop/reference/value/P111",
+    "http://www.wikidata.org/prop/direct/P2121",
+    "http://www.wikidata.org/prop/statement/P2284"
+  ],
+  "id": "unknown",
+  "source_csv": "data/ComplexQA/CompMix_table_complex.csv",
+  "row_index": 289,
+  "question": "How much is the budget of 2001: A Space Odyssey movie",
+  "reference_answer": "$10.5 million"
+}
