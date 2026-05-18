@@ -58,7 +58,7 @@ from typing import Dict, List, Optional, Sequence, Set, Tuple
 # ---------------- Configuration ---------------- #
 
 INPUT_DIRS: List[str] = [
-    "data/SimpleQA",
+   # "data/SimpleQA",
     "data/ComplexQA",
 ]
 
@@ -1360,7 +1360,8 @@ def print_final_summary(
 def main() -> int:
     log_step("Starting 30B GRASP batch runner")
 
-    csv_files = discover_csv_files(INPUT_DIRS)
+    #csv_files = discover_csv_files(INPUT_DIRS)
+    csv_files = ["data/ComplexQA/Sportsreason_TANQ_complex.csv"]
 
     if not csv_files:
         log_error("No CSV files found in data/ComplexQA/ or data/SimpleQA/.")
